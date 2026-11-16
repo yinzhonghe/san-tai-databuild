@@ -40,13 +40,30 @@ jobs:
         if: github.event.inputs.mode != 'full' && github.event_name != 'schedule'
         run: |
           python build_data.py --site . --max 30 --no-ind --closes-len 20
-          ls -lh data.js data.json.gz 2>/dev/null || true
 
       - name: 全量构建
         if: github.event.inputs.mode == 'full' || github.event_name == 'schedule'
         run: |
           python build_data.py --site . --closes-len 61
-          ls -lh data.js data.json.gz 2>/dev/null || true
+
+      - name: 写回构建摘要（我看这个文件判断成败）
+        if: always()
+        run: |
+          {
+            echo "time: $(date -u +%Y-%m-%dT%H:%MZ)"
+            echo "trigger: ${{ github.event_name }} / mode=${{ github.event.inputs.mode }}"
+            echo "--- files ---"
+            ls -lh data.js data.json.gz 2>/dev/null || echo "未生成 data.js"
+            echo "--- info ---"
+            grep -o '"asOf":"[^"]*"' data.js 2>/dev/null | head -1 || echo "no asOf"
+            echo "code count: $(grep -o '"code":' data.js 2>/dev/null | wc -l)"
+          } > build-log.txt 2>&1
+          cat build-log.txt
+          git config user.name  "san-tai-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add build-log.txt || true
+          git diff --cached --quiet || git commit -m "chore: 构建摘要"
+          git push || true
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
