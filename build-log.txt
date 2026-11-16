@@ -1,4 +1,4 @@
-time: 2026-11-16T14:22Z
+time: 2026-11-16T15:21Z
 trigger: workflow_dispatch / mode=full
 --- files ---
 未生成 data.js
