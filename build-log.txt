@@ -1,4 +1,4 @@
-time: 2026-11-16T11:37Z
+time: 2026-11-16T11:56Z
 trigger: push / mode=
 --- files ---
 未生成 data.js
