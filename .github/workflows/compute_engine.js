@@ -99,7 +99,9 @@ function main() {
 
   var items = JSON.parse(fs.readFileSync(inPath, 'utf8'));
   var out = {};
-  items.forEach(function (it) {
+  var errs = 0, firstErr = null;
+  items.forEach(function (it, idx) {
+   try {
     var input = {
       code: it.code, name: it.name, kind: it.kind, tier: it.tier,
       pct: it.pct, series: it.series, themes: it.themes || [],
@@ -126,7 +128,13 @@ function main() {
       ind: o.ind, fundLabel: o.fundLabel, fundProxy: o.fundProxy,
       fund3d: o.fund3d
     };
+   } catch (e) {
+      errs++;
+      if (!firstErr) firstErr = it.code + ' ' + (it.name || '') + ' → ' + (e && e.message ? e.message : e);
+      if (errs <= 5) console.error('[skip] ' + it.code + ' ' + (e && e.message ? e.message : e));
+    }
   });
+  if (errs) console.error('[warn] 引擎跳过 ' + errs + ' 只，首个错误：' + firstErr);
   fs.writeFileSync(outPath, JSON.stringify(out));
   console.log('compute_engine: 已重算 %d 只', items.length);
 }
