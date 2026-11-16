@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[FAIL] 东财 clist 全市场       20377ms  URLError: <urlopen error _ssl.c:1001: The handshake operation timed out>
-[ OK ] 东财 kline(前复权)       1110ms  klines=452 末根=2026-11-16,1453.90
-[ OK ] 腾讯实时                1260ms  字段数=175 现价=1453.90
-[ OK ] 同花顺热榜               1902ms  stock_list=100
-[ OK ] 新浪(带Referer)        1142ms  var hq_str_sh000001="ָ֤,3611.5366,3634.3530,3602.5698,3623.1
+[ OK ] 东财 clist 全市场        2307ms  total=3488 diff=20
+[ OK ] 东财 kline(前复权)       1369ms  klines=452 末根=2026-11-16,1453.90
+[ OK ] 腾讯实时                1363ms  字段数=175 现价=1453.90
+[ OK ] 同花顺热榜               1770ms  stock_list=100
+[ OK ] 新浪(带Referer)         762ms  var hq_str_sh000001="ָ֤,3611.5366,3634.3530,3602.5698,3623.1
 
-通过 4 / 5
+通过 5 / 5
