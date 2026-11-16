@@ -1,24 +1,19 @@
-time: 2026-11-16T13:32Z
-trigger: workflow_dispatch / mode=full
+time: 2026-11-16T13:36Z
+trigger: push / mode=
 --- files ---
 未生成 data.js
 --- info ---
 code count: 0
 --- run log (tail 30) ---
+找不到 data.js
+[info] 未找到已有的 data.js，按首次构建处理（不继承历史快照）
+全市场标的池：30 只（沪 13 / 深 15 / 北 2）
+  ETF 来源：_etf_pick.json（全网 927 只按主题去重后保留 525 只）
+  追加 ETF 525 只到标的池
 并发拉取日K（线程=6）…
-  500/5578，成功 493，失败 7
-  1000/5578，成功 993，失败 7
-  1500/5578，成功 1493，失败 7
-  2000/5578，成功 1993，失败 7
-  2500/5578，成功 2493，失败 7
-  3000/5578，成功 2992，失败 8
-  3500/5578，成功 3490，失败 10
-  4000/5578，成功 3990，失败 10
-  4500/5578，成功 4490，失败 10
-  5000/5578，成功 4990，失败 10
-  5500/5578，成功 5490，失败 10
-  5578/5578，成功 5565，失败 13
-日K 拉取完成：成功 5565，失败 13
+  500/555，成功 500，失败 0
+  555/555，成功 555，失败 0
+日K 拉取完成：成功 555，失败 0
 Traceback (most recent call last):
   File "/home/runner/work/san-tai-databuild/san-tai-databuild/build_data.py", line 1317, in <module>
     sys.exit(main())
@@ -33,5 +28,5 @@ Traceback (most recent call last):
     subprocess.check_call(["node", os.path.join(TOOLS, "compute_engine.js"),
   File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/subprocess.py", line 413, in check_call
     raise CalledProcessError(retcode, cmd)
-subprocess.CalledProcessError: Command '['node', '/home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js', './_engine_in.json', './_engine_out.json']' returned non-zero exit status 1.
+subprocess.CalledProcessError: Command '['node', '/home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js', './_engine_in.json', './_engine_out.json']' returned non-zero exit status 3.
 exit=1
