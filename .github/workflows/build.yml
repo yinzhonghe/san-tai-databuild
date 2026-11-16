@@ -30,6 +30,13 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: 把工具脚本放到根目录
+        run: |
+          cp .github/workflows/compute_engine.js ./compute_engine.js 2>/dev/null || true
+          cp .github/workflows/_etf_pick.json  ./_etf_pick.json  2>/dev/null || true
+          echo "--- 根目录工具文件 ---"
+          ls -lh compute_engine.js _etf_pick.json 2>/dev/null || echo "缺失"
+
       - name: 装依赖
         run: |
           python -m pip install --upgrade pip
@@ -68,21 +75,3 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: 构建摘要"
           git pull --rebase --autostash origin main || true
           git push || true
-
-      - name: 发布数据到 data 分支
-        if: always()
-        run: |
-          if [ -f data.js ]; then
-            rm -rf /tmp/pub && mkdir -p /tmp/pub
-            cp data.js /tmp/pub/
-            cd /tmp/pub
-            git init -q
-            git config user.name  "san-tai-bot"
-            git config user.email "bot@users.noreply.github.com"
-            git add data.js
-            git commit -qm "data $(date -u +%Y-%m-%dT%H:%MZ)"
-            git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:data
-            echo "published to data branch"
-          else
-            echo "skip: no data.js"
-          fi
