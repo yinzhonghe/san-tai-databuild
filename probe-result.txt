@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[FAIL] 东财 clist 全市场        1396ms  HTTPError: HTTP Error 502: Bad Gateway
-[FAIL] 东财 kline(前复权)       1376ms  RemoteDisconnected: Remote end closed connection without response
-[ OK ] 腾讯实时                1086ms  字段数=175 现价=1453.90
-[ OK ] 同花顺热榜               2720ms  stock_list=100
-[ OK ] 新浪(带Referer)        1943ms  var hq_str_sh000001="ָ֤,3611.5366,3634.3530,3602.5698,3623.1
+[ OK ] 东财 clist 全市场        2229ms  total=3488 diff=20
+[ OK ] 东财 kline(前复权)       1953ms  klines=452 末根=2026-11-16,1453.90
+[ OK ] 腾讯实时                1148ms  字段数=175 现价=1453.90
+[ OK ] 同花顺热榜               2356ms  stock_list=100
+[ OK ] 新浪(带Referer)        1080ms  var hq_str_sh000001="ָ֤,3611.5366,3634.3530,3602.5698,3623.1
 
-通过 3 / 5
+通过 5 / 5
