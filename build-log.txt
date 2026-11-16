@@ -1,39 +1,7 @@
-time: 2026-11-16T22:13Z
-trigger: push / mode=
+time: 2026-11-16T22:29Z
+trigger: workflow_dispatch / mode=full
 --- files ---
--rw-r--r-- 1 runner runner 3.8K Nov 16 22:13 data.js
 未生成 data.js
 --- info ---
-"asOf":"2026-11-16"
-code count: 4
+code count: 0
 --- run log (tail 30) ---
-[skip] 600529.SH Cannot read properties of undefined (reading '')
-[skip] 600269.SH Cannot read properties of undefined (reading '')
-[skip] 600021.SH Cannot read properties of undefined (reading '')
-[skip] 600756.SH Cannot read properties of undefined (reading '')
-[skip] 920300.BJ Cannot read properties of undefined (reading '')
-[warn] 引擎跳过 555 只，首个错误：600529.SH 山东药玻 → Cannot read properties of undefined (reading '')
-compute_engine: 已重算 555 只
-[warn] 首次构建：未找到 data.js，用空基准继续（bm 由 Python 侧补）
-[skip] 000001.SH Cannot read properties of undefined (reading '')
-[skip] 399001.SZ Cannot read properties of undefined (reading '')
-[skip] 399006.SZ Cannot read properties of undefined (reading '')
-[skip] 000688.SH Cannot read properties of undefined (reading '')
-[warn] 引擎跳过 4 只，首个错误：000001.SH 上证指数 → Cannot read properties of undefined (reading '')
-compute_engine: 已重算 4 只
-[info] 未找到已有的 data.js，按首次构建处理（不继承历史快照）
-全市场标的池：30 只（沪 13 / 深 15 / 北 2）
-  ETF 来源：_etf_pick.json（全网 927 只按主题去重后保留 525 只）
-  追加 ETF 525 只到标的池
-并发拉取日K（线程=6）…
-  500/555，成功 500，失败 0
-  555/555，成功 555，失败 0
-日K 拉取完成：成功 555，失败 0
-  [指数] 4 个：上证指数=None、深证成指=None、创业板指=None、科创50=None
-  ETF 归入行业：0 / 0 只有对应行业（其余为宽基/策略类，留在 ETF 视图）
-  未找到 _valuation.json → 估值字段留空（先跑 tools/fetch_valuation.py）
-  行业中位 PE：0 个行业（样本≥5 只）
-组装完成：0 只（其中 0 只已存在→保留原有策展/舆情字段）
-全市场基准 bm = {'m20': -4.4419, 'm60': -13.2964}（用于 RRG 相对强度）
-data.js 已全市场重算并覆盖：0 只 A 股。
-exit=0
