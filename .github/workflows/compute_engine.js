@@ -98,6 +98,28 @@ function main() {
   SIX = require(sixPath);
 
   var items = JSON.parse(fs.readFileSync(inPath, 'utf8'));
+  /* 首次构建没有 data.js 时，AB_DATA.engine.bm 不存在。
+     bm 是 RRG 的相对强度基准（全市场 20/60 日涨幅中位数），
+     缺了它每只 analyze 都会抛错 → 全部被跳过 → 最终组装 0 只。
+     这里按同一口径（中位数）就地估算，与 build_data.py 侧算法一致。 */
+  (function ensureBm() {
+    AB_DATA.engine = AB_DATA.engine || {};
+    if (AB_DATA.engine.bm && AB_DATA.engine.bm.m20 != null) return;
+    var w20 = [], w60 = [];
+    items.forEach(function (it) {
+      var pp = it.pct || {};
+      if (pp.w20 != null) w20.push(pp.w20);
+      if (pp.w60 != null) w60.push(pp.w60);
+    });
+    function med(a) {
+      if (!a.length) return 0;
+      a.sort(function (x, y) { return x - y; });
+      var n = a.length;
+      return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
+    }
+    AB_DATA.engine.bm = { m20: med(w20), m60: med(w60) };
+    console.error('[info] 无 data.js，bm 就地估算 m20=' + AB_DATA.engine.bm.m20.toFixed(2) + ' m60=' + AB_DATA.engine.bm.m60.toFixed(2));
+  })();
   var out = {};
   var errs = 0, firstErr = null;
   items.forEach(function (it, idx) {
