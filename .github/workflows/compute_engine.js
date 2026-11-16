@@ -165,8 +165,13 @@ function main() {
     };
    } catch (e) {
       errs++;
-      if (!firstErr) firstErr = it.code + ' ' + (it.name || '') + ' → ' + (e && e.message ? e.message : e);
-      if (errs <= 5) console.error('[skip] ' + it.code + ' ' + (e && e.message ? e.message : e));
+      /* 只打 message 无法定位（如 "Cannot read properties of undefined (reading '')"）。
+         这里带上堆栈前 3 行，能直接看到是 six-engine 的哪一行爆的。 */
+      var _st = (e && e.stack)
+        ? String(e.stack).split('\n').slice(0, 3).map(function (x) { return x.trim(); }).join(' ‖ ')
+        : String(e);
+      if (!firstErr) firstErr = it.code + ' ' + (it.name || '') + ' → ' + _st;
+      if (errs <= 3) console.error('[skip] ' + it.code + ' → ' + _st);
     }
   });
   if (errs) console.error('[warn] 引擎跳过 ' + errs + ' 只，首个错误：' + firstErr);
