@@ -103,7 +103,20 @@ function main() {
      缺了它每只 analyze 都会抛错 → 全部被跳过 → 最终组装 0 只。
      这里按同一口径（中位数）就地估算，与 build_data.py 侧算法一致。 */
   (function ensureBm() {
+    /* 首次构建 AB_DATA 是空壳。six-engine 直接读 DATA.engine / DATA.themeAgg /
+       DATA.meta 这些字段：themeAgg 为 undefined 时，第 147 行 AG[k] 就会抛
+       「Cannot read properties of undefined」，导致每只票都算不出来。
+       这里一次性把所有依赖的容器补齐，缺哪个都不会再炸。 */
     AB_DATA.engine = AB_DATA.engine || {};
+    AB_DATA.themeAgg = AB_DATA.themeAgg || [];
+    AB_DATA.themeKeywords = AB_DATA.themeKeywords || [];
+    AB_DATA.themes = AB_DATA.themes || [];
+    AB_DATA.rows = AB_DATA.rows || [];
+    AB_DATA.voteDef = AB_DATA.voteDef || [];
+    AB_DATA.indexStates = AB_DATA.indexStates || [];
+    AB_DATA.meta = AB_DATA.meta || {};
+    if (AB_DATA.meta.asOfCore == null) AB_DATA.meta.asOfCore = '';
+    if (AB_DATA.meta.asOfExt == null) AB_DATA.meta.asOfExt = '';
     if (AB_DATA.engine.bm && AB_DATA.engine.bm.m20 != null) return;
     var w20 = [], w60 = [];
     items.forEach(function (it) {
