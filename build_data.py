@@ -600,7 +600,9 @@ def _median(xs):
 
 
 def write_data_js(site, engine, meta, rows_new, top, full):
-    data_js = _find_data(site)
+    # 首次构建时 site 里还没有 data.js，_find_data 返回 None，
+    # 直接拿去 open() 会 TypeError。这里兜底成目标路径。
+    data_js = _find_data(site) or os.path.join(site, "data.js")
     if full:
         summary = "[全市场版：三态/六派由免费源逐只重算；未含人工撰写的组合摘要]"
         obj = {
