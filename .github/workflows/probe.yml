@@ -1,0 +1,36 @@
+name: 数据源探测
+
+# 只做一件事：确认 GitHub 的机器能不能拉到 A 股公开数据。
+# 本地实测东财 clist 被网络出口拦截（Remote end closed），
+# 但东财 K线 / 腾讯 / 同花顺 / 新浪(带Referer) 都正常。
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'probe.py'
+      - '.github/workflows/**'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 探测数据源
+        run: python probe.py || true
+
+      - name: 把结果写回仓库（便于直接读文件，不用翻日志）
+        run: |
+          git config user.name  "san-tai-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add probe-result.txt || true
+          git diff --cached --quiet || git commit -m "chore: 探测结果"
+          git push || true
