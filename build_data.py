@@ -391,10 +391,18 @@ def fetch_industry_sina():
 # ---------------- 解析现有 data.js（经 node，鲁棒）----------------
 
 def load_existing(site):
-    """用 node 把现有 data.js 解析成 Python 字典（含 engine / rows / meta 等）。"""
+    """用 node 把现有 data.js 解析成 Python 字典（含 engine / rows / meta 等）。
+
+    首次构建（仓库里还没有 data.js）时返回空骨架而不是抛异常 ——
+    否则整条管道在空目录里第一步就崩，云端跑批量构建时正是这个坑。
+    """
     data_js = _find_data(site)
     if not data_js:
-        raise RuntimeError("找不到 data.js（site=%s）" % site)
+        print("[info] 未找到已有的 data.js，按首次构建处理（不继承历史快照）")
+        return {"engine": {}, "meta": {}, "rows": [], "market": None,
+                "summary": None, "summaryEtf": None, "summaryStock": None,
+                "summaryCore": None, "summaryExt": None, "themes": [],
+                "themeAgg": [], "themeKeywords": [], "voteDef": [], "caveat": None}
     snippet = (
         "global.window={};"
         "var fs=require('fs');"
@@ -408,7 +416,10 @@ def load_existing(site):
         "summaryStock:d.summaryStock, summaryCore:d.summaryCore, summaryExt:d.summaryExt,"
         "caveat:d.caveat}));"
     ) % data_js
-    out = subprocess.check_output(["node", "-e", snippet], cwd=site)
+    # 用绝对路径读，且不传 cwd：原来 _find_data 可能返回相对路径 "data.js"，
+    # 而 subprocess 又在 cwd=site 下执行，路径解析对不上会报 ENOENT。
+    data_js = os.path.abspath(data_js)
+    out = subprocess.check_output(["node", "-e", snippet])
     return json.loads(out.decode("utf-8"))
 
 
@@ -1091,7 +1102,7 @@ def build_full(site, args, existing):
 # ---------------- curated 模式（旧行为）----------------
 
 def build_curated(site, args, existing):
-    rows_old = existing["rows"]
+    rows_old = existing.get("rows") or []
     asof = time.strftime("%Y-%m-%d")
     print("标的池：%d 只，开始重算…" % len(rows_old))
     since = args.since or _default_since()
@@ -1198,7 +1209,7 @@ def main():
         return 1
 
     existing = load_existing(site)
-    engine = existing["engine"] or {}
+    engine = existing.get("engine") or {}
     top = existing
 
     if args.self_test:
