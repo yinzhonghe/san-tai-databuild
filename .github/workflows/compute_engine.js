@@ -90,7 +90,29 @@ function main() {
     (0, eval)(code);
     AB_DATA = global.window.AB_DATA || AB_DATA;
   } else {
-    console.error('[warn] 首次构建：未找到 data.js，用空基准继续（bm 由 Python 侧补）');
+    /* 首次构建没有 data.js。引擎需要 engine.ind（行业表）/ thresholds（判定阈值）/
+       rankTable / temp 等一整套配置，光兜底成 {} 会在 six-engine.js:138
+       「E.ind[ind]」处抛错（ind 为空串 → undefined['']）。
+       所以仓库里随带一份 _engine_cfg.json（从正式 data.js 导出，21KB），
+       用它作为引擎配置，保证判定口径与线上完全一致。 */
+    var cfgPath = path.join(__dirname, '_engine_cfg.json');
+    if (!fs.existsSync(cfgPath)) cfgPath = path.join(__dirname, '..', '_engine_cfg.json');
+    var usedCfg = false;
+    if (fs.existsSync(cfgPath)) {
+      try {
+        var cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+        AB_DATA = {
+          engine: cfg.engine || {}, meta: {}, rows: [],
+          themeAgg: [], themes: [], themeKeywords: [],
+          voteDef: cfg.voteDef || [], indexStates: []
+        };
+        usedCfg = true;
+        console.error('[info] 首次构建：用 _engine_cfg.json 作为引擎配置（含行业表/阈值）');
+      } catch (e2) {
+        console.error('[warn] _engine_cfg.json 解析失败：' + (e2 && e2.message));
+      }
+    }
+    if (!usedCfg) console.error('[warn] 首次构建：未找到 data.js 与 _engine_cfg.json，用空基准继续');
   }
   // six-engine.js 在站点根目录（tools/ 的上一级）
   var sixPath = path.join(__dirname, '..', 'six-engine.js');
