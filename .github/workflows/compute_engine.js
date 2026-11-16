@@ -77,15 +77,21 @@ function main() {
     process.exit(2);
   }
   var dataFile = findData();
-  if (!dataFile) { console.error('找不到 data.js'); process.exit(3); }
-
-  global.window = {};
-  var code = fs.readFileSync(dataFile, 'utf8')
-    .replace(/^﻿/, '')
-    .replace(/window\.AB_DATA\s*=/, 'global.window.AB_DATA =');
-  // eslint-disable-next-line no-eval
-  (0, eval)(code);
-  var AB_DATA = global.window.AB_DATA;
+  /* 首次构建（仓库里还没有 data.js）时不能直接退出 —— 那样整条流水线会在
+     「数据都拉好了、只差算引擎」这一步挂掉。此时用空基准继续，
+     真正的全市场基准 bm 由 build_data.py 在 Python 侧算好后写进最终 data.js。 */
+  var AB_DATA = { engine: {}, meta: {}, rows: [] };
+  if (dataFile) {
+    global.window = {};
+    var code = fs.readFileSync(dataFile, 'utf8')
+      .replace(/^﻿/, '')
+      .replace(/window\.AB_DATA\s*=/, 'global.window.AB_DATA =');
+    // eslint-disable-next-line no-eval
+    (0, eval)(code);
+    AB_DATA = global.window.AB_DATA || AB_DATA;
+  } else {
+    console.error('[warn] 首次构建：未找到 data.js，用空基准继续（bm 由 Python 侧补）');
+  }
   // six-engine.js 在站点根目录（tools/ 的上一级）
   var sixPath = path.join(__dirname, '..', 'six-engine.js');
   if (!fs.existsSync(sixPath)) sixPath = path.join(__dirname, 'six-engine.js');
