@@ -1,25 +1,15 @@
-time: 2026-11-16T23:26Z
+time: 2026-11-16T23:32Z
 trigger: workflow_dispatch / mode=sample
 --- files ---
--rw-r--r-- 1 runner runner 3.8K Nov 16 23:26 data.js
+-rw-r--r-- 1 runner runner 623K Nov 16 23:32 data.js
 未生成 data.js
 --- info ---
 "asOf":"2026-11-16"
-code count: 4
+code count: 559
 --- run log (tail 30) ---
-[warn] 首次构建：未找到 data.js，用空基准继续（bm 由 Python 侧补）
-[info] 无 data.js，bm 就地估算 m20=-4.44 m60=-13.30
-[skip] 600529.SH → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
-[skip] 600756.SH → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
-[skip] 600021.SH → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
-[warn] 引擎跳过 555 只，首个错误：600529.SH 山东药玻 → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
+[info] 首次构建：用 _engine_cfg.json 作为引擎配置（含行业表/阈值）
 compute_engine: 已重算 555 只
-[warn] 首次构建：未找到 data.js，用空基准继续（bm 由 Python 侧补）
-[info] 无 data.js，bm 就地估算 m20=-9.11 m60=-27.43
-[skip] 000001.SH → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
-[skip] 399001.SZ → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
-[skip] 399006.SZ → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
-[warn] 引擎跳过 4 只，首个错误：000001.SH 上证指数 → TypeError: Cannot read properties of undefined (reading '') ‖ at Object.analyze (/home/runner/work/san-tai-databuild/san-tai-databuild/six-engine.js:138:19) ‖ at /home/runner/work/san-tai-databuild/san-tai-databuild/compute_engine.js:152:17
+[info] 首次构建：用 _engine_cfg.json 作为引擎配置（含行业表/阈值）
 compute_engine: 已重算 4 只
 [info] 未找到已有的 data.js，按首次构建处理（不继承历史快照）
 全市场标的池：30 只（沪 13 / 深 15 / 北 2）
@@ -29,11 +19,13 @@ compute_engine: 已重算 4 只
   500/555，成功 500，失败 0
   555/555，成功 555，失败 0
 日K 拉取完成：成功 555，失败 0
-  [指数] 4 个：上证指数=None、深证成指=None、创业板指=None、科创50=None
-  ETF 归入行业：0 / 0 只有对应行业（其余为宽基/策略类，留在 ETF 视图）
+  标记「日K陈旧」标的 14 只（数据源未更新到最新交易日）
+  剔除已退市/已清盘标的 14 只（日K 停在 60/90 天前）：科技AHETF、中银中证100ETF、化工产业ETF、银行龙头ETF、疫苗生物ETF…
+  [指数] 4 个：上证指数=走完、深证成指=走完、创业板指=走完、科创50=走完
+  ETF 归入行业：0 / 511 只有对应行业（其余为宽基/策略类，留在 ETF 视图）
   未找到 _valuation.json → 估值字段留空（先跑 tools/fetch_valuation.py）
   行业中位 PE：0 个行业（样本≥5 只）
-组装完成：0 只（其中 0 只已存在→保留原有策展/舆情字段）
+组装完成：541 只（其中 0 只已存在→保留原有策展/舆情字段）
 全市场基准 bm = {'m20': -4.4419, 'm60': -13.2964}（用于 RRG 相对强度）
-data.js 已全市场重算并覆盖：0 只 A 股。
+data.js 已全市场重算并覆盖：541 只 A 股。
 exit=0
