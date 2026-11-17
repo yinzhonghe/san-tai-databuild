@@ -1,0 +1,92 @@
+name: 更新基础数据（行业 / 估值 / ETF）
+
+# 为什么单独一个 workflow：
+# 行业归属、估值（PE/PB）、ETF 清单这三份数据，只在财报披露后才会变。
+# A 股财报截止日：一季报 4-30、半年报 8-31、三季报 10-31、年报 4-30。
+# 所以每年跑 3 次就够（5 月 / 9 月 / 11 月的 10 号，留 10 天缓冲等节日和补披露）。
+# 平时不跑——这些数据天天跑既慢又没意义。
+#
+# 跑完会自动触发一次 full 重建，让新数据进入 data.js 并推到 data 分支。
+
+on:
+  workflow_dispatch:
+    inputs:
+      also_build:
+        description: '更新后是否立即触发全量重建（约 40 分钟）'
+        required: true
+        default: 'yes'
+        type: choice
+        options: [yes, no]
+  schedule:
+    - cron: '0 8 10 5,9,11 *'   # 每年 5/9/11 月 10 日 16:00（北京）
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install akshare pandas 2>&1 | tail -3
+
+      - name: 整理脚本位置
+        run: |
+          mkdir -p tools
+          for f in fetch_industry.py fetch_valuation.py build_etf.py regen_offline.py; do
+            if [ -f "$f" ]; then cp -f "$f" tools/; fi
+          done
+          ls -1 tools/ || true
+
+      - name: 更新行业映射（_ind_map.json）
+        run: python tools/fetch_industry.py
+
+      - name: 更新估值 PE/PB（_valuation.json）
+        run: python tools/fetch_valuation.py
+
+      - name: 更新 ETF 清单（_etf_pick.json）
+        run: python tools/build_etf.py --no-fee
+
+      - name: 显示结果
+        run: |
+          ls -lh _ind_map.json _valuation.json _etf_pick.json
+          python - <<'EOF'
+          import json
+          for f in ('_ind_map.json', '_valuation.json', '_etf_pick.json'):
+              try:
+                  d = json.load(open(f, encoding='utf-8'))
+                  n = len(d)
+              except Exception as e:
+                  n = 'ERR ' + str(e)[:40]
+              print(f'{f}: {n} 条')
+          EOF
+
+      - name: 提交更新
+        run: |
+          git config user.name  "san-tai-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add _ind_map.json _valuation.json _etf_pick.json
+          if git diff --cached --quiet; then
+            echo "没有变化，跳过提交"
+          else
+            git commit -m "chore: 财报季后更新行业/估值/ETF（$(date -u +%Y-%m-%d)）"
+            git pull --rebase --autostash origin main || true
+            git push
+          fi
+
+      - name: 触发全量重建
+        if: github.event.inputs.also_build != 'no'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run build.yml -f mode=full
+          echo "已触发全量重建，约 40 分钟后数据更新到 data 分支"
