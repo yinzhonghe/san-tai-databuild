@@ -128,11 +128,23 @@ def main():
     a = ap.parse_args()
 
     data_js = os.path.join(SITE, "data.js")
+    ind_map = os.path.join(SITE, "_ind_map.json")
+    codes = []
     if os.path.isfile(data_js):
         txt = open(data_js, encoding="utf-8-sig").read()
-        codes = re.findall(r'"code":\s*"(\d{6}\.[A-Z]{2})"', txt)
-        codes = sorted(set(codes))
-    else:
+        codes = sorted(set(re.findall(r'"code":\s*"(\d{6}\.[A-Z]{2})"', txt)))
+    # data.js 可能是 sample 构建（只有几百只），不能当全市场清单用。
+    # _ind_map.json 有 6000+ 条，是仓库里现成的完整代码表，优先用它。
+    if len(codes) < 3000 and os.path.isfile(ind_map):
+        try:
+            im = json.load(open(ind_map, encoding="utf-8"))
+            im_codes = sorted(set(im.keys()))
+            if len(im_codes) > len(codes):
+                print("data.js 只有 %d 只（可能是 sample），改用 _ind_map.json 的 %d 只" % (len(codes), len(im_codes)))
+                codes = im_codes
+        except Exception as e:
+            print("读 _ind_map.json 失败：%s" % e)
+    if not codes:
         # 首次构建 / 季度刷新时仓库里没有 data.js：改从东财 clist 拉，不要让整步失败
         print("未找到 data.js → 改从东财 clist 拉全市场代码")
         codes = codes_from_em()
