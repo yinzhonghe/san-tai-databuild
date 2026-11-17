@@ -509,6 +509,9 @@ def build_index_states(site, cache_dir):
             "state": eo.get("state"), "stateDays": eo.get("stateDays"),
             "stateCapped": eo.get("stateCapped"),
             "resonance": eo.get("resonance"), "scores": eo.get("scores"),
+            # 收盘序列必须落盘：前端「接下来怎么走」要用它算均线/箱体，
+            # 之前没存，指数页的价位全是「—」和「低于 100.0%」这种假数字。
+            "closes": it.get("closes"),
             # 六派方向票一起落盘：前端「三态与六派依据」要显示每派 ✓/✗/—，
             # 只存 scores 的话指数页只能全显示「—」，看起来像缺数据。
             "votes": eo.get("votes"),
