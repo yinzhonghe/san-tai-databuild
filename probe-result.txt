@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[ OK ] 东财 clist 全市场        2360ms  total=3488 diff=20
-[FAIL] 东财 kline(前复权)       1153ms  RemoteDisconnected: Remote end closed connection without response
-[ OK ] 腾讯实时                1149ms  字段数=175 现价=1445.00
-[ OK ] 同花顺热榜               1800ms  stock_list=100
-[ OK ] 新浪(带Referer)        1088ms  var hq_str_sh000001="ָ֤,3585.6653,3602.5698,3588.4328,3598.2
+[ OK ] 东财 clist 全市场        1584ms  total=3488 diff=20
+[ OK ] 东财 kline(前复权)        694ms  klines=453 末根=2026-11-17,1455.58
+[ OK ] 腾讯实时                 891ms  字段数=175 现价=1455.58
+[FAIL] 同花顺热榜              20720ms  URLError: <urlopen error _ssl.c:1001: The handshake operation timed out>
+[ OK ] 新浪(带Referer)         599ms  var hq_str_sh000001="ָ֤,3585.6653,3602.5698,3577.0629,3604.9
 
 通过 4 / 5
