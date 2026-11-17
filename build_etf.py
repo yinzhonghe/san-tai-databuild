@@ -30,7 +30,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
-SITE = os.path.dirname(TOOLS)
+# 兼容两种部署方式：放 tools/ 下（本地开发）或直接放仓库根目录（GitHub 网页上传常见）。
+# 判据：同级有没有 build_data.py —— 有就说明这里是站点根目录。
+SITE = TOOLS if os.path.isfile(os.path.join(TOOLS, "build_data.py")) else os.path.dirname(TOOLS)
 OUT = os.path.join(SITE, "_etf_pick.json")
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
