@@ -51,12 +51,14 @@ jobs:
       - name: 快速验证（100 只 + 525 ETF，含行业/估值）
         if: github.event.inputs.mode != 'full' && github.event_name != 'schedule'
         run: |
+          set -o pipefail
           python build_data.py --site . --max 100 --closes-len 20 2>&1 | tee build-run.log
           echo "exit=${PIPESTATUS[0]}" >> build-run.log
 
       - name: 全量构建
         if: github.event.inputs.mode == 'full' || github.event_name == 'schedule'
         run: |
+          set -o pipefail
           python build_data.py --site . --closes-len 61 2>&1 | tee build-run.log
           echo "exit=${PIPESTATUS[0]}" >> build-run.log
 
