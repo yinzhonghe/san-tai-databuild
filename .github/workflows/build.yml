@@ -93,13 +93,16 @@ jobs:
               "$ASOF" "$CNT" "$SZ" "$(date -u +%Y-%m-%dT%H:%MZ)" > version.json
             echo "--- version.json ---"
             cat version.json
+            # 同时生成 gzip 版：前端 ?remote=1 时优先拉这个（约 2MB，比 9MB 快 4 倍）
+            gzip -9 -c data.js > data.json.gz
+            ls -lh data.js data.json.gz
             rm -rf /tmp/pub && mkdir -p /tmp/pub
-            cp data.js version.json /tmp/pub/
+            cp data.js data.json.gz version.json /tmp/pub/
             cd /tmp/pub
             git init -q
             git config user.name  "san-tai-bot"
             git config user.email "bot@users.noreply.github.com"
-            git add data.js version.json
+            git add data.js data.json.gz version.json
             git commit -qm "data $(date -u +%Y-%m-%dT%H:%MZ)"
             git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:data
             echo "已推送到 data 分支"
