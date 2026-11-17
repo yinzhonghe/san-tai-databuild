@@ -51,8 +51,25 @@ jobs:
           done
           ls -1 tools/ || true
 
+      - name: 取一份 data.js 作为标的清单
+        run: |
+          # 估值脚本需要全市场代码列表。仓库里没有 data.js（季度刷新场景），
+          # 就从 Pages 下已发布的那份取——比现场调 akshare 拉 clist 可靠得多。
+          if [ ! -f data.js ]; then
+            echo "从 Pages 下载 data.js ..."
+            curl -sL --max-time 180 https://yinzhonghe.github.io/san-tai-databuild/data.js -o data.js || true
+          fi
+          ls -lh data.js 2>/dev/null || echo "未取到 data.js（估值脚本会退回 clist 兜底）"
+
       - name: 更新行业映射（_ind_map.json）
         run: python tools/fetch_industry.py
+
+      - name: 等待接口冷却
+        run: |
+          # 上一步打了 86 次东财板块接口，立刻再打估值必被限流（实测 3 秒就断连）。
+          # 等 40 秒让限流窗口过去；估值本身还要按批并发请求，这一步省不得。
+          echo "等待 40 秒，避免东财限流…"
+          sleep 40
 
       - name: 更新估值 PE/PB（_valuation.json）
         run: python tools/fetch_valuation.py
@@ -79,6 +96,7 @@ jobs:
           git config user.name  "san-tai-bot"
           git config user.email "bot@users.noreply.github.com"
           git add _ind_map.json _valuation.json _etf_pick.json
+          git reset -q data.js 2>/dev/null || true   # data.js 只是临时取的清单，不提交
           if git diff --cached --quiet; then
             echo "没有变化，跳过提交"
           else
