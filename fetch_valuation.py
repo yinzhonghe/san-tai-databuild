@@ -96,6 +96,30 @@ def fetch_batch(codes):
     return out
 
 
+def codes_from_em():
+    """没有 data.js 时，直接从东财拉全市场代码。
+    季度刷新（refresh-basics）场景下仓库里通常没有 data.js，
+    不能因此就失败——估值本来就该能独立运行。"""
+    try:
+        import akshare as ak
+        df = ak.stock_zh_a_spot_em()
+        out = []
+        for c in df["代码"].astype(str):
+            c = str(c).zfill(6)
+            if not re.match(r"^\d{6}$", c):
+                continue
+            if c[0] == "6":
+                out.append(c + ".SH")
+            elif c[0] in "03":
+                out.append(c + ".SZ")
+            elif c[0] in "48" or c.startswith("92"):
+                out.append(c + ".BJ")
+        return sorted(set(out))
+    except Exception as e:
+        print("东财 clist 拉取失败：%s" % e)
+        return []
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
@@ -104,12 +128,17 @@ def main():
     a = ap.parse_args()
 
     data_js = os.path.join(SITE, "data.js")
-    if not os.path.isfile(data_js):
-        print("找不到 data.js，先运行 build_data.py")
-        return 1
-    txt = open(data_js, encoding="utf-8-sig").read()
-    codes = re.findall(r'"code":\s*"(\d{6}\.[A-Z]{2})"', txt)
-    codes = sorted(set(codes))
+    if os.path.isfile(data_js):
+        txt = open(data_js, encoding="utf-8-sig").read()
+        codes = re.findall(r'"code":\s*"(\d{6}\.[A-Z]{2})"', txt)
+        codes = sorted(set(codes))
+    else:
+        # 首次构建 / 季度刷新时仓库里没有 data.js：改从东财 clist 拉，不要让整步失败
+        print("未找到 data.js → 改从东财 clist 拉全市场代码")
+        codes = codes_from_em()
+        if not codes:
+            print("拿不到代码列表，退出")
+            return 1
     if a.limit:
         codes = codes[: a.limit]
     print("待抓估值：%d 只，每批 %d，并发 %d" % (len(codes), a.batch, a.threads))
