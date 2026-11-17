@@ -465,6 +465,7 @@ INDEX_DEF = [
     ("000688.SH", "科创50", "sh000688"),
 ]
 INDEX_STATES = []
+SECTOR_STATES = []
 
 
 def build_index_states(site, cache_dir):
@@ -517,6 +518,84 @@ def build_index_states(site, cache_dir):
             "votes": eo.get("votes"),
         })
     print("  [指数] %d 个：%s" % (len(out), "、".join("%s=%s" % (x["name"], x["state"]) for x in out)))
+    return out
+
+
+def build_sector_states(site, cache_dir, run_engine):
+    """行业板块也走同一套三态：拉板块指数日K → 六派引擎 → 启动/盘整/走完。
+
+    和「用成分股投票」的区别：板块指数是板块自身走势，不会被一两只权重股绑架。
+    个股页据此判断共振——个股启动 + 板块也启动 才算顺风，否则是孤军或逆势。
+    """
+    m = ak()
+    if not m:
+        return []
+    try:
+        boards = m.stock_board_industry_name_em()
+    except Exception as e:
+        print("  [板块] 取板块列表失败：%s" % e)
+        return []
+
+    import datetime as _dt
+    end = _dt.date.today()
+    start = end - _dt.timedelta(days=300)
+    sd, ed = start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
+
+    items = []
+    for _, b in boards.iterrows():
+        name = str(b.get("板块名称", "") or "")
+        code = str(b.get("板块代码", "") or "")
+        if not name:
+            continue
+        try:
+            hist = m.stock_board_industry_hist_em(symbol=name, start_date=sd, end_date=ed,
+                                                  period="日k", adjust="")
+        except Exception:
+            continue
+        if hist is None or len(hist) < 30:
+            continue
+        try:
+            closes = [round(float(x), 2) for x in hist["收盘"].tolist() if x == x]
+        except Exception:
+            continue
+        if len(closes) < 30:
+            continue
+        seg = closes[-121:]
+        last, prev = seg[-1], seg[-2]
+        pct = {}
+        for w, k in ((5, 5), (20, 20), (60, 60), (250, 250)):
+            if len(seg) > w:
+                pct["w%d" % w] = round((last / seg[-1 - w] - 1) * 100, 4)
+            else:
+                pct["w%d" % w] = None
+        items.append({
+            "code": code, "name": name, "kind": "sector", "tier": "sector",
+            "pct": pct, "ind": name, "closes": seg[-61:], "c250": (seg[-251] if len(seg) > 251 else None),
+            "point": last, "chg": round((last / prev - 1) * 100, 2) if prev else None,
+            "baseDate": str(hist["日期"].tolist()[-1])[:10],
+        })
+        time.sleep(0.1)
+
+    if not items:
+        print("  [板块] 未取到任何板块日K")
+        return []
+
+    slim = [{k: it.get(k) for k in ("code", "name", "kind", "tier", "pct", "ind", "closes", "c250")}
+            for it in items]
+    eng = run_engine(slim, site)
+    out = []
+    for it in items:
+        eo = eng.get(it["code"]) or {}
+        out.append({
+            "code": it["code"], "name": it["name"], "point": it["point"], "chg": it["chg"],
+            "pct": it["pct"], "baseDate": it["baseDate"],
+            "state": eo.get("state"), "stateDays": eo.get("stateDays"),
+            "stateCapped": eo.get("stateCapped"),
+            "resonance": eo.get("resonance"), "scores": eo.get("scores"), "votes": eo.get("votes"),
+            "closes": it.get("closes"),
+        })
+    print("  [板块] %d 个行业板块已算三态：%s" % (
+        len(out), "、".join("%s=%s" % (x["name"], x["state"]) for x in out[:6])))
     return out
 
 
@@ -614,7 +693,7 @@ def write_data_js(site, engine, meta, rows_new, top, full):
             "summary": summary, "summaryEtf": summary, "summaryStock": summary,
             "summaryCore": summary, "summaryExt": summary,
             "themes": [], "themeAgg": [], "themeKeywords": [],
-            "rows": rows_new, "indexStates": INDEX_STATES, "engine": engine, "voteDef": VOTE_DEF,
+            "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "engine": engine, "voteDef": VOTE_DEF,
             "caveat": top.get("caveat") or "本快照由腾讯/新浪免费源全市场重算；语义富化字段（主题/证据/舆情）已诚实降级。",
         }
     else:
@@ -624,7 +703,7 @@ def write_data_js(site, engine, meta, rows_new, top, full):
             "summaryStock": top.get("summaryStock"), "summaryCore": top.get("summaryCore"),
             "summaryExt": top.get("summaryExt"), "themes": top.get("themes") or [],
             "themeAgg": top.get("themeAgg") or [], "themeKeywords": top.get("themeKeywords") or [],
-            "rows": rows_new, "indexStates": INDEX_STATES, "engine": engine, "voteDef": VOTE_DEF,
+            "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "engine": engine, "voteDef": VOTE_DEF,
             "caveat": top.get("caveat"),
         }
     body = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
@@ -937,6 +1016,10 @@ def build_full(site, args, existing):
     global INDEX_STATES
     INDEX_STATES = build_index_states(site, args.cache or os.path.join(site, "_kline_cache"))
 
+    # ---- 行业板块三态：和个股同一套引擎，用于判断「板块与个股共振」 ----
+    global SECTOR_STATES
+    SECTOR_STATES = build_sector_states(site, args.cache or os.path.join(site, "_kline_cache"), run_engine)
+
     # ---- ETF 归入行业：让「行业」页能直接看到对应 ETF（排在成分股第一位） ----
     # ETF 没有企业财报，东财 BASIC_ORGINFO 里也没有它，只能用「名称关键词 → 三级行业」映射。
     # 关键词按「越具体越优先」排列，命中第一个存在的行业即止；匹配不上就留空，
@@ -1228,7 +1311,7 @@ def main():
                "summaryEtf": "[selftest]", "summaryStock": "[selftest]",
                "summaryCore": "[selftest]", "summaryExt": "[selftest]",
                "themes": [], "themeAgg": [], "themeKeywords": [],
-               "rows": rows_new, "indexStates": INDEX_STATES, "engine": engine, "voteDef": VOTE_DEF,
+               "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "engine": engine, "voteDef": VOTE_DEF,
                "caveat": "selftest"}
         sp = os.path.join(site, "_selftest_data.js")
         with open(sp, "w", encoding="utf-8", newline="\n") as f:
