@@ -14,9 +14,13 @@ on:
       also_build:
         description: '更新后是否立即触发全量重建（约 40 分钟）'
         required: true
-        default: 'yes'
+        default: 'rebuild'
         type: choice
-        options: [yes, no]
+        # 注意：选项必须带引号。YAML 1.1 会把裸写的 yes/no 解析成布尔 true/false，
+        # GitHub 收到布尔值就无法渲染成下拉框，会退化成文本框显示 "true"。
+        options:
+          - 'rebuild'
+          - 'skip'
   schedule:
     - cron: '0 8 10 5,9,11 *'   # 每年 5/9/11 月 10 日 16:00（北京）
 
@@ -84,7 +88,7 @@ jobs:
           fi
 
       - name: 触发全量重建
-        if: github.event.inputs.also_build != 'no'
+        if: github.event.inputs.also_build != 'skip'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
