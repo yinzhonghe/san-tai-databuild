@@ -466,6 +466,7 @@ INDEX_DEF = [
 ]
 INDEX_STATES = []
 SECTOR_STATES = []
+SECTOR_OF = {}
 
 
 def build_index_states(site, cache_dir):
@@ -542,11 +543,22 @@ def build_sector_states(site, cache_dir, run_engine):
     sd, ed = start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
 
     items = []
+    code2sector = {}
     for _, b in boards.iterrows():
         name = str(b.get("板块名称", "") or "")
         code = str(b.get("板块代码", "") or "")
         if not name:
             continue
+        # 成分股名单：个股的行业字段来自另一套分类（「显示器件」），和东财板块名（「集成电路制造」）
+        # 只有 38% 能靠名字对上。所以由板块自己提供隶属关系，这才是权威映射。
+        try:
+            cons = m.stock_board_industry_cons_em(symbol=name)
+            for _, c in cons.iterrows():
+                bare = str(c.get("代码", "") or "")
+                if re.match(r"^\d{6}$", bare):
+                    code2sector[bare + _suffix(bare)] = name
+        except Exception:
+            pass
         try:
             hist = m.stock_board_industry_hist_em(symbol=name, start_date=sd, end_date=ed,
                                                   period="日k", adjust="")
@@ -596,6 +608,10 @@ def build_sector_states(site, cache_dir, run_engine):
         })
     print("  [板块] %d 个行业板块已算三态：%s" % (
         len(out), "、".join("%s=%s" % (x["name"], x["state"]) for x in out[:6])))
+    print("  [板块] 成分股映射 %d 只 → 板块" % len(code2sector))
+    # 映射随 data.js 一起下发，前端据此把个股连到它所属的板块
+    global SECTOR_OF
+    SECTOR_OF.update(code2sector)
     return out
 
 
@@ -693,7 +709,7 @@ def write_data_js(site, engine, meta, rows_new, top, full):
             "summary": summary, "summaryEtf": summary, "summaryStock": summary,
             "summaryCore": summary, "summaryExt": summary,
             "themes": [], "themeAgg": [], "themeKeywords": [],
-            "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "engine": engine, "voteDef": VOTE_DEF,
+            "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "sectorOf": SECTOR_OF, "engine": engine, "voteDef": VOTE_DEF,
             "caveat": top.get("caveat") or "本快照由腾讯/新浪免费源全市场重算；语义富化字段（主题/证据/舆情）已诚实降级。",
         }
     else:
@@ -703,7 +719,7 @@ def write_data_js(site, engine, meta, rows_new, top, full):
             "summaryStock": top.get("summaryStock"), "summaryCore": top.get("summaryCore"),
             "summaryExt": top.get("summaryExt"), "themes": top.get("themes") or [],
             "themeAgg": top.get("themeAgg") or [], "themeKeywords": top.get("themeKeywords") or [],
-            "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "engine": engine, "voteDef": VOTE_DEF,
+            "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "sectorOf": SECTOR_OF, "engine": engine, "voteDef": VOTE_DEF,
             "caveat": top.get("caveat"),
         }
     body = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
@@ -1311,7 +1327,7 @@ def main():
                "summaryEtf": "[selftest]", "summaryStock": "[selftest]",
                "summaryCore": "[selftest]", "summaryExt": "[selftest]",
                "themes": [], "themeAgg": [], "themeKeywords": [],
-               "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "engine": engine, "voteDef": VOTE_DEF,
+               "rows": rows_new, "indexStates": INDEX_STATES, "sectorStates": SECTOR_STATES, "sectorOf": SECTOR_OF, "engine": engine, "voteDef": VOTE_DEF,
                "caveat": "selftest"}
         sp = os.path.join(site, "_selftest_data.js")
         with open(sp, "w", encoding="utf-8", newline="\n") as f:
