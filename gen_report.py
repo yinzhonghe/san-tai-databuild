@@ -354,7 +354,10 @@ TIER = (os.environ.get('LLM_TIER') or 'high').strip().lower()
 # 各档位的候选模型：5.x 是「高质量档」，始终思考（思考链要吃掉上万 token 才动笔）；
 # 4.x 是标准档，可关闭思考、速度快。降级链一律保留，避免 429 时直接失败。
 TIER_MODELS = {
-    'high': 'glm-5.3,glm-5.3-flash,glm-4.7,glm-4.7-flash',
+    # 5.3-flash 排第一位而不是 5.3：两者的赠送额度池是分开的——
+    # 5.3-flash 有 1797 万专属额度但 2026-12-20 就过期，5.3 走通用池（仅 195 万，2027-02 到期）。
+    # 实测两者质量只差 6%（points 1591 vs 1689），先把会过期的那笔用掉更划算。
+    'high': 'glm-5.3-flash,glm-5.3,glm-4.7,glm-4.7-flash',
     'std': 'glm-4.7,glm-4.7-flash,glm-4-flash',
 }
 
