@@ -1,0 +1,45 @@
+name: 三报数据探针
+
+# 只读探针：验证 runner 能否拿到三报所需行情/资讯，以及 GitHub Models 是否可用。
+# 产出 report-probe-result.json，不影响 data.js 与线上站点。
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'report_probe.py'
+      - '.github/workflows/report-probe.yml'
+
+permissions:
+  contents: write
+  models: read
+
+concurrency:
+  group: report-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 跑探针
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python report_probe.py
+
+      - name: 回写结果
+        if: always()
+        run: |
+          git config user.name  "san-tai-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add report-probe-result.json || true
+          git diff --cached --quiet || git commit -m "probe: $(date -u +%FT%TZ)"
+          git pull --rebase --autostash origin main || true
+          git push || true
