@@ -299,8 +299,8 @@ def compact_facts(f, slot):
         '涨跌家数': f['breadth'],
         '行业涨幅前8': f['sectors_top'][:8],
         '行业跌幅前8': f['sectors_bottom'][:8],
-        '快讯': [{'时间': n['time'][-5:], '标题': n['t'], '摘要': n['sum'][:110]}
-                 for n in f['news'][:40]],
+        '快讯': [{'时间': n['time'][-5:], '标题': n['t'], '摘要': n['sum'][:160]}
+                 for n in f['news'][:60]],
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
                 '美债收益率等未提供项不要提及。',
     }
@@ -333,10 +333,18 @@ SYSTEM = """你是 A 股盘面分析师，为一个给客户看的看盘网站�
  "watch": "今日关注：点位+数字+时间点，2-4 句"
 }
 
-【各段的写法】
-- points 必须四段，每段以【一、…】到【四、…】开头，段内用「第一…第二…」串因果链，全文合计不少于 12 个精确数字。
-- oneLine 用一句有画面感的话给结论，必须包含一个可验证的位（点位或涨跌幅）与一个触发条件。
-- news 5-8 条，来自事实包里的「快讯」，选对明日/当日交易真有影响的，按重要性排序。
+【各段的写法 · 字数是硬要求，写不够就是不合格】
+- points 必须四段，每段以【一、…】到【四、…】开头，**每段 250–400 字**，段内用「第一…第二…第三…」
+  把 3 件事串成因果链。每段至少 4 个精确数字，全文合计不少于 20 个。
+  不合格示例（看到这种就是没写完）：「午后市场延续跌势，指数跌破关键位，情绪偏弱，或将继续震荡。」
+- weigh **120–200 字**：先说哪一侧作用于当日走势（空头怎么砸的），再说哪一侧决定跌不深（多头靠什么接），
+  最后一句「所以判断是 X，不是 Y」。只写一句话（如「空头情绪决定跌不深」）算不合格。
+- oneLine **80–140 字**，按模板：整体判断（守一个位，等一个条件）+ 有画面感的对立方阵 + 结论（条件→行动）。
+- bulls/bears 各 3–6 条，**每条 40–70 字**，必须「事实（带数字）+ 传导路径」两段式。
+  不合格示例：「XX 板块涨幅居前，显示抗跌性。」——没有数字、没有传导路径。
+- news 5–8 条，**long 80–150 字**，必须取自事实包「快讯」，写清「发生了什么 + 数字 + 对哪个板块怎么传导」。
+- watch **3–5 条**，每条含具体点位或数字 + 时间段（如「13:00–13:30 开盘半小时」「14:30 尾盘」），
+  不是一句话打包。例：① 13:00 开盘半小时看成交额能否补到 9000 亿以上；② 3508 点得失……
 - verdict 只能取三个值之一，与 bulls/bears 的强弱一致，不要写「谨慎乐观」这种自造词。
 """
 
@@ -355,7 +363,7 @@ def llm_config():
         base = (os.environ.get('LLM_API_BASE')
                 or 'https://open.bigmodel.cn/api/paas/v4/chat/completions').strip()
         models = [m.strip() for m in (os.environ.get('LLM_MODELS')
-                  or 'glm-4.7-flash,glm-4.5-flash,glm-4-flash').split(',') if m.strip()]
+                  or 'glm-4.7,glm-4.7-flash,glm-4-flash').split(',') if m.strip()]
         return key, base, models, 'zhipu'
     return TOKEN, MODEL_URL, MODELS, 'github-models'
 
@@ -376,11 +384,13 @@ def call_model(facts, slot, extra_note=''):
     RETRY_DELAYS = [0, 6, 20]
     for model in models:
         body_obj = {'model': model, 'messages': msgs, 'temperature': 0.6,
-                    'max_tokens': 3500}
+                    'max_tokens': 8000}
         if is_zhipu:
             # 智谱 4.5+ 默认边思考边回答：思考会占满 max_tokens 导致 content 为空，
             # 三报是结构化 JSON 输出，不需要思考链，直接关掉（实测 0.68s 出正文）。
-            body_obj['thinking'] = {'type': 'disabled'}
+            # 5.x 系列「始终思考」，传 disabled 或 low 都会报 1210，只能完全不传该字段。
+            if not model.startswith('glm-5'):
+                body_obj['thinking'] = {'type': 'disabled'}
         body = json.dumps(body_obj).encode()
         raw = b''
         err = ''
@@ -674,16 +684,26 @@ def main():
     unverified = []
     if content:
         unverified = unmatched_numbers(content, facts)
-        if unverified:
-            print('[校验] 首次发现 %d 个无出处数字：%s' % (len(unverified), ', '.join(unverified[:12])))
-            content2, model2, _ = call_model(
-                facts, args.slot,
-                '上一版有这些数字在事实包里找不到，必须删掉或换成包内的数字：%s' % ', '.join(unverified[:20]))
+        # 篇幅门禁：points 四段合计不足 800 字基本就是模型偷懒（实测弱模型只写 230 字），
+        # 这种稿子发出去还不如不发，先让它重写一次
+        thin = sum(len(p) for p in (content.get('points') or [])) < 800
+        if unverified or thin:
+            note = []
+            if unverified:
+                note.append('上一版有这些数字在事实包里找不到，必须删掉或换成包内的数字：%s'
+                            % ', '.join(unverified[:20]))
+            if thin:
+                note.append('上一版 points 四段合计不足 800 字，太短了。必须每段 250–400 字，'
+                            '用「第一…第二…第三…」串因果链，每段至少 4 个精确数字，写满。')
+            print('[校验] 需要重写：无出处数字 %d 个；points 合计 %d 字'
+                  % (len(unverified), sum(len(p) for p in (content.get('points') or []))))
+            content2, model2, _ = call_model(facts, args.slot, '；'.join(note))
             if content2:
                 u2 = unmatched_numbers(content2, facts)
-                if len(u2) <= len(unverified):
+                t2 = sum(len(p) for p in (content2.get('points') or []))
+                if len(u2) <= len(unverified) and t2 >= sum(len(p) for p in (content.get('points') or [])):
                     content, model, unverified = content2, model2, u2
-                    print('[校验] 重写后剩 %d 个：%s' % (len(u2), ', '.join(u2[:12])))
+                    print('[校验] 重写后：剩 %d 个无出处数字，points %d 字' % (len(u2), t2))
     if not content or len(unverified) > 3:
         print('[兜底] 模型不可用或数字仍不可溯源（%d 个），改用模板生成。原因：%s'
               % (len(unverified), verr or '有数字在事实包里找不到出处'))
