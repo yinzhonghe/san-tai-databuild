@@ -1,0 +1,113 @@
+name: 三报生成
+
+# 早报 07:30 / 午间 11:35 / 收盘 15:35（北京时间），生成 daily.js 推到 data 分支 → Pages 自动更新。
+# 定时任务不依赖任何人开机：这是替代本机 WorkBuddy 定时的云端方案。
+
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '生成哪一档：auto=按当前北京时间判断'
+        required: true
+        default: 'auto'
+        type: choice
+        options: [auto, morning, noon, close]
+      dry_run:
+        description: '试运行（只生成不推送 daily.js）'
+        required: true
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+  schedule:
+    - cron: '30 23 * * 0-4'   # 北京 周一至周五 07:30 早报
+    - cron: '35 3 * * 1-5'    # 北京 11:35 午间速览
+    - cron: '35 7 * * 1-5'    # 北京 15:35 收盘复盘
+
+permissions:
+  contents: write
+  models: read
+
+concurrency:
+  group: report-gen
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 判定时段
+        id: pick
+        run: |
+          SLOT="${{ github.event.inputs.slot }}"
+          if [ -z "$SLOT" ] || [ "$SLOT" = "auto" ]; then
+            H=$(TZ=Asia/Shanghai date +%H)
+            if [ "$H" -lt 10 ]; then SLOT=morning
+            elif [ "$H" -lt 14 ]; then SLOT=noon
+            else SLOT=close; fi
+          fi
+          echo "slot=$SLOT" >> $GITHUB_OUTPUT
+          echo "北京 $(TZ=Asia/Shanghai date '+%F %H:%M') → 生成 $SLOT"
+
+      - name: 生成
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          MODE=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then MODE="--dry-run"; fi
+          python gen_report.py --slot ${{ steps.pick.outputs.slot }} $MODE 2>&1 | tee report-run.log
+
+      - name: 提交运行记录（便于回溯，不涉及站点）
+        if: always()
+        run: |
+          git config user.name  "san-tai-bot"
+          git config user.email "bot@users.noreply.github.com"
+          cp report-run.log report-last-run.log 2>/dev/null || true
+          git add report-meta.json daily.generated.js report-last-run.log 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "report(${{ steps.pick.outputs.slot }}): $(TZ=Asia/Shanghai date '+%F %H:%M')"
+          git pull --rebase --autostash origin main || true
+          git push || true
+
+      - name: 保留产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ steps.pick.outputs.slot }}
+          path: |
+            daily.generated.js
+            report-meta.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: 结果摘要
+        if: always()
+        run: |
+          echo "### 三报生成：${{ steps.pick.outputs.slot }}" >> $GITHUB_STEP_SUMMARY
+          python - <<'EOF' >> $GITHUB_STEP_SUMMARY
+          import json, os
+          if os.path.exists('report-meta.json'):
+              d = json.load(open('report-meta.json', encoding='utf-8'))
+              r = d['report']
+              print('| 项 | 值 |')
+              print('|---|---|')
+              print('| 日期 | %s |' % d['date'])
+              print('| 模型 | %s |' % d['model'])
+              print('| 判断 | %s |' % r.get('verdict'))
+              print('| 利多/利空 | %d / %d |' % (len(r.get('bulls') or []), len(r.get('bears') or [])))
+              print('| 要点/新闻 | %d / %d |' % (len(r.get('points') or []), len(r.get('news') or [])))
+              print('| 未溯源数字 | %s |' % (', '.join(d['unverified']) or '无'))
+              print('')
+              print('**一句话**：%s' % r.get('oneLine'))
+              print('')
+              for s in d['diagnostics']['steps']:
+                  print('- %s %s %s' % ('OK' if s['ok'] else 'FAIL', s['name'], s['note']))
+          else:
+              print('没有 report-meta.json，生成步骤可能失败了')
+          EOF
