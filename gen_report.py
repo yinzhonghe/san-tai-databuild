@@ -354,10 +354,10 @@ TIER = (os.environ.get('LLM_TIER') or 'high').strip().lower()
 # 各档位的候选模型：5.x 是「高质量档」，始终思考（思考链要吃掉上万 token 才动笔）；
 # 4.x 是标准档，可关闭思考、速度快。降级链一律保留，避免 429 时直接失败。
 TIER_MODELS = {
-    # 5.3-flash 排第一位而不是 5.3：两者的赠送额度池是分开的——
-    # 5.3-flash 有 1797 万专属额度但 2026-12-20 就过期，5.3 走通用池（仅 195 万，2027-02 到期）。
-    # 实测两者质量只差 6%（points 1591 vs 1689），先把会过期的那笔用掉更划算。
-    'high': 'glm-5.3-flash,glm-5.3,glm-4.7,glm-4.7-flash',
+    # 5.3-flash 排第一位：它的 1797 万专属额度 2026-12-20 就过期，而 5.3 走通用池（仅 195 万）。
+    # 实测两者质量只差 6%（points 1591 vs 1689）、耗时几乎一样（209s vs 221s），
+    # 所以 5.3 已从候选里去掉——同样的等待时间，没必要去消耗那点宝贵的通用额度。
+    'high': 'glm-5.3-flash,glm-4.7,glm-4.7-flash',
     'std': 'glm-4.7,glm-4.7-flash,glm-4-flash',
 }
 
@@ -419,8 +419,11 @@ def call_model(facts, slot, extra_note='', prefer_fast=False):
         body = json.dumps(body_obj).encode()
         raw = b''
         err = ''
-        timeout = 300 if model.startswith('glm-5') else 120
-        for i, delay in enumerate(RETRY_DELAYS):
+        is5 = model.startswith('glm-5')
+        # 5.x 单次要 3.5 分钟，重试一次就等于多等 4 分钟，超时宁可直接降级到 4.x
+        timeout = 240 if is5 else 120
+        delays = [0] if is5 else RETRY_DELAYS
+        for i, delay in enumerate(delays):
             if delay:
                 print('[模型] %s 限流/故障，%ds 后重试（第 %d 次）' % (model, delay, i))
                 time.sleep(delay)
