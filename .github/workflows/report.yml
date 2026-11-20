@@ -58,6 +58,9 @@ jobs:
       - name: 生成
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_API_BASE: ${{ vars.LLM_API_BASE }}
+          LLM_MODELS: ${{ vars.LLM_MODELS }}
         run: |
           set -o pipefail
           MODE=""
