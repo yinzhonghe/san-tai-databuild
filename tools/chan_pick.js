@@ -174,8 +174,11 @@ const stocks = [];
 let skipDead = 0, skipST = 0, skipShort = 0;
 codes.forEach(function (code) {
   const m = O.codes[code];
-  const nm = m.n || code;
-  if (m.dead) { skipDead++; return; }                 // 已退市：买不到，不进选股
+  if (ETF[code]) return;                              // ETF 走下面单独一段，别当个股重复算
+  // 名字优先取 data.js 的 name：旧版 ohlc.json.gz（legacy 模式）里 m.n 是空的，
+  // 那样 /ST|退/ 永远匹配不到，ST 股会被当成正常票选进来
+  const nm = (INFO[code] && INFO[code].name) || m.n || code;
+  if (m.dead || (INFO[code] && INFO[code].kind === 'delisted')) { skipDead++; return; }
   if (/ST|退/.test(nm)) { skipST++; return; }         // ST/退：实盘可交易性差
   if (!m.bars || m.bars.length < 250) { skipShort++; return; }
   const r = build(code, m.bars, nm, false);
