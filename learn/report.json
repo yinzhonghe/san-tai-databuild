@@ -1,18 +1,18 @@
 {
- "updatedAt": "2026-11-20T03:20:53",
+ "updatedAt": "2026-11-20T09:45:07",
  "asOf": "2026-11-20",
  "today": {
-  "nStock": 70,
-  "nEtf": 20,
+  "nStock": 0,
+  "nEtf": 15,
   "params": {
    "stop": 8,
    "hold": 20,
    "areaMin": 0.2,
    "minScore": 6.37,
-   "cutScore": 6.84,
+   "cutScore": 6.8,
    "keepPct": 70,
    "model": "c2026-11-20-0.2-0.3-151-48d215",
-   "trainedAt": "2026-11-20T03:20:32",
+   "trainedAt": "2026-11-20T09:45:06",
    "oos": {
     "n": 151,
     "win": 71.5,
@@ -196,9 +196,9 @@
   "areaMin": 0.2,
   "minScore": 6.37,
   "keepPct": 70,
-  "cutScore": 6.84,
+  "cutScore": 6.8,
   "nSignals": 488,
-  "trainedAt": "2026-11-20T03:20:32",
+  "trainedAt": "2026-11-20T09:45:06",
   "oos": {
    "n": 151,
    "win": 71.5,
@@ -463,7 +463,7 @@
  },
  "state": {
   "ready": false,
-  "updatedAt": "2026-11-20T03:20:53",
+  "updatedAt": "2026-11-20T09:45:07",
   "days": 1,
   "need": 20,
   "note": "样本累计中"
