@@ -1,0 +1,36 @@
+name: 模型接口调试
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  models: read
+
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: catalog
+        run: |
+          echo "=== GET /catalog/models ==="
+          curl -sS -i -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/json" "https://models.github.ai/catalog/models" | head -25
+      - name: chat
+        run: |
+          echo "=== POST /inference/chat/completions ==="
+          curl -sS -i -X POST "https://models.github.ai/inference/chat/completions" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"say hi"}],"max_tokens":10}' | head -40
+      - name: openai-compat
+        run: |
+          echo "=== POST /inference/chat/completions (openai 风格 model=openai/gpt-4o-mini) ==="
+          curl -sS -i -X POST "https://models.github.ai/inference/chat/completions" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"say hi"}],"max_tokens":10}' | head -40
+      - name: 写到仓库
+        if: always()
+        run: echo "debug done $(date -u)"
