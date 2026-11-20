@@ -338,7 +338,24 @@ SYSTEM = """你是 A 股盘面分析师，为一个给客户看的看盘网站�
 """
 
 
+def llm_config():
+    """有 LLM_API_KEY 就走真模型（OpenAI 兼容协议）；没有才退回 GitHub Models。
+
+    GitHub Models 在 Actions runner 上会被出网代理截成 text/plain "OK"，实测不可用，
+    所以它只是「理论上存在」的兜底，真跑必须配 LLM_API_KEY。
+    """
+    key = (os.environ.get('LLM_API_KEY') or '').strip()
+    if key:
+        base = (os.environ.get('LLM_API_BASE') or 'https://api.deepseek.com/chat/completions').strip()
+        models = [m.strip() for m in (os.environ.get('LLM_MODELS') or 'deepseek-chat').split(',') if m.strip()]
+        return key, base, models, 'external'
+    return TOKEN, MODEL_URL, MODELS, 'github-models'
+
+
 def call_model(facts, slot, extra_note=''):
+    key, url, models, kind = llm_config()
+    if not key:
+        return None, None, '没有可用的 LLM_API_KEY'
     msgs = [
         {'role': 'system', 'content': SYSTEM},
         {'role': 'user', 'content':
@@ -346,29 +363,22 @@ def call_model(facts, slot, extra_note=''):
             % (slot, json.dumps(facts, ensure_ascii=False, indent=1),
                (extra_note + '\n\n') if extra_note else '')},
     ]
-    payload = json.dumps({'model': None, 'messages': msgs, 'temperature': 0.6,
-                          'max_tokens': 3500}).encode()
-    last = ''
-    for model in MODELS:
-        if not model:
-            continue
-        body = json.loads(payload.decode())
-        body['model'] = model
-        data = json.dumps(body).encode()
-        raw, ms, err = fetch(MODEL_URL, timeout=90, data=data, headers={
-            'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json',
+    print('[模型] 通道=%s 端点=%s 候选=%s' % (kind, url, ','.join(models)))
+    for model in models:
+        body = json.dumps({'model': model, 'messages': msgs, 'temperature': 0.6,
+                           'max_tokens': 3500}).encode()
+        raw, ms, err = fetch(url, timeout=120, data=body, headers={
+            'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
             'Accept': 'application/json'})
         if err:
-            last = '%s -> %s %s' % (model, err, raw[:200].decode('utf-8', 'ignore'))
-            print('[模型] %s 失败：%s' % (model, last))
+            print('[模型] %s 失败：%s %s' % (model, err, raw[:160].decode('utf-8', 'ignore')))
             continue
         try:
             j = json.loads(raw.decode('utf-8', 'ignore'))
             txt = j['choices'][0]['message']['content']
             print('[模型] %s 成功（%d ms）' % (model, ms))
         except Exception as e:
-            last = '%s -> 解析失败 %s %s' % (model, e, raw[:200])
-            print('[模型] %s 解析失败：%s' % (model, last))
+            print('[模型] %s 解析失败：%s %s' % (model, e, raw[:160]))
             continue
         txt = re.sub(r'^```(?:json)?|```$', '', txt.strip(), flags=re.M).strip()
         try:
@@ -379,10 +389,8 @@ def call_model(facts, slot, extra_note=''):
                 try:
                     return json.loads(m.group(0)), model, None
                 except Exception as e:
-                    last = '%s -> JSON 坏 %s' % (model, e)
-            else:
-                last = '%s -> 没有 JSON' % model
-    return None, None, last
+                    print('[模型] %s 返回的 JSON 坏：%s' % (model, e))
+    return None, None, '所有候选模型都失败'
 
 
 # ---------------------------------------------------------------- 数字校验
@@ -532,6 +540,8 @@ def main():
     ap.add_argument('--slot', default='morning', choices=['morning', 'noon', 'close'])
     ap.add_argument('--dry-run', action='store_true', help='只生成，不推送')
     ap.add_argument('--no-push', action='store_true')
+    ap.add_argument('--allow-template', action='store_true',
+                    help='允许模板兜底稿发布（默认禁止：模型不可用时宁可不更新，也不拿低质量稿覆盖线上）')
     ap.add_argument('--out', default='daily.generated.js')
     args = ap.parse_args()
 
@@ -557,7 +567,8 @@ def main():
                     content, model, unverified = content2, model2, u2
                     print('[校验] 重写后剩 %d 个：%s' % (len(u2), ', '.join(u2[:12])))
     if not content or len(unverified) > 3:
-        print('[兜底] 模型不可用或数字仍不可溯源（%d 个），改用模板生成' % len(unverified))
+        print('[兜底] 模型不可用或数字仍不可溯源（%d 个），改用模板生成。原因：%s'
+              % (len(unverified), verr or '有数字在事实包里找不到出处'))
         content = template_report(facts_raw, args.slot, diag)
         model = 'template-fallback'
         unverified = []
@@ -590,6 +601,11 @@ def main():
 
     if args.dry_run or args.no_push or not TOKEN:
         print('[跳过] 未推送（dry-run / no-push / 无 token）')
+        return 0
+
+    if model == 'template-fallback' and not args.allow_template:
+        print('[拦下] 本次是模板兜底稿，质量不足以覆盖线上，已放弃推送。'
+              '（确认要发可加 --allow-template）')
         return 0
 
     ok, st, err = write_remote('daily.js', js.encode('utf-8'),
