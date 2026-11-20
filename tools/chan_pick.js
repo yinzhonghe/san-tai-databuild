@@ -70,6 +70,7 @@ let skipScore = 0;
 console.log('个股数据 asOf=%s 分片%s 标的%d', O.asOf, O.parts || 1, codes.length);
 
 let OLDBARS = {}, ETF = {}, ETFASOF = '';
+let ASOF_ETF = '';                        // ETF 自己的最新交易日（新浪源比东财慢，不能强求与个股同日）
 try {
   const old = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(ROOT, 'ohlc.json.gz'))).toString());
   ETF = old.isETF || {};
@@ -105,7 +106,8 @@ function build(code, bars, nm, isEtf) {
   const lastBar = bars[N - 1];
   const px = lastBar[2];
   if (!(px > 0)) return null;
-  if (lastBar[0] !== ASOF) { skipStale++; return null; }   // 停牌/数据陈旧，价格不可用
+  const refAsOf = (isEtf && ASOF_ETF) ? ASOF_ETF : ASOF;
+  if (lastBar[0] !== refAsOf) { skipStale++; return null; }   // 停牌/数据陈旧，价格不可用
 
   const c = cBi[cBi.length - 1];
   const ZD = c.ZD, ZG = c.ZG;
@@ -186,6 +188,14 @@ codes.forEach(function (code) {
 });
 
 /* ---------- ETF ---------- */
+// 先用 ETF 自己的最新交易日做基准：新浪源的 ETF 日线常比东财个股慢一天，
+// 强行要求与个股同日会让 ETF 池在盘中/数据延迟时整体清零
+Object.keys(ETF).forEach(function (code) {
+  const b = OLDBARS[code];
+  if (b && b.length) { const d = b[b.length - 1][0]; if (d > ASOF_ETF) ASOF_ETF = d; }
+});
+console.log('ETF 数据基准日 %s（个股 asOf %s，共 %d 只）', ASOF_ETF || '-', ASOF, Object.keys(ETF).length);
+
 const etfs = [];
 Object.keys(ETF).forEach(function (code) {
   const bars = OLDBARS[code];                         // v2 不含 ETF，ETF 走旧数据层（后复权）
