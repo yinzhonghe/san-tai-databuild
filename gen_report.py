@@ -341,14 +341,20 @@ SYSTEM = """你是 A 股盘面分析师，为一个给客户看的看盘网站�
 def llm_config():
     """有 LLM_API_KEY 就走真模型（OpenAI 兼容协议）；没有才退回 GitHub Models。
 
+    默认通道是智谱 BigModel：GLM-4.x-Flash 系列官方定价 0 元/token（长期免费）。
+    免费模型会换代，所以候选写成一串、逐个试，不把单一 model id 当契约。
+
     GitHub Models 在 Actions runner 上会被出网代理截成 text/plain "OK"，实测不可用，
     所以它只是「理论上存在」的兜底，真跑必须配 LLM_API_KEY。
     """
     key = (os.environ.get('LLM_API_KEY') or '').strip()
     if key:
-        base = (os.environ.get('LLM_API_BASE') or 'https://api.deepseek.com/chat/completions').strip()
-        models = [m.strip() for m in (os.environ.get('LLM_MODELS') or 'deepseek-chat').split(',') if m.strip()]
-        return key, base, models, 'external'
+        base = (os.environ.get('LLM_API_BASE')
+                or 'https://open.bigmodel.cn/api/paas/v4/chat/completions').strip()
+        models = [m.strip() for m in (os.environ.get('LLM_MODELS')
+                  or 'glm-4.7-flash,glm-4.6-flash,glm-4.5-flash,'
+                     'glm-4-flash-250414,glm-4-flash').split(',') if m.strip()]
+        return key, base, models, 'zhipu'
     return TOKEN, MODEL_URL, MODELS, 'github-models'
 
 
@@ -375,8 +381,12 @@ def call_model(facts, slot, extra_note=''):
             continue
         try:
             j = json.loads(raw.decode('utf-8', 'ignore'))
-            txt = j['choices'][0]['message']['content']
-            print('[模型] %s 成功（%d ms）' % (model, ms))
+            msg = j['choices'][0]['message']
+            txt = (msg.get('content') or '').strip()
+            if not txt and msg.get('reasoning_content'):
+                # 部分思考型模型把正文放在 reasoning_content 里，content 为空
+                txt = (msg.get('reasoning_content') or '').strip()
+            print('[模型] %s 成功（%d ms，正文 %d 字）' % (model, ms, len(txt)))
         except Exception as e:
             print('[模型] %s 解析失败：%s %s' % (model, e, raw[:160]))
             continue
