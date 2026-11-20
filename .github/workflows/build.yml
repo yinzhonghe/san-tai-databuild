@@ -18,7 +18,6 @@ on:
       - '_engine_cfg.json'
       - '_ind_map.json'
       - '_valuation.json'
-      - '.github/workflows/build.yml'
   schedule:
     # 每个交易日 15:35（北京时间）= 07:35 UTC
     - cron: '35 7 * * 1-5'
@@ -85,7 +84,8 @@ jobs:
           git push || true
 
       - name: 发布数据到 data 分支（jsDelivr 从这里读）
-        if: always()
+        # 只有「全量」才允许发布：小样本会把 100 只的 data.js 强推到 data 分支，站点会瞬间残缺
+        if: always() && (github.event_name == 'schedule' || github.event.inputs.mode == 'full')
         run: |
           if [ -f data.js ]; then
             ASOF=$(grep -o '"asOf":"[^"]*"' data.js | head -1 | sed 's/.*:"//;s/"//')
@@ -100,11 +100,17 @@ jobs:
             ls -lh data.js data.json.gz
             rm -rf /tmp/pub && mkdir -p /tmp/pub
             cp data.js data.json.gz version.json /tmp/pub/
+            # 保住 data 分支上已有的 daily.js（三报生成器写在那，强推会把整棵树换掉，必须手动带回）
+            curl -sf -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/contents/daily.js?ref=data" \
+              | python -c "import sys,json,base64;d=json.load(sys.stdin);open('/tmp/pub/daily.js','wb').write(base64.b64decode(d['content']));print('带回 daily.js', len(base64.b64decode(d['content'])),'字节')" \
+              || echo "data 分支暂无 daily.js，跳过"
             cd /tmp/pub
             git init -q
             git config user.name  "san-tai-bot"
             git config user.email "bot@users.noreply.github.com"
             git add data.js data.json.gz version.json
+            if [ -f daily.js ]; then git add daily.js; fi
             git commit -qm "data $(date -u +%Y-%m-%dT%H:%MZ)"
             git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:data
             echo "已推送到 data 分支"
