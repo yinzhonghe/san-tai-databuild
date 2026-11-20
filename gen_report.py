@@ -34,7 +34,8 @@ API = 'https://api.github.com'
 RISK = ('以上内容根据公开新闻整理，由 AI 辅助总结，仅作信息参考，不构成投资建议，'
         '不代表对走势的预测。市场有风险，决策请独立判断。')
 
-MODELS = [os.environ.get('REPORT_MODEL') or 'gpt-4o', 'gpt-4.1', 'gpt-4o-mini']
+MODELS = [os.environ.get('REPORT_MODEL') or 'gpt-4o', 'gpt-4.1', 'gpt-4o-mini',
+          'gpt-4.1-mini', 'DeepSeek-V3-0324']
 MODEL_URL = 'https://models.github.ai/inference/chat/completions'
 
 
@@ -358,13 +359,16 @@ def call_model(facts, slot, extra_note=''):
             'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json',
             'Accept': 'application/json'})
         if err:
-            last = '%s -> %s %s' % (model, err, raw[:120])
+            last = '%s -> %s %s' % (model, err, raw[:200].decode('utf-8', 'ignore'))
+            print('[模型] %s 失败：%s' % (model, last))
             continue
         try:
             j = json.loads(raw.decode('utf-8', 'ignore'))
             txt = j['choices'][0]['message']['content']
+            print('[模型] %s 成功（%d ms）' % (model, ms))
         except Exception as e:
-            last = '%s -> 解析失败 %s %s' % (model, e, raw[:120])
+            last = '%s -> 解析失败 %s %s' % (model, e, raw[:200])
+            print('[模型] %s 解析失败：%s' % (model, last))
             continue
         txt = re.sub(r'^```(?:json)?|```$', '', txt.strip(), flags=re.M).strip()
         try:
