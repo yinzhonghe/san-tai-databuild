@@ -1,11 +1,6 @@
-[模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7-flash,glm-4.5-flash,glm-4-flash
-[模型] glm-4.7-flash 限流/故障，6s 后重试（第 1 次）
-[模型] glm-4.7-flash 限流/故障，20s 后重试（第 2 次）
-[模型] glm-4.7-flash 失败：HTTP 429 {"error":{"code":"1305","message":"该模型当前访问量过大，请您稍后再试"}}
-[模型] glm-4.5-flash 成功（58704 ms，正文 2641 字）
-[模型] glm-4.5-flash 返回的 JSON 坏：Expecting ',' delimiter: line 20 column 132 (char 1250)
-[模型] glm-4-flash 成功（65418 ms，正文 2535 字）
-[生成] slot=noon date=2026-11-20 at=12:28 model=glm-4-flash 长度=2820 字节
-[质量] 利多 5 / 利空 5 / 要点 4 / 新闻 10
-[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "8558 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "5831 家"}, {"name": "行业板块", "ok": true, "note": "8 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}]
+[模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7,glm-4.7-flash,glm-4-flash
+[模型] glm-4.7 成功（28604 ms，正文 4165 字）
+[生成] slot=noon date=2026-11-20 at=13:10 model=glm-4.7 长度=4426 字节
+[质量] 利多 5 / 利空 5 / 要点 4 / 新闻 7
+[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "9093 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "5931 家"}, {"name": "行业板块", "ok": true, "note": "8 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}]
 [推送] daily.js -> OK 
