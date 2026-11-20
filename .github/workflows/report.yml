@@ -18,6 +18,12 @@ on:
         default: 'false'
         type: choice
         options: ['false', 'true']
+      tier:
+        description: '模型档位：high=glm-5.3 质量优先（一次约 4 分钟）/ std=glm-4.7 快速（约 30 秒）'
+        required: true
+        default: 'high'
+        type: choice
+        options: [high, std]
   schedule:
     - cron: '30 23 * * 0-4'   # 北京 周一至周五 07:30 早报
     - cron: '35 3 * * 1-5'    # 北京 11:35 午间速览
@@ -34,7 +40,8 @@ concurrency:
 jobs:
   report:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # glm-5.3 单次要 4 分钟，加上数字校验不通过时重写一次，最坏约 9 分钟
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -61,10 +68,13 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_API_BASE: ${{ vars.LLM_API_BASE }}
           LLM_MODELS: ${{ vars.LLM_MODELS }}
+          # schedule 触发时 inputs.tier 为空，退回 high（glm-5.3 质量优先）
+          LLM_TIER: ${{ github.event.inputs.tier || 'high' }}
         run: |
           set -o pipefail
           MODE=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then MODE="--dry-run"; fi
+          echo "档位=$LLM_TIER 候选=${LLM_MODELS:-（按档位默认）}"
           python gen_report.py --slot ${{ steps.pick.outputs.slot }} $MODE 2>&1 | tee report-run.log
 
       - name: 提交运行记录（便于回溯，不涉及站点）
