@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   models: read
 
 jobs:
@@ -12,25 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: catalog
+      - name: 各家 LLM 端点可达性（不带 key，看是否 401 而不是 OK）
         run: |
-          echo "=== GET /catalog/models ==="
-          curl -sS -i -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/json" "https://models.github.ai/catalog/models" | head -25
-      - name: chat
-        run: |
-          echo "=== POST /inference/chat/completions ==="
-          curl -sS -i -X POST "https://models.github.ai/inference/chat/completions" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"say hi"}],"max_tokens":10}' | head -40
-      - name: openai-compat
-        run: |
-          echo "=== POST /inference/chat/completions (openai 风格 model=openai/gpt-4o-mini) ==="
-          curl -sS -i -X POST "https://models.github.ai/inference/chat/completions" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"say hi"}],"max_tokens":10}' | head -40
-      - name: 写到仓库
-        if: always()
-        run: echo "debug done $(date -u)"
+          t() {
+            printf '%-28s ' "$1"
+            curl -sS -o /tmp/r -w '%{http_code} %{time_total}s ' -m 20 -X POST "$2" \
+              -H 'Content-Type: application/json' -H 'Authorization: Bearer x' \
+              -d '{"model":"m","messages":[{"role":"user","content":"hi"}]}' 2>&1
+            head -c 120 /tmp/r | tr -d '\n'; echo
+          }
+          t deepseek   https://api.deepseek.com/chat/completions
+          t openai     https://api.openai.com/v1/chat/completions
+          t dashscope  https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+          t moonshot   https://api.moonshot.cn/v1/chat/completions
+          t zhipu      https://open.bigmodel.cn/api/paas/v4/chat/completions
+          t ghmodels   https://models.github.ai/inference/chat/completions
+          echo "--- 对照：常规站点 ---"
+          printf '%-28s ' eastmoney; curl -sS -o /dev/null -w '%{http_code} %{time_total}s\n' -m 20 "https://push2.eastmoney.com/api/qt/stock/get?secid=1.000001&fields=f43"
