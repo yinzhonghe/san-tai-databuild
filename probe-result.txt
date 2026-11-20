@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[ OK ] 东财 clist 全市场        1876ms  total=3488 diff=20
-[ OK ] 东财 kline(前复权)        746ms  klines=456 末根=2026-11-20,1446.32
-[ OK ] 腾讯实时                 869ms  字段数=175 现价=1446.32
-[ OK ] 同花顺热榜               1683ms  stock_list=100
-[ OK ] 新浪(带Referer)         804ms  var hq_str_sh000001="ָ֤,3527.3036,3577.6174,3521.8207,3534.1
+[ OK ] 东财 clist 全市场        2471ms  total=3488 diff=20
+[ OK ] 东财 kline(前复权)       1155ms  klines=456 末根=2026-11-20,1445.72
+[ OK ] 腾讯实时                1386ms  字段数=175 现价=1445.72
+[ OK ] 同花顺热榜               1388ms  stock_list=100
+[ OK ] 新浪(带Referer)        1559ms  var hq_str_sh000001="ָ֤,3527.3036,3577.6174,3522.8460,3534.1
 
 通过 5 / 5
