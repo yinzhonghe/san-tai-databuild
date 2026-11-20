@@ -349,11 +349,26 @@ SYSTEM = """你是 A 股盘面分析师，为一个给客户看的看盘网站�
 """
 
 
+TIER = (os.environ.get('LLM_TIER') or 'high').strip().lower()
+
+# 各档位的候选模型：5.x 是「高质量档」，始终思考（思考链要吃掉上万 token 才动笔）；
+# 4.x 是标准档，可关闭思考、速度快。降级链一律保留，避免 429 时直接失败。
+TIER_MODELS = {
+    'high': 'glm-5.3,glm-5.3-flash,glm-4.7,glm-4.7-flash',
+    'std': 'glm-4.7,glm-4.7-flash,glm-4-flash',
+}
+
+
+def max_tokens_for(model):
+    """思考型模型必须先留够思考的额度，否则 content 为空、finish_reason=length。"""
+    return 24000 if model.startswith('glm-5') else 8000
+
+
 def llm_config():
     """有 LLM_API_KEY 就走真模型（OpenAI 兼容协议）；没有才退回 GitHub Models。
 
-    默认通道是智谱 BigModel：GLM-4.x-Flash 系列官方定价 0 元/token（长期免费）。
-    免费模型会换代，所以候选写成一串、逐个试，不把单一 model id 当契约。
+    默认通道是智谱 BigModel。LLM_TIER=high 走 glm-5.3（质量优先），
+    LLM_TIER=std 走 glm-4.7（速度与成本优先）。模型会换代，所以候选写成串、逐个试。
 
     GitHub Models 在 Actions runner 上会被出网代理截成 text/plain "OK"，实测不可用，
     所以它只是「理论上存在」的兜底，真跑必须配 LLM_API_KEY。
@@ -362,8 +377,8 @@ def llm_config():
     if key:
         base = (os.environ.get('LLM_API_BASE')
                 or 'https://open.bigmodel.cn/api/paas/v4/chat/completions').strip()
-        models = [m.strip() for m in (os.environ.get('LLM_MODELS')
-                  or 'glm-4.7,glm-4.7-flash,glm-4-flash').split(',') if m.strip()]
+        default = TIER_MODELS.get(TIER, TIER_MODELS['high'])
+        models = [m.strip() for m in (os.environ.get('LLM_MODELS') or default).split(',') if m.strip()]
         return key, base, models, 'zhipu'
     return TOKEN, MODEL_URL, MODELS, 'github-models'
 
@@ -383,8 +398,9 @@ def call_model(facts, slot, extra_note=''):
     is_zhipu = 'bigmodel.cn' in url
     RETRY_DELAYS = [0, 6, 20]
     for model in models:
+        mt = max_tokens_for(model)
         body_obj = {'model': model, 'messages': msgs, 'temperature': 0.6,
-                    'max_tokens': 8000}
+                    'max_tokens': mt}
         if is_zhipu:
             # 智谱 4.5+ 默认边思考边回答：思考会占满 max_tokens 导致 content 为空，
             # 三报是结构化 JSON 输出，不需要思考链，直接关掉（实测 0.68s 出正文）。
@@ -394,11 +410,12 @@ def call_model(facts, slot, extra_note=''):
         body = json.dumps(body_obj).encode()
         raw = b''
         err = ''
+        timeout = 300 if model.startswith('glm-5') else 120
         for i, delay in enumerate(RETRY_DELAYS):
             if delay:
                 print('[模型] %s 限流/故障，%ds 后重试（第 %d 次）' % (model, delay, i))
                 time.sleep(delay)
-            raw, ms, err = fetch(url, timeout=120, data=body, headers={
+            raw, ms, err = fetch(url, timeout=timeout, data=body, headers={
                 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
                 'Accept': 'application/json'})
             if not err:
@@ -410,12 +427,22 @@ def call_model(facts, slot, extra_note=''):
             continue
         try:
             j = json.loads(raw.decode('utf-8', 'ignore'))
-            msg = j['choices'][0]['message']
+            ch = j['choices'][0]
+            msg = ch['message']
+            finish = ch.get('finish_reason')
             txt = (msg.get('content') or '').strip()
+            usage = j.get('usage') or {}
+            rea = (usage.get('completion_tokens_details') or {}).get('reasoning_tokens')
+            if finish == 'length' and not txt:
+                # 思考型模型把额度全花在思考上，正文一个字没写——这是 val 失败，不是成功
+                print('[模型] %s 思考吃满 %s tokens（reasoning %s），正文未开始，跳过'
+                      % (model, usage.get('completion_tokens'), rea))
+                continue
             if not txt and msg.get('reasoning_content'):
                 # 部分思考型模型把正文放在 reasoning_content 里，content 为空
                 txt = (msg.get('reasoning_content') or '').strip()
-            print('[模型] %s 成功（%d ms，正文 %d 字）' % (model, ms, len(txt)))
+            print('[模型] %s 成功（%d ms，正文 %d 字，思考 %s tokens）'
+                  % (model, ms, len(txt), rea if rea is not None else 0))
         except Exception as e:
             print('[模型] %s 解析失败：%s %s' % (model, e, raw[:160]))
             continue
