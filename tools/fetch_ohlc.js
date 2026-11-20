@@ -50,7 +50,14 @@ async function one(code) {
     }
   }
   await Promise.all(Array.from({ length: CONC }, worker));
-  const out = { asOf: new Date().toISOString().slice(0, 10), count: Object.keys(bars).length, bars: bars };
+  // asOf 必须是「数据里最后一根 K 线的日期」，不能用 new Date()：
+  // 周末/假期跑会写成一个非交易日，导致 chan_pick 的 lastBar!==ASOF 判定把所有票都当陈旧剔掉
+  let maxD = '';
+  Object.keys(bars).forEach(function (c) {
+    const b = bars[c];
+    if (b && b.length) { const d = b[b.length - 1][0]; if (d > maxD) maxD = d; }
+  });
+  const out = { asOf: maxD || new Date().toISOString().slice(0, 10), count: Object.keys(bars).length, bars: bars };
   const json = JSON.stringify(out);
   fs.writeFileSync(path.join(ROOT, 'ohlc.json.gz'), zlib.gzipSync(Buffer.from(json), { level: 9 }));
   console.log('完成 %d 只 · 原始 %.0fMB · gz %.0fMB · %.1f 分钟',
