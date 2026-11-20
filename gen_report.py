@@ -383,10 +383,16 @@ def llm_config():
     return TOKEN, MODEL_URL, MODELS, 'github-models'
 
 
-def call_model(facts, slot, extra_note=''):
+def call_model(facts, slot, extra_note='', prefer_fast=False):
     key, url, models, kind = llm_config()
     if not key:
         return None, None, '没有可用的 LLM_API_KEY'
+    if prefer_fast:
+        # 重写轮用快速档：glm-5.x 单次就要 4 分钟，重写再来一次等于翻倍，
+        # 而且实测 4.7 的篇幅只比 5.3 少约 5%，不值得为这 5% 多等 4 分钟
+        fast = [m for m in models if not m.startswith('glm-5')]
+        if fast:
+            models = fast
     msgs = [
         {'role': 'system', 'content': SYSTEM},
         {'role': 'user', 'content':
@@ -714,7 +720,9 @@ def main():
         # 篇幅门禁：points 四段合计不足 800 字基本就是模型偷懒（实测弱模型只写 230 字），
         # 这种稿子发出去还不如不发，先让它重写一次
         thin = sum(len(p) for p in (content.get('points') or [])) < 800
-        if unverified or thin:
+        # 只有「明显有问题」才重写：1–3 个未命中数字多数是「整数关口/目标位」这类合理表述，
+        # 为它们重写一次要多花 4 分钟（5.x）并可能降级，不值得
+        if len(unverified) > 3 or thin:
             note = []
             if unverified:
                 note.append('上一版有这些数字在事实包里找不到，必须删掉或换成包内的数字：%s'
@@ -724,11 +732,14 @@ def main():
                             '用「第一…第二…第三…」串因果链，每段至少 4 个精确数字，写满。')
             print('[校验] 需要重写：无出处数字 %d 个；points 合计 %d 字'
                   % (len(unverified), sum(len(p) for p in (content.get('points') or []))))
-            content2, model2, _ = call_model(facts, args.slot, '；'.join(note))
+            content2, model2, _ = call_model(facts, args.slot, '；'.join(note), prefer_fast=True)
             if content2:
                 u2 = unmatched_numbers(content2, facts)
                 t2 = sum(len(p) for p in (content2.get('points') or []))
-                if len(u2) <= len(unverified) and t2 >= sum(len(p) for p in (content.get('points') or [])):
+                t1 = sum(len(p) for p in (content.get('points') or []))
+                # 重写轮用快速档，篇幅可能短一点（实测 4.7 比 5.3 少约 5%），
+                # 只要没短过 70% 且数字更干净就采用，否则会白白退回模板稿
+                if len(u2) <= len(unverified) and t2 >= t1 * 0.7:
                     content, model, unverified = content2, model2, u2
                     print('[校验] 重写后：剩 %d 个无出处数字，points %d 字' % (len(u2), t2))
     if not content or len(unverified) > 3:
