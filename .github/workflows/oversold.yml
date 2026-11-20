@@ -1,0 +1,102 @@
+name: 超跌池生成
+
+# 抓全市场 K 线 → 缠论一买 → 超跌池名单 → 自进化校准 → 产物推到 data 分支（Pages 可读）。
+# 北京时间 16:30 跑（等 build.yml 15:35 的 data.js 构建完成并推上 data 分支之后）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_fetch:
+        description: '跳过抓数（用仓库里已有的 ohlc/hist，调试用）'
+        required: true
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+  schedule:
+    - cron: '30 8 * * 1-5'   # 北京 周一至周五 16:30
+
+permissions:
+  contents: write
+
+concurrency:
+  group: oversold-gen
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 取最新全市场快照
+        run: |
+          curl -sfL --retry 3 --retry-delay 5 \
+            "https://yinzhonghe.github.io/san-tai-databuild/data.js?t=$(date +%s)" -o data.js
+          ls -lh data.js
+          printf '标的数: %s\n' "$(grep -o '"code":' data.js | wc -l)"
+
+      - name: 抓 K 线（全市场 11 年 + 2 年日 K）
+        if: github.event.inputs.skip_fetch != 'true'
+        run: |
+          set -e
+          t0=$(date +%s)
+          node tools/fetch_hist.js 8
+          node tools/fetch_ohlc.js 10
+          echo "抓数耗时 $(( $(date +%s) - t0 ))s"
+          ls -lh hist.json.gz ohlc.json.gz
+
+      - name: 缠论一买 + 超跌池名单
+        run: |
+          set -e
+          node --max-old-space-size=8192 tools/chan_pick.js
+          node --max-old-space-size=8192 tools/final_pick.js
+          ls -lh chan_pick_data.js oversold_data.js
+
+      - name: 自进化校准（失败不阻塞，保留上轮参数）
+        run: |
+          node --max-old-space-size=8192 tools/evolve_all.js || echo "自进化失败，沿用上轮 learn/chan_params.json"
+          [ -f learn_report.js ] && ls -lh learn_report.js || echo "无 learn_report.js"
+
+      - name: 产物推到 data 分支（站点从这里读）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          FILES=""
+          for f in chan_pick_data.js oversold_data.js learn_report.js; do
+            [ -f "$f" ] && FILES="$FILES $f=$f"
+          done
+          echo "推送:$FILES"
+          python gh_put.py "${{ github.repository }}" data $FILES --msg "oversold: $(date -u +%Y-%m-%dT%H:%MZ)"
+
+      - name: 学习状态回写 main（下次运行继续累积）
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILES=""
+          for f in learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
+                   learn/index_hist.json learn/commentary_rules.md learn/report.json \
+                   learn/state_calib.json learn/verdict_stats.json \
+                   learn/chan_signals.json.gz learn/brief_log.jsonl learn/brief_scored.jsonl; do
+            [ -f "$f" ] && FILES="$FILES $f=$f"
+          done
+          echo "回写:$FILES"
+          python gh_put.py "${{ github.repository }}" main $FILES --msg "learn: 状态回写 $(date -u +%Y-%m-%dT%H:%MZ)" || echo "回写失败（不影响产物）"
+
+      - name: 摘要
+        if: always()
+        run: |
+          echo "=== 产出 ==="
+          ls -lh chan_pick_data.js oversold_data.js learn_report.js 2>/dev/null || true
+          echo "=== 参数 ==="
+          head -c 400 learn/chan_params.json 2>/dev/null || true
