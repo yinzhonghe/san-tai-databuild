@@ -1,0 +1,124 @@
+{
+ "time": "2026-11-20T01:45:40Z",
+ "runner": {
+  "os": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+  "py": "3.11.18"
+ },
+ "passed": 11,
+ "total": 11,
+ "results": [
+  {
+   "key": "A股指数-腾讯",
+   "desc": "上证/深成/创业板/科创50",
+   "ok": true,
+   "status": 200,
+   "ms": 1296,
+   "bytes": 1869,
+   "hint": "上证指数 3524.56 (3577.62) | 深证成指 10351.12 (10583.20) | 创业板指 2235.89 (2293.34) | 科创50 1244.63 (1270.78)"
+  },
+  {
+   "key": "美股指数-腾讯",
+   "desc": "道指/纳指/标普",
+   "ok": true,
+   "status": 200,
+   "ms": 712,
+   "bytes": 919,
+   "hint": "道琼斯 49097.06 | 纳斯达克 23879.20 | 标普500 7175.83"
+  },
+  {
+   "key": "港股-腾讯",
+   "desc": "恒指/恒生科技",
+   "ok": true,
+   "status": 200,
+   "ms": 709,
+   "bytes": 784,
+   "hint": "恒生指数 22514.600 | 恒生科技指数 3551.650"
+  },
+  {
+   "key": "外盘期货-新浪",
+   "desc": "A50/原油/黄金/白银/伦铜",
+   "ok": true,
+   "status": 200,
+   "ms": 1964,
+   "bytes": 616,
+   "hint": "拿到 5 个：hf_CHA50CFD=12503.730, hf_CL=82.990, hf_GC=3565.804, hf_SI=42.416, hf_CAD=12124.180"
+  },
+  {
+   "key": "美元指数-东财",
+   "desc": "100.UDI",
+   "ok": true,
+   "status": 200,
+   "ms": 2134,
+   "bytes": 141,
+   "hint": "美元指数=103.92（原始值 10392）"
+  },
+  {
+   "key": "美债10Y-东财",
+   "desc": "100.UST10Y（预期拿不到，用于确认缺口）",
+   "ok": true,
+   "status": 200,
+   "ms": 2088,
+   "bytes": 91,
+   "hint": "data=None（缺口，需另想办法）"
+  },
+  {
+   "key": "上证日K-腾讯",
+   "desc": "60 根，算关键位/均线",
+   "ok": true,
+   "status": 200,
+   "ms": 1403,
+   "bytes": 6244,
+   "hint": "61 根，末根 2026-11-20 收 3524.84"
+  },
+  {
+   "key": "美股日K-腾讯",
+   "desc": "道指 10 根",
+   "ok": true,
+   "status": 200,
+   "ms": 768,
+   "bytes": 1468,
+   "hint": "1 根，末根 2026-11-19 收 49097.06"
+  },
+  {
+   "key": "东财全市场清单",
+   "desc": "total，用来算涨跌停",
+   "ok": true,
+   "status": 200,
+   "ms": 2038,
+   "bytes": 401,
+   "hint": "total=5565"
+  },
+  {
+   "key": "东财7x24快讯",
+   "desc": "新闻源候选",
+   "ok": true,
+   "status": 200,
+   "ms": 874,
+   "bytes": 3801,
+   "hint": "快讯 10 条，首条：【港股黄金股集体调整 赤峰黄金跌近7%】截至发稿，赤峰黄金(06693.HK)跌6.81%、紫金黄金"
+  },
+  {
+   "key": "东财板块涨幅",
+   "desc": "板块排名",
+   "ok": true,
+   "status": 200,
+   "ms": 2487,
+   "bytes": 573,
+   "hint": "板块 10 个，首位 印制电路板 0.87%"
+  }
+ ],
+ "models": [
+  {
+   "endpoint": "models.github.ai",
+   "ok": true,
+   "ms": 153,
+   "reply": "OK\r\n"
+  },
+  {
+   "endpoint": "models.inference.ai.azure.com",
+   "ok": false,
+   "ms": 26,
+   "error": "URLError: <urlopen error [Errno -2] Name or service not known>"
+  }
+ ]
+}
