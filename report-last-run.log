@@ -1,5 +1,10 @@
+[模型] gpt-4o 解析失败：gpt-4o -> 解析失败 Expecting value: line 1 column 1 (char 0) b'OK\r\n'
+[模型] gpt-4.1 解析失败：gpt-4.1 -> 解析失败 Expecting value: line 1 column 1 (char 0) b'OK\r\n'
+[模型] gpt-4o-mini 解析失败：gpt-4o-mini -> 解析失败 Expecting value: line 1 column 1 (char 0) b'OK\r\n'
+[模型] gpt-4.1-mini 解析失败：gpt-4.1-mini -> 解析失败 Expecting value: line 1 column 1 (char 0) b'OK\r\n'
+[模型] DeepSeek-V3-0324 解析失败：DeepSeek-V3-0324 -> 解析失败 Expecting value: line 1 column 1 (char 0) b'OK\r\n'
 [兜底] 模型不可用或数字仍不可溯源（0 个），改用模板生成
-[生成] slot=noon date=2026-11-20 at=09:51 model=template-fallback 长度=1993 字节
+[生成] slot=noon date=2026-11-20 at=09:52 model=template-fallback 长度=1990 字节
 [质量] 利多 3 / 利空 2 / 要点 4 / 新闻 5
-[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "3569 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "5931 家"}, {"name": "行业板块", "ok": true, "note": "8 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}]
+[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "3694 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "5931 家"}, {"name": "行业板块", "ok": true, "note": "8 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}]
 [跳过] 未推送（dry-run / no-push / 无 token）
