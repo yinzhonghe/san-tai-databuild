@@ -314,9 +314,12 @@ SYSTEM = """你是 A 股盘面分析师，为一个给客户看的看盘网站�
 【硬规则】
 1. 只使用用户消息里「事实包」提供的数字。禁止任何数据包里没有的数字、点位、涨跌幅、金额。
    没有的品种（比如美债收益率）直接不提，不要写「数据缺失」「暂无」。
-2. 禁止模糊词替代数字：「大幅下跌」「明显放量」「普遍走弱」这类一律不许单独出现，必须带数字。
-3. 判断要有方向、有条件：说清楚「什么情况下成立、什么情况下不成立」，不要两头都说。
-4. 只输出 JSON，不要 markdown 代码块，不要任何解释文字。
+2. 点位、涨跌幅、金额一律照抄事实包里的精确值（如 3511.11），
+   **禁止自行换算成整数关口或约数**（不要写「3500 点整数关口」「近 5200 只下跌」，
+   要写「3511.11 点」「5344 只下跌」）。四舍五入也算编数字。
+3. 禁止模糊词替代数字：「大幅下跌」「明显放量」「普遍走弱」这类一律不许单独出现，必须带数字。
+4. 判断要有方向、有条件：说清楚「什么情况下成立、什么情况下不成立」，不要两头都说。
+5. 只输出 JSON，不要 markdown 代码块，不要任何解释文字。
 
 【输出结构】
 {
@@ -352,8 +355,7 @@ def llm_config():
         base = (os.environ.get('LLM_API_BASE')
                 or 'https://open.bigmodel.cn/api/paas/v4/chat/completions').strip()
         models = [m.strip() for m in (os.environ.get('LLM_MODELS')
-                  or 'glm-4.7-flash,glm-4.6-flash,glm-4.5-flash,'
-                     'glm-4-flash-250414,glm-4-flash').split(',') if m.strip()]
+                  or 'glm-4.7-flash,glm-4.5-flash,glm-4-flash').split(',') if m.strip()]
         return key, base, models, 'zhipu'
     return TOKEN, MODEL_URL, MODELS, 'github-models'
 
@@ -370,12 +372,29 @@ def call_model(facts, slot, extra_note=''):
                (extra_note + '\n\n') if extra_note else '')},
     ]
     print('[模型] 通道=%s 端点=%s 候选=%s' % (kind, url, ','.join(models)))
+    is_zhipu = 'bigmodel.cn' in url
+    RETRY_DELAYS = [0, 6, 20]
     for model in models:
-        body = json.dumps({'model': model, 'messages': msgs, 'temperature': 0.6,
-                           'max_tokens': 3500}).encode()
-        raw, ms, err = fetch(url, timeout=120, data=body, headers={
-            'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
-            'Accept': 'application/json'})
+        body_obj = {'model': model, 'messages': msgs, 'temperature': 0.6,
+                    'max_tokens': 3500}
+        if is_zhipu:
+            # 智谱 4.5+ 默认边思考边回答：思考会占满 max_tokens 导致 content 为空，
+            # 三报是结构化 JSON 输出，不需要思考链，直接关掉（实测 0.68s 出正文）。
+            body_obj['thinking'] = {'type': 'disabled'}
+        body = json.dumps(body_obj).encode()
+        raw = b''
+        err = ''
+        for i, delay in enumerate(RETRY_DELAYS):
+            if delay:
+                print('[模型] %s 限流/故障，%ds 后重试（第 %d 次）' % (model, delay, i))
+                time.sleep(delay)
+            raw, ms, err = fetch(url, timeout=120, data=body, headers={
+                'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
+                'Accept': 'application/json'})
+            if not err:
+                break
+            if not any(k in err for k in ('429', '500', '502', '503', '504', 'timed out')):
+                break
         if err:
             print('[模型] %s 失败：%s %s' % (model, err, raw[:160].decode('utf-8', 'ignore')))
             continue
@@ -408,6 +427,11 @@ NUM_RE = re.compile(r'-?\d+(?:\.\d+)?')
 WHITELIST = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
              '15', '20', '30', '60', '90', '2025', '2026', '0'}
 
+# 指数名称里自带数字（标普500、沪深300…），不是数据，扫数字前先抹掉
+INDEX_NAME_RE = re.compile(
+    r'标普\s?500|标普\s?100|中证\s?A?500|中证\s?1000|中证\s?500|沪深\s?300|'
+    r'上证\s?50|科创\s?50|北证\s?50|创业板\s?50|纳斯达克\s?100|道琼斯')
+
 
 def collect_numbers(obj, bag):
     if isinstance(obj, dict):
@@ -421,23 +445,53 @@ def collect_numbers(obj, bag):
 
 
 def allowed_values(facts):
-    """把事实包里每个数字，展开成正文可能出现的各种写法（原值/取整/亿元/万亿元/绝对值）。"""
-    bag = []
-    collect_numbers({k: v for k, v in facts.items() if k != '快讯'}, bag)
+    """把事实包里每个数字，展开成正文可能出现的各种写法（原值/取整/亿元/万亿元/绝对值）。
+
+    注意：快讯的标题与摘要里也带数字（如「发行利率 4.821%」「沪银跌 7.46%」），
+    这些是抓来的真实数据，正文引用它们不算编造，所以必须一并纳入允许集，
+    否则会误判成「无出处」把好稿拦下来。
+    """
+    nums, texts = [], []
+
+    def walk(o):
+        if isinstance(o, bool):
+            return
+        if isinstance(o, dict):
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+        elif isinstance(o, (int, float)):
+            nums.append(float(o))
+        elif isinstance(o, str):
+            texts.append(o)
+
+    walk(facts)
+
     vals = set()
-    for v in bag:
+    for v in nums:
         for x in (v, -v, abs(v), v / 1e8, v / 1e12, v / 1e4):
             for d in (0, 1, 2):
                 try:
                     vals.add(round(float(x), d))
                 except Exception:
                     pass
+    for t in texts:
+        for s in NUM_RE.findall(t):
+            try:
+                fv = float(s)
+            except Exception:
+                continue
+            for x in (fv, -fv, abs(fv)):
+                for d in (0, 1, 2):
+                    vals.add(round(x, d))
     return vals
 
 
 def unmatched_numbers(content, facts):
     vals = allowed_values(facts)
-    text = json.dumps(content, ensure_ascii=False)
+    text = INDEX_NAME_RE.sub('指数', json.dumps(content, ensure_ascii=False))
     bad = []
     for m in NUM_RE.finditer(text):
         s = m.group(0)
@@ -446,6 +500,10 @@ def unmatched_numbers(content, facts):
         try:
             v = float(s)
         except Exception:
+            continue
+        # 整百且 ≥1000 的整数只可能是「整数关口/目标位/条件位」（3500 点、6000 亿），
+        # 不是测量值，任何一只票的真实数据都不会恰好是整百，所以放行，避免误杀。
+        if abs(v) >= 1000 and abs(v) % 100 == 0:
             continue
         ok = any(abs(v - x) <= max(0.02, abs(x) * 0.002) for x in vals)
         if not ok:
@@ -457,6 +515,56 @@ def unmatched_numbers(content, facts):
             seen.add(b)
             out.append(b)
     return out
+
+
+# ---------------------------------------------------------------- 形状归一化
+
+NEWS_DEFAULTS = {'t': '', 'd': '', 'long': '', 'dir': '中性', 'lvl': '一般', 'sec': ''}
+
+
+def normalize_content(c):
+    """把模型输出捏成前端一定能吃的形状。只修格式，不改任何事实与数字。"""
+    if not isinstance(c, dict):
+        return c
+
+    w = c.get('watch')
+    if isinstance(w, list):
+        parts = [str(x).strip().rstrip('。；;') for x in w if str(x).strip()]
+        c['watch'] = ('；'.join(parts) + '。') if parts else ''
+    elif w is not None:
+        c['watch'] = str(w).strip()
+
+    for k in ('bulls', 'bears'):
+        v = c.get(k)
+        if isinstance(v, str):
+            c[k] = [x.strip() for x in re.split(r'[；;\n]', v) if x.strip()]
+        elif isinstance(v, list):
+            c[k] = [str(x).strip() for x in v if str(x).strip()]
+        else:
+            c[k] = []
+
+    p = c.get('points')
+    if isinstance(p, str):
+        c['points'] = [x.strip() for x in re.split(r'\n+', p) if x.strip()]
+    elif isinstance(p, list):
+        c['points'] = [str(x).strip() for x in p if str(x).strip()]
+    else:
+        c['points'] = []
+
+    n = c.get('news') or []
+    items = []
+    for x in n if isinstance(n, list) else []:
+        if not isinstance(x, dict):
+            continue
+        for k, dv in NEWS_DEFAULTS.items():
+            if not x.get(k):
+                x[k] = dv
+        items.append(x)
+    c['news'] = items
+
+    if c.get('verdict') not in ('偏积极', '偏消极', '中性'):
+        c['verdict'] = '中性'
+    return c
 
 
 # ---------------------------------------------------------------- 模板兜底
@@ -583,6 +691,7 @@ def main():
         model = 'template-fallback'
         unverified = []
 
+    content = normalize_content(content)
     content['at'] = hhmm
     payload = {'date': today, 'slot': args.slot, 'report': content,
                'diagnostics': diag, 'model': model, 'unverified': unverified,
