@@ -61,6 +61,22 @@ try {
   (global.__D.rows || []).forEach(function (r) { INFO[r.code] = r; });
 } catch (e) { console.warn('data.js 读取失败，行业标签留空:', e.message); }
 
+/* ---------- 真实价换算系数（后复权 → 真实可交易价） ----------
+ * 缠论形态必须用后复权算（跨除权日连续），但页面展示的「现价/中枢/止损/买卖点」
+ * 必须是真实股价，否则会出现「实际 4.66 元、页面显示 50 多元」的量级错误。
+ * data.js 的 closes 是腾讯前复权真实价，与 ohlc 后复权同一标的同一交易日，
+ * 系数 = 真实收盘 / 后复权收盘。后复权序列 = 真实序列 × 常数，故同一票任一天
+ * 系数恒定（除权日整数跳变也已被后复权抹平），可用最新一日对齐。
+ * 每票系数不同（送转分红历史不同），必须逐票算，不能用统一倍数。
+ */
+function realFactor(code, bars) {
+  const r = INFO[code];
+  if (!r || !r.closes || !r.closes.length) return 1;
+  const real = r.closes[r.closes.length - 1];   // data.js 最新真实价
+  const hfq = bars[bars.length - 1][2];         // 后复权最新收盘
+  return (real > 0 && hfq > 0) ? (real / hfq) : 1;
+}
+
 /* ---------- 数据 ---------- */
 const O = L.load();                       // 个股（ohlc_v2）
 const codes = Object.keys(O.codes);
@@ -147,26 +163,36 @@ function build(code, bars, nm, isEtf) {
   marks.sort(function (a, b) { return a.d < b.d ? -1 : 1; });
 
   const info = INFO[code] || {};
+  // 缠论形态用后复权算完，展示价统一换算回真实价（4.66 元那种），避免 50 元的量级错误。
+  // 比例类指标（distCS/retSince/area）与复权无关，保持不变。
+  const rf = realFactor(code, bars);
+  const rp = function (v) { return v > 0 ? +(v * rf).toFixed(3) : 0; };
   return {
     code: code, name: nm,
     sigDate: sig.d, daysAgo: daysAgo,
     retSince: +(((px / (sig.p > 0 ? sig.p : px)) - 1) * 100).toFixed(2),
-    sigPx: +(sig.p > 0 ? sig.p : px).toFixed(3),
-    px: +px.toFixed(3),
+    sigPx: rp(sig.p > 0 ? sig.p : px),
+    px: rp(px),
+    pxRaw: +px.toFixed(3),                 // 后复权原值，仅供自进化台账对账（打分实际按 date+code 重取 bars）
+    realFactor: +rf.toFixed(6),            // 换算系数，便于核验
     area: +area.toFixed(2),
     areaRaw: +area.toFixed(3),
     nCenters: sig.nCenters || cBi.length,
     csRecent: cBi.filter(function (x) { return x.d1 >= k0; }).length,
     csAll: cBi.length,
-    ZD: +ZD.toFixed(3), ZG: +ZG.toFixed(3),
-    distCS: +distCS.toFixed(1),
+    ZD: rp(ZD), ZG: rp(ZG),
+    distCS: +distCS.toFixed(1),            // 比例：(px/ZD-1)*100，复权不影响
     score: score,
     mver: USE_MODEL ? MODEL.version : '',
-    sell3: sell3,
-    stop: +(px * 0.92).toFixed(3),
+    sell3: rp(sell3),
+    stop: rp(px * 0.92),
     ind: info.ind || info.indL1 || '',
     state: info.state || '',
-    kline: kline, centers: centersRecent, marks: marks,
+    kline: kline.map(function (b) { return [b[0], rp(b[1]), rp(b[2]), rp(b[3]), rp(b[4])]; }),
+    centers: centersRecent.map(function (c) {
+      return { d0: c.d0, d1: c.d1, ZD: rp(c.ZD), ZG: rp(c.ZG) };
+    }),
+    marks: marks.map(function (m) { return { d: m.d, p: rp(m.p), t: m.t }; }),
     etf: !!isEtf
   };
 }
@@ -275,7 +301,7 @@ fs.writeFileSync(path.join(ROOT, 'chan_pick_data.js'), js);
     if (seen.has(key)) return;
     add.push({
       date: O.asOf, code: x.code, name: x.name, sigDate: x.sigDate,
-      score: x.score, area: x.area, distCS: x.distCS, px: x.px,
+      score: x.score, area: x.area, distCS: x.distCS, px: (x.pxRaw != null ? x.pxRaw : x.px),
       etf: !!x.etf, ver: USE_MODEL ? MODEL.version : 'baseline'
     });
   });
