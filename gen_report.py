@@ -589,6 +589,93 @@ def rank_deep(rows, cap=200):
     return out
 
 
+# 事件级去重：同一件事常被 7 个源反复报道，字面去重抓不住（措辞不同）。
+# 用「主题锚点」当指纹：命中哪个主题 + 文里最有辨识度的数字组合。
+# 同指纹合并为一条，保留全部来源（来源多=事件重要，不是重复噪音）。
+EVENT_ANCHORS = (
+    ('美联储加息', ('美联储', '加息', 'FOMC', 'CME', '利率')),
+    ('纳指暴跌', ('纳指', '纳斯达克', '美股', '费城半导体', '费半', 'VIX')),
+    ('英伟达SEC', ('英伟达', 'SEC', '黄仁勋')),
+    ('黄金避险', ('黄金', '金价', '现货金', '贵金属', '白银')),
+    ('存储芯片', ('DRAM', 'NAND', '存储', '美光', '海力士', '三星', '集邦')),
+    ('稳市新政', ('融资保证金', '降费', '做市商', '稳市', '证监会')),
+    ('ETF资金', ('ETF', '净申购', '净流入', '主动ETF', '宽基')),
+    ('央行流动性', ('逆回购', 'MLF', '净投放', '央行', '到期')),
+    ('韩股日股', ('韩国', 'KOSPI', '韩股', '日经', '日本股市')),
+    ('A股盘面', ('沪指', '上证', '创业板', '科创', '两市成交', '成交额')),
+    ('券商策略', ('券商', '中信', '中金', '银河证券', '十大券商', '周策略', '研报')),
+    ('两融杠杆', ('两融', '融资余额', '杠杆资金', '融资盘')),
+    ('油价地缘', ('油价', '原油', 'OPEC', 'WTI', '布油', '红海', '伊朗')),
+    ('汇率美债', ('美元指数', '美债', '人民币', '汇率')),
+    ('解禁IPO', ('解禁', 'IPO', '申购', '上市')),
+)
+
+
+def event_fingerprint(text, title=''):
+    """主题 + 文中高辨识度数字构成指纹。
+
+    只对「有明确市场主题」的新闻做事件合并；没有锚点的杂讯用标题前 24 字做
+    指纹，避免「达美航空故障」和「败血症救治」因为都带数字被误并成同一事件。
+    """
+    s = str(text or '')
+    themes = [name for name, kws in EVENT_ANCHORS if any(k in s for k in kws)]
+    if not themes:
+        # 无市场主题：按标题正文前 24 个中文字做指纹，措辞相同才算同类
+        raw = re.sub(r'[^\u4e00-\u9fa5A-Za-z0-9]', '', str(title or s))[:24]
+        return '杂讯|' + raw
+    theme = themes[0]
+    # 数字取两个高辨识度值；排除年份(20xx)、月份日期(1-12)、时分这类噪声
+    nums = []
+    for m in NUM_RE.finditer(s):
+        try:
+            v = float(m.group(0))
+        except Exception:
+            continue
+        if 1900 <= v <= 2100 or v < 5 or v in nums:
+            continue
+        nums.append(v)
+        if len(nums) >= 2:
+            break
+    return theme + '|' + ','.join('%g' % v for v in nums)
+
+
+def dedupe_events(rows, key_t, key_sum='sum', key_src='src', cap=None):
+    """事件级去重：同指纹合并，来源汇总，保留信息最全的那条做主体。
+
+    返回 [(事件摘要, 来源列表, 原始条目)]，供下游决定喂多少给模型。
+    """
+    groups = {}
+    for x in rows:
+        title = x.get(key_t) or ''
+        text = title + ' ' + (x.get(key_sum) or '')
+        fp = event_fingerprint(text, title)
+        src = x.get(key_src) or '未知'
+        if fp not in groups:
+            groups[fp] = {'main': x, 'sources': [src], 'text': text, 'n': 1}
+        else:
+            g0 = groups[fp]
+            g0['n'] += 1
+            if src not in g0['sources']:
+                g0['sources'].append(src)
+            # 主体保留更长的正文（信息更全）
+            if len(x.get(key_sum) or '') > len(g0['main'].get(key_sum) or ''):
+                g0['main'] = x
+    out = []
+    for fp, g0 in groups.items():
+        out.append({'fp': fp, 'main': g0['main'], 'sources': g0['sources'],
+                    'n': g0['n'], 'text': g0['text']})
+    # 排序权重：主题重要性 > 多源共振数 > 正文字数。
+    # 不能只按来源数排——「达美航空故障」这类杂讯也可能多平台转载，
+    # 但和 A 股盘面无关，不该挤掉真正的主线事件。
+    theme_rank = {name: len(EVENT_ANCHORS) - i for i, (name, _) in enumerate(EVENT_ANCHORS)}
+    def weight(a):
+        theme = a['fp'].split('|')[0]
+        return (theme_rank.get(theme, 0) * 10 + min(a['n'], 8)
+                + min(len(a['main'].get(key_sum) or ''), 400) // 100)
+    out.sort(key=weight, reverse=True)
+    return out[:cap] if cap else out
+
+
 def compact_facts(f, slot):
     """给模型看的事实包：只保留正文会引用的字段，避免它乱抓。"""
     q = f['quotes']
@@ -609,18 +696,21 @@ def compact_facts(f, slot):
         '涨跌家数': f['breadth'],
         '行业涨幅前8': f['sectors_top'][:8],
         '行业跌幅前8': f['sectors_bottom'][:8],
-        # 全文 + 来源：参考包的高质量稿每条新闻都点名来源、带完整数字，
-        # 砍成 160 字标题摘要只会逼出「XX 传导至 XX」的套话。
-        # 快讯取 100 条（7 个源汇总 400 条后按信息量排序），是之前的 2 倍。
-        '快讯': [{'时间': hhmm_of(n['time']), '来源': n.get('src') or '东财7x24',
-                   '标题': n['t'], '全文': n['sum'][:340]}
-                  for n in f['news'][:100]],
-        # 定向检索来的深度事实：参考稿里的费半周跌幅、CME 加息概率、DRAM/NAND
-        # 合约价、券商周策略都出自这里。570 篇全塞会爆上下文，按「数字密度 ×
-        # 关键词命中」打分取前 140 篇，每条压到 260 字——底料充分但可读。
-        '深度资料': [{'检索词': x.get('query', ''), '日期': x.get('date', ''),
-                    '来源': x.get('src', ''), '标题': x['title'], '内容': x['sum'][:260]}
-                   for x in rank_deep(f.get('deep') or [], 140)],
+        # 快讯：400 条原始 → 事件级去重后取前 90 条。
+        # 同一件事被多平台报道会合并成一条，但「N 个来源」会标出来——
+        # 多源共振说明事件重要，不当作重复噪音删掉。
+        '快讯': [{'时间': hhmm_of(ev['main'].get('time')),
+                  '来源': '/'.join(ev['sources'][:4]) + ('等%d源' % ev['n'] if ev['n'] > 4 else ''),
+                  '标题': ev['main']['t'], '全文': (ev['main'].get('sum') or '')[:340]}
+                 for ev in dedupe_events(f['news'], 't', cap=90)],
+        # 深度资料：576 篇 → 先按数字密度排序，再事件级去重取前 120 条。
+        # 参考稿里的费半周跌幅、CME 概率、DRAM/NAND 合约价都出自这里。
+        '深度资料': [{'检索词': ev['main'].get('query', ''),
+                    '日期': ev['main'].get('date', ''),
+                    '来源': '/'.join(ev['sources'][:3]) + ('等%d源' % ev['n'] if ev['n'] > 3 else ''),
+                    '标题': ev['main']['title'], '内容': (ev['main'].get('sum') or '')[:260]}
+                   for ev in dedupe_events(rank_deep(f.get('deep') or [], 260),
+                                           'title', cap=120)],
         '昨日滚动观点': f.get('rolling') or {},
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
                 '美债收益率等未提供项不要提及。「昨日滚动观点」里的主线要滚动修订，'
