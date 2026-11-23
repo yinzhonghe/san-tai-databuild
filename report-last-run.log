@@ -1,8 +1,10 @@
 [模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7,glm-4.7-flash,glm-4-flash
-[模型] glm-4.7 成功（41842 ms，正文 6008 字，思考 0 tokens）
-[告警] 保留模型稿，但仍有 2 个数字未在事实包命中：1.3795, 800
-[生成] slot=morning date=2026-11-23 at=09:30 model=glm-4.7 长度=6323 字节
-[质量] 利多 5 / 利空 5 / 要点 4 / 新闻 11
-[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "488 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "5231 家"}, {"name": "行业板块", "ok": false, "note": "0 个"}, {"name": "东财7x24快讯", "ok": false, "note": "0 条"}, {"name": "新浪7x24快讯", "ok": true, "note": "60 条"}, {"name": "金十数据快讯", "ok": true, "note": "49 条"}, {"name": "华尔街见闻快讯", "ok": true, "note": "60 条"}, {"name": "多源快讯汇总", "ok": true, "note": "48 条（已按信息量筛选）"}]
-[推送] daily.js -> OK 
-[推送] report_state.json -> OK 
+[模型] glm-4.7 成功（53441 ms，正文 7892 字，思考 0 tokens）
+[校验] 需要重写：无出处数字 9 个；points 合计 2620 字；风格问题 0 项
+[模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7,glm-4.7-flash,glm-4-flash
+[模型] glm-4.7 成功（50781 ms，正文 7834 字，思考 0 tokens）
+[告警] 保留模型稿，但仍有 9 个数字未在事实包命中：40, 2017, -2018, 11.23, -11.30, 12.1, -12.9, 12.10, -12.31
+[生成] slot=morning date=2026-11-23 at=09:52 model=glm-4.7 长度=8209 字节
+[质量] 利多 6 / 利空 6 / 要点 4 / 新闻 11
+[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "3963 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "1100 家"}, {"name": "行业板块", "ok": false, "note": "0 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}, {"name": "新浪7x24快讯", "ok": true, "note": "60 条"}, {"name": "金十数据快讯", "ok": true, "note": "49 条"}, {"name": "华尔街见闻快讯", "ok": true, "note": "60 条"}, {"name": "同花顺快讯", "ok": true, "note": "100 条"}, {"name": "多源快讯汇总", "ok": true, "note": "48 条（已按信息量筛选）"}, {"name": "检索·美联储12月加息概率 CME", "ok": true, "note": "6 篇"}, {"name": "检索·费城半导体指数 跌幅 周", "ok": true, "note": "5 篇"}, {"name": "检索·DRAM NAND 合约价 集邦", "ok": true, "note": "6 篇"}, {"name": "检索·英伟达 SEC 审查 新加坡", "ok": true, "note": "5 篇"}, {"name": "检索·融资保证金 80% 降费 亿", "ok": true, "note": "6 篇"}, {"name": "检索·主动ETF 360亿 上市", "ok": true, "note": "5 篇"}, {"name": "检索·十大券商 周策略 不必悲观", "ok": true, "note": "2 篇"}, {"name": "检索·A股 上周五 收盘 成交额 低点", "ok": true, "note": "3 篇"}, {"name": "深度检索汇总", "ok": true, "note": "38 篇"}, {"name": "昨日滚动观点", "ok": true, "note": "date=2026-11-23"}]
+[跳过] 未推送（dry-run / no-push / 无 token）
