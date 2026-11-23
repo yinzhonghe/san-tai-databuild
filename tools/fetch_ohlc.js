@@ -18,7 +18,9 @@ function secid(code) {
   return (code.endsWith('.SH') ? '1.' : '0.') + code.slice(0, 6);
 }
 
-async function one(code) {
+// 东财后复权日K（历史最深，正常首选）。云端 runner 出口 IP 常被东财限流返回空，
+// 所以失败要走下面的腾讯备用源，不能让个股池清零。
+async function fromEastmoney(code) {
   const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get'
     + '?secid=' + secid(code) + '&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55'
     + '&klt=101&fqt=2&beg=' + BEG + '&end=' + END;
@@ -31,6 +33,57 @@ async function one(code) {
     const p = x.split(',');
     return [p[0], parseFloat(p[1]), parseFloat(p[2]), parseFloat(p[3]), parseFloat(p[4])];
   });
+}
+
+// 腾讯前复权日K备用源：单次最多 640 根，按年份分段拼接还原长历史。
+// 每段的 end 固定为上一段首日的前一天，往前滚，直到拿不到更多或到 BEG。
+function txSymbol(code) {
+  return (code.endsWith('.SH') ? 'sh' : 'sz') + code.slice(0, 6);
+}
+async function fromTencent(code) {
+  const sym = txSymbol(code);
+  const segs = [];
+  let end = END.slice(0, 4) + '-' + END.slice(4, 6) + '-' + END.slice(6, 8); // YYYY-MM-DD
+  const begMin = BEG.slice(0, 4) + '-' + BEG.slice(4, 6) + '-' + BEG.slice(6, 8);
+  for (let pass = 0; pass < 8; pass++) {
+    const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get'
+      + '?param=' + sym + ',day,' + begMin + ',' + end + ',640,qfq';
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!r.ok) break;
+    const j = await r.json();
+    const d = (j.data || {})[sym] || {};
+    const kl = d.qfqday || d.day || [];
+    if (!kl.length) break;
+    const rows = kl.map(function (x) {
+      return [x[0], parseFloat(x[1]), parseFloat(x[2]), parseFloat(x[3]), parseFloat(x[4])];
+    }).filter(function (b) { return b[0] && b[2] > 0; });
+    segs.unshift(rows);
+    const first = rows[0][0];
+    if (first <= begMin || rows.length < 640) break;
+    const dt = new Date(first + 'T00:00:00Z');
+    dt.setUTCDate(dt.getUTCDate() - 1);
+    end = dt.toISOString().slice(0, 10);
+  }
+  // 拼接并按日期去重（段间可能重叠）
+  const seen = {}, out = [];
+  segs.forEach(function (rows) {
+    rows.forEach(function (b) { if (!seen[b[0]]) { seen[b[0]] = 1; out.push(b); } });
+  });
+  out.sort(function (a, b) { return a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0); });
+  return out;
+}
+
+async function one(code) {
+  try {
+    const b = await fromEastmoney(code);
+    if (b && b.length > 200) return b;
+  } catch (e) { }
+  // 东财被限流/返回空 → 腾讯前复权兜底（单只票内部口径一致即可算缠论形态）
+  try {
+    const b = await fromTencent(code);
+    if (b && b.length > 200) return b;
+  } catch (e) { }
+  return null;
 }
 
 (async function () {
