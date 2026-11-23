@@ -522,8 +522,12 @@ TIER_MODELS = {
 
 
 def max_tokens_for(model):
-    """思考型模型必须先留够思考的额度，否则 content 为空、finish_reason=length。"""
-    return 24000 if model.startswith('glm-5') else 8000
+    """思考型模型必须先留够思考的额度，否则 content 为空、finish_reason=length。
+
+    4.7 也从 8000 提到 12000：参考包式稿子有 10 条新闻全文 + 四段 300 字解读，
+    8000 token 时 JSON 经常写到一半被截断，直接变成解析失败。
+    """
+    return 24000 if model.startswith('glm-5') else 12000
 
 
 def llm_config():
@@ -712,6 +716,10 @@ def unmatched_numbers(content, facts):
         # 整百且 ≥1000 的整数只可能是「整数关口/目标位/条件位」（3500 点、6000 亿），
         # 不是测量值，任何一只票的真实数据都不会恰好是整百，所以放行，避免误杀。
         if abs(v) >= 1000 and abs(v) % 100 == 0:
+            continue
+        # 年份不是行情数据。参考包式稿子必然写 2027Q1、2030 年展望，
+        # 这些年份在事实包里未必出现，不能因此把整篇好稿毙掉。
+        if 2020 <= v <= 2035 and float(v).is_integer():
             continue
         ok = any(abs(v - x) <= max(0.02, abs(x) * 0.002) for x in vals)
         if not ok:
@@ -992,9 +1000,15 @@ def main():
                     content, model, unverified, issues = content2, model2, u2, i2
                     print('[校验] 重写后：剩 %d 个无出处数字，points %d 字，风格问题 %d 项'
                           % (len(u2), t2, len(i2)))
-    if not content or len(unverified) > 3:
+    # 血泪教训（2026-11-23 试跑）：模型稿 points 1722 字、风格门禁全过，
+    # 只因 4 个数未在事实包里命中就被整篇换成模板稿——模板稿全是 None，
+    # 比原文差几个档次。少量未溯源数字应留在 meta 里告警，不该毁掉整篇。
+    if not content or len(unverified) > 12:
         print('[兜底] 模型不可用或数字仍不可溯源（%d 个），改用模板生成。原因：%s'
               % (len(unverified), verr or '有数字在事实包里找不到出处'))
+    elif unverified:
+        print('[告警] 保留模型稿，但仍有 %d 个数字未在事实包命中：%s'
+              % (len(unverified), ', '.join(unverified[:20])))
         content = template_report(facts_raw, args.slot, diag)
         model = 'template-fallback'
         unverified = []
