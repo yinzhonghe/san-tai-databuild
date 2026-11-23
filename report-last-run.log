@@ -1,11 +1,11 @@
 [模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7,glm-4.7-flash,glm-4-flash
-[模型] glm-4.7 成功（43226 ms，正文 6561 字，思考 0 tokens）
-[校验] 需要重写：无出处数字 5 个；points 合计 1722 字；风格问题 0 项
+[模型] glm-4.7 成功（41041 ms，正文 6588 字，思考 0 tokens）
+[校验] 需要重写：无出处数字 7 个；points 合计 1663 字；风格问题 0 项
 [模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7,glm-4.7-flash,glm-4-flash
-[模型] glm-4.7 成功（40908 ms，正文 6822 字，思考 0 tokens）
-[校验] 重写后：剩 4 个无出处数字，points 1687 字，风格问题 0 项
-[兜底] 模型不可用或数字仍不可溯源（4 个），改用模板生成。原因：有数字在事实包里找不到出处
-[生成] slot=morning date=2026-11-23 at=09:19 model=template-fallback 长度=2441 字节
+[模型] glm-4.7 成功（46271 ms，正文 7178 字，思考 0 tokens）
+[校验] 重写后：剩 5 个无出处数字，points 1736 字，风格问题 0 项
+[告警] 保留模型稿，但仍有 5 个数字未在事实包命中：88760, 3550, 3480, 3450, -3480
+[生成] slot=morning date=2026-11-23 at=09:24 model=template-fallback 长度=2401 字节
 [质量] 利多 1 / 利空 2 / 要点 4 / 新闻 5
-[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": false, "note": "失败"}, {"name": "沪深成交额", "ok": false, "note": "返回 0 亿（接口空数据）"}, {"name": "涨跌家数(全市场)", "ok": false, "note": "URLError: <urlopen error _ssl.c:1001: The handshake operation timed out>"}, {"name": "行业板块", "ok": false, "note": "0 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}, {"name": "新浪7x24快讯", "ok": true, "note": "60 条"}, {"name": "金十数据快讯", "ok": true, "note": "50 条"}, {"name": "华尔街见闻快讯", "ok": true, "note": "60 条"}, {"name": "多源快讯汇总", "ok": true, "note": "48 条（已按信息量筛选）"}]
+[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": false, "note": "返回 0 亿（接口空数据）"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "1500 家"}, {"name": "行业板块", "ok": false, "note": "0 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}, {"name": "新浪7x24快讯", "ok": true, "note": "60 条"}, {"name": "金十数据快讯", "ok": true, "note": "48 条"}, {"name": "华尔街见闻快讯", "ok": true, "note": "60 条"}, {"name": "多源快讯汇总", "ok": true, "note": "48 条（已按信息量筛选）"}]
 [跳过] 未推送（dry-run / no-push / 无 token）
