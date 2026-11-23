@@ -16,6 +16,8 @@
 """
 import argparse
 import base64
+import hashlib
+import html as html_lib
 import json
 import os
 import re
@@ -24,6 +26,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/131.0 Safari/537.36')
@@ -258,7 +261,8 @@ def hhmm_of(s):
 
 
 def clean_flash(s):
-    s = TAG_RE.sub('', str(s or ''))
+    # html.unescape 会把 RSS 里的 &#39; &#8217; 等实体也还原，旧的手工替换保留兼容。
+    s = html_lib.unescape(TAG_RE.sub('', str(s or '')))
     s = s.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&quot;', '"')
     return re.sub(r'\s+', ' ', s).strip()
 
@@ -418,6 +422,255 @@ def grab_nbd(limit=60):
     return out, None
 
 
+# ---- 17 个新增公开源（2026-11-23 全网筛选 + 实测）
+# 口径：只接公开事实/标题/摘要，不绕过登录、付费墙、验证码；全部低频率拉取。
+# 财联社 / 格隆汇进「快讯」，其余公告与 RSS 进「深度资料」，由下游事件级去重。
+LINK_RE = re.compile(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
+
+
+def _local_tag(tag):
+    return str(tag or '').split('}')[-1].lower()
+
+
+def _xml_text(node, name):
+    """RSS/Atom 混着用，按本地标签名找文本，避免命名空间版本差异。"""
+    for ch in node.iter():
+        if _local_tag(ch.tag) == name.lower() and (ch.text or '').strip():
+            return ch.text.strip()
+    return ''
+
+
+def _xml_link(node):
+    for ch in node.iter():
+        if _local_tag(ch.tag) == 'link':
+            if (ch.text or '').strip():
+                return ch.text.strip()
+            href = ch.attrib.get('href')
+            if href:
+                return href
+    return ''
+
+
+def grab_rss(url, src, limit=30):
+    """通用 RSS/Atom：CNBC/WSJ/MarketWatch/Fed/财政部/中国政府网都走这条。"""
+    body, ms, err = fetch(url, url, 20)
+    if err or not body:
+        # 少数 RSS 网关对 Referer 敏感（MarketWatch 曾返回 400），无 Referer 重试一次。
+        time.sleep(1)
+        body, ms, err = fetch(url, None, 20)
+    if err or not body:
+        return [], err
+    try:
+        root = ET.fromstring(body)
+    except Exception as e:
+        return [], 'RSS解析失败: %s' % type(e).__name__
+    items = [n for n in root.iter() if _local_tag(n.tag) == 'item']
+    if not items:
+        items = [n for n in root.iter() if _local_tag(n.tag) == 'entry']
+    out, seen = [], set()
+    for it in items:
+        title = clean_flash(_xml_text(it, 'title'))
+        desc = clean_flash(_xml_text(it, 'description') or _xml_text(it, 'summary')
+                           or _xml_text(it, 'content'))
+        if len(title) < 8 and len(desc) < 20:
+            continue
+        if not title:
+            title = desc[:60]
+        key = re.sub(r'[^\u4e00-\u9fa5A-Za-z0-9]', '', title)[:36]
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        date = (_xml_text(it, 'pubDate') or _xml_text(it, 'published')
+                or _xml_text(it, 'updated'))
+        out.append({'t': title[:80], 'time': hhmm_of(date), 'date': date[:16],
+                    'sum': (desc or title)[:500], 'src': src,
+                    'url': _xml_link(it)[:300]})
+        if len(out) >= limit:
+            break
+    return out, None if out else 'RSS 无条目'
+
+
+def grab_html_list(url, src, limit=30, href_kw=None, minlen=12):
+    """通用列表页解析：证监会/统计局/央行/财政部这种静态栏目页。"""
+    body, ms, err = fetch(url, url, 20)
+    if err or not body:
+        return [], err
+    s = body.decode('utf-8', 'ignore')
+    if s.count('\ufffd') > 20:
+        s = body.decode('gbk', 'ignore')
+    skip = ('ICP备', '公网安备', '版权所有', '联系我们', '网站地图', 'English')
+    out, seen = [], set()
+    for href, raw in LINK_RE.findall(s):
+        title = clean_flash(raw)
+        href = html_lib.unescape(href.strip())
+        if len(title) < minlen or title.startswith(skip):
+            continue
+        if not href or href.startswith(('#', 'javascript:')):
+            continue
+        if href_kw and not any(k in href for k in href_kw):
+            continue
+        key = re.sub(r'[^\u4e00-\u9fa5A-Za-z0-9]', '', title)[:36]
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append({'t': title[:80], 'time': '', 'sum': title[:500], 'src': src,
+                    'url': urllib.parse.urljoin(url, href)[:300]})
+        if len(out) >= limit:
+            break
+    return out, None if out else '列表页未解析到条目'
+
+
+def grab_cls_flash(limit=50):
+    """财联社电报新版接口：公开参数 + 本地签名（无 key、不突破权限）。"""
+    params = {'appName': 'CailianpressWeb', 'name': 'telegraph',
+              'os': 'web', 'sv': '8.7.9'}
+    q = urllib.parse.urlencode(sorted(params.items()))
+    sign = hashlib.md5(hashlib.sha1(q.encode()).hexdigest().encode()).hexdigest()
+    url = 'https://www.cls.cn/api/cache?' + q + '&sign=' + sign
+    j, err = get_json(url, 'https://www.cls.cn/telegraph', 20)
+    if err or not j or j.get('errno'):
+        return [], err or ('errno=%s' % j.get('errno') if j else '空响应')
+    rows = ((j.get('data') or {}).get('roll_data') or [])[:limit]
+    out = []
+    for x in rows:
+        txt = clean_flash(x.get('content') or x.get('brief') or x.get('title'))
+        if len(txt) < 10:
+            continue
+        try:
+            tm = time.strftime('%H:%M', time.localtime(float(x.get('ctime') or 0)))
+        except Exception:
+            tm = ''
+        out.append({'t': (x.get('title') or txt)[:60], 'time': tm,
+                    'sum': txt[:400], 'src': '财联社',
+                    'important': 1 if x.get('level') in ('A', 'B') else 0,
+                    'url': (x.get('shareurl') or '')[:200]})
+    return out, None if out else '无快讯条目'
+
+
+def grab_gelonghui_flash(limit=40):
+    """格隆汇 7x24 快讯：公开 JSON 接口，列表即全文。"""
+    url = ('https://www.gelonghui.com/api/live-channels/all/lives/v4'
+           '?category=all&limit=%d' % limit)
+    j, err = get_json(url, 'https://www.gelonghui.com/live', 20)
+    if err or not j:
+        return [], err
+    out = []
+    for x in (j.get('result') or []):
+        txt = clean_flash(x.get('content') or x.get('title'))
+        if len(txt) < 10:
+            continue
+        try:
+            tm = time.strftime('%H:%M', time.localtime(float(x.get('createTimestamp') or 0)))
+        except Exception:
+            tm = ''
+        out.append({'t': clean_flash(x.get('title') or txt)[:60], 'time': tm,
+                    'sum': txt[:400], 'src': '格隆汇',
+                    'important': 1 if (x.get('level') or 0) >= 1 else 0,
+                    'url': (x.get('route') or '')[:200]})
+    return out, None if out else '无快讯条目'
+
+
+def grab_cninfo_announcements(limit=60):
+    """巨潮公告：法定披露源。用近 3 天窗口，避免 seDate=~ 返回空壳。"""
+    bj_now = time.time() + 8 * 3600
+    today = time.strftime('%Y-%m-%d', time.gmtime(bj_now))
+    start = time.strftime('%Y-%m-%d', time.gmtime(bj_now - 3 * 86400))
+    url = 'http://www.cninfo.com.cn/new/hisAnnouncement/query'
+    referer = 'http://www.cninfo.com.cn/new/commonUrl/pageOfSearch?url=disclosure/list/search'
+    out, errs = [], []
+    for col in ('szse', 'sse'):
+        payload = urllib.parse.urlencode({
+            'pageNum': 1, 'pageSize': min(40, limit), 'column': col,
+            'tabName': 'fulltext', 'plate': '', 'stock': '', 'searchkey': '',
+            'secid': '', 'category': '', 'trade': '',
+            'seDate': '%s~%s' % (start, today),
+            'sortName': 'time', 'sortType': 'desc', 'isHLtitle': 'true',
+        }).encode()
+        body, ms, err = fetch(url, referer, 20, data=payload, headers={
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest'})
+        if err or not body:
+            errs.append(err or '空响应')
+            continue
+        try:
+            j = json.loads(body.decode('utf-8', 'ignore'))
+        except Exception as e:
+            errs.append('解析失败:%s' % type(e).__name__)
+            continue
+        for x in (j.get('announcements') or []):
+            title = clean_flash('%s：%s' % (x.get('secName') or '', x.get('announcementTitle') or ''))
+            if len(title) < 10:
+                continue
+            try:
+                date = time.strftime('%Y-%m-%d',
+                                     time.gmtime(float(x.get('announcementTime') or 0) / 1000 + 8 * 3600))
+            except Exception:
+                date = ''
+            out.append({'t': title[:80], 'time': '', 'date': date,
+                        'sum': (title + '（%s）' % (x.get('announcementTypeName') or '公告'))[:500],
+                        'src': '巨潮公告',
+                        'url': ('http://static.cninfo.com.cn/' + (x.get('adjunctUrl') or ''))[:300]})
+    return out[:limit], None if out else ('；'.join(errs[:2]) or '窗口内0条')
+
+
+def grab_sse_announcements(limit=40):
+    """上交所公告查询接口：必须带官网 Referer，jsonCallBack 保留。"""
+    bj_now = time.time() + 8 * 3600
+    today = time.strftime('%Y-%m-%d', time.gmtime(bj_now))
+    start = time.strftime('%Y-%m-%d', time.gmtime(bj_now - 3 * 86400))
+    params = {
+        'jsonCallBack': 'cb', 'isPagination': 'true', 'productId': '',
+        'keyWord': '', 'securityType': '0101,120100,020100,020200,120200',
+        'reportType2': '', 'reportType': 'ALL',
+        'beginDate': start, 'endDate': today,
+        'pageHelp.pageSize': min(40, limit), 'pageHelp.pageCount': 50,
+        'pageHelp.pageNo': 1, 'pageHelp.beginPage': 1,
+        'pageHelp.cacheSize': 1, 'pageHelp.endPage': 5,
+    }
+    url = 'http://query.sse.com.cn/security/stock/queryCompanyBulletin.do?' + urllib.parse.urlencode(params)
+    body, ms, err = fetch(url, 'http://www.sse.com.cn/disclosure/listedinfo/announcement/', 20)
+    if err or not body:
+        return [], err
+    s = body.decode('utf-8', 'ignore')
+    i, j = s.find('('), s.rfind(')')
+    try:
+        j2 = json.loads(s[i + 1:j] if i >= 0 and j > i else s)
+    except Exception as e:
+        return [], '解析失败: %s' % type(e).__name__
+    out = []
+    for x in (j2.get('result') or [])[:limit]:
+        title = clean_flash('%s：%s' % (x.get('SECURITY_NAME') or '', x.get('TITLE') or ''))
+        if len(title) < 10:
+            continue
+        date = x.get('SSEDATE') or (x.get('ADDDATE') or '')[:10] or ''
+        out.append({'t': title[:80], 'time': hhmm_of(x.get('ADDDATE')), 'date': date,
+                    'sum': (title + '（%s）' % (x.get('BULLETIN_HEADING') or '公告'))[:500],
+                    'src': '上交所公告',
+                    'url': ('http://www.sse.com.cn' + (x.get('URL') or ''))[:300]})
+    return out, None if out else '窗口内0条'
+
+
+# 国内官方栏目 / 全球 RSS：每条都作为独立深料源进入诊断与配额。
+NEW_RSS_SOURCES = (
+    ('中国政府网政策', 'https://www.gov.cn/pushinfo/v150203/rss.xml'),
+    ('CNBC Markets', 'https://www.cnbc.com/id/10001147/device/rss/rss.html'),
+    ('CNBC US', 'https://www.cnbc.com/id/100003114/device/rss/rss.html'),
+    ('CNBC Business', 'https://www.cnbc.com/id/15839069/device/rss/rss.html'),
+    ('WSJ Markets', 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml'),
+    ('MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories'),
+    ('Seeking Alpha', 'https://seekingalpha.com/feed.xml'),
+    ('美联储新闻', 'https://www.federalreserve.gov/feeds/press_all.xml'),
+    ('美国财政部', 'https://home.treasury.gov/rss.xml'),
+)
+NEW_HTML_SOURCES = (
+    ('证监会', 'http://www.csrc.gov.cn/csrc/c100028/common_list.shtml', ('c100028',)),
+    ('国家统计局', 'https://www.stats.gov.cn/sj/zxfb/', ('t20',)),
+    ('中国人民银行', 'http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html',
+     ('goutongjiaoliu',)),
+    ('财政部', 'https://www.mof.gov.cn/zhengwuxinxi/caizhengxinwen/', ('t20',)),
+)
+
+
 # 每个检索词对应参考稿里的一类「深度事实」。保留关键词本身，
 # 让模型知道这些是刻意查来的，而不是拼凑的快讯。
 DEEP_QUERY = (
@@ -514,7 +767,8 @@ def build_facts(slot, now_bj=None):
     pools = [('东财', news_em)]
     for name, fn in (('新浪7x24', grab_sina_flash), ('金十数据', grab_jin10_flash),
                      ('华尔街见闻', grab_wscn_flash), ('同花顺', grab_ths_flash),
-                     ('每日经济新闻', grab_nbd)):
+                     ('每日经济新闻', grab_nbd), ('财联社', grab_cls_flash),
+                     ('格隆汇', grab_gelonghui_flash)):
         try:
             rows, e = fn()
             step(name + '快讯', rows, e or ('%d 条' % len(rows)))
@@ -548,6 +802,45 @@ def build_facts(slot, now_bj=None):
             step('检索·' + qk, False, str(e)[:80])
     step('深度检索汇总', deep, '%d 篇' % len(deep))
 
+    # 新增 17 源里的 15 个深料源：公告/政策/RSS。单独诊断、单独配额，
+    # 失败不会中断整份报告；每源按自己的名字进 query，避免被热门检索词挤掉。
+    new_deep = []
+    def add_new_deep(rows, name):
+        n = 0
+        for x in rows or []:
+            y = dict(x)
+            y['query'] = '新源·' + name
+            # 深料统一用 title 字段，compact_facts 的 dedupe_events 按 title 取主键
+            y['title'] = y.get('title') or y.get('t') or ''
+            new_deep.append(y)
+            n += 1
+        return n
+
+    for name, fn in (('巨潮公告', grab_cninfo_announcements),
+                     ('上交所公告', grab_sse_announcements)):
+        try:
+            rows, e = fn()
+            n = add_new_deep(rows, name)
+            step('新源·' + name, n, e or ('%d 篇' % n))
+        except Exception as e:
+            step('新源·' + name, False, str(e)[:80])
+    for name, url in NEW_RSS_SOURCES:
+        try:
+            rows, e = grab_rss(url, name, 30)
+            n = add_new_deep(rows, name)
+            step('新源·' + name, n, e or ('%d 篇' % n))
+        except Exception as e:
+            step('新源·' + name, False, str(e)[:80])
+    for name, url, href_kw in NEW_HTML_SOURCES:
+        try:
+            rows, e = grab_html_list(url, name, 30, href_kw=href_kw)
+            n = add_new_deep(rows, name)
+            step('新源·' + name, n, e or ('%d 篇' % n))
+        except Exception as e:
+            step('新源·' + name, False, str(e)[:80])
+    deep.extend(new_deep)
+    step('新增深料源汇总', new_deep, '%d 篇' % len(new_deep))
+
     diag['missing'].append('美债10年期收益率（东财/新浪公开接口均无返回，已从正文剔除）')
 
     return {'quotes': q, 'futures': fut, 'usd': usd, 'turnover': spot,
@@ -576,7 +869,7 @@ def rank_deep(rows, cap=200):
                 + min(len(x.get('sum') or ''), 500) // 100)
 
     ranked = sorted(rows, key=score, reverse=True)
-    # 主题配额：每个检索词最多 8 篇，保证 24 个维度都有素材进来，不被热门词刷屏
+    # 主题配额：每个检索词/新源最多 8 篇，保证各维度都有素材进来，不被热门词刷屏
     quota, out = {}, []
     for x in ranked:
         q = x.get('query', '')
@@ -709,7 +1002,7 @@ def compact_facts(f, slot):
                     '日期': ev['main'].get('date', ''),
                     '来源': '/'.join(ev['sources'][:3]) + ('等%d源' % ev['n'] if ev['n'] > 3 else ''),
                     '标题': ev['main']['title'], '内容': (ev['main'].get('sum') or '')[:260]}
-                   for ev in dedupe_events(rank_deep(f.get('deep') or [], 260),
+                   for ev in dedupe_events(rank_deep(f.get('deep') or [], 400),
                                            'title', cap=120)],
         '昨日滚动观点': f.get('rolling') or {},
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
