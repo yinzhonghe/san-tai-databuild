@@ -329,6 +329,78 @@ def grab_wscn_flash(limit=60):
     return out, None
 
 
+def grab_em_search(keyword, limit=8, days=3):
+    """东财全站文章检索：用来补「昨晚/上周五」的深度事实。
+
+    快讯源只有最近几小时，而参考稿的高价值数字（CME 加息概率、费半周跌幅、
+    DRAM/NAND 合约价、券商策略）大多出现在前一两天的文章里。这里按关键词
+    定向检索，把命中文章的标题+正文摘要接进事实包。
+    """
+    p = {'uid': '', 'keyword': keyword, 'type': ['cmsArticleWebOld'], 'client': 'web',
+         'clientType': 'web', 'clientVersion': 'curr',
+         'param': {'cmsArticleWebOld': {'searchScope': 'default', 'sort': 'time',
+                                        'pageIndex': 1, 'pageSize': limit,
+                                        'preTag': '', 'postTag': ''}}}
+    url = ('https://search-api-web.eastmoney.com/search/jsonp?cb=cb&param='
+           + urllib.parse.quote(json.dumps(p, ensure_ascii=False)))
+    body, ms, err = fetch(url, 'https://so.eastmoney.com/')
+    if err or not body:
+        return [], err
+    s = body.decode('utf-8', 'ignore')
+    i, j = s.find('('), s.rfind(')')
+    if i < 0 or j < 0:
+        return [], 'jsonp 结构变化'
+    try:
+        j2 = json.loads(s[i + 1:j])
+        rows = (j2.get('result') or {}).get('cmsArticleWebOld') or []
+    except Exception as e:
+        return [], 'parse: %s' % e
+    out = []
+    cutoff = time.time() - days * 86400
+    for x in rows:
+        date = x.get('date') or ''
+        content = clean_flash(x.get('content'))
+        if len(content) < 25:
+            continue
+        out.append({'title': clean_flash(x.get('title')), 'date': date,
+                    'sum': content[:500], 'src': '东财检索'})
+    return out[:limit], None
+
+
+def grab_ths_flash(limit=100):
+    """同花顺滚动资讯：券商研报、政策细节、产业价格，比快讯源深一层。"""
+    url = ('https://news.10jqka.com.cn/tapp/news/push/stock/'
+           '?page=1&tag=&track=website&pagesize=%d' % limit)
+    j, err = get_json(url, 'https://news.10jqka.com.cn/', 20)
+    if err or not j:
+        return [], err
+    rows = (j.get('data') or {}).get('list') or []
+    out = []
+    for x in rows:
+        txt = clean_flash(x.get('digest') or x.get('title'))
+        if len(txt) < 20:
+            continue
+        src = x.get('source') or '同花顺'
+        out.append({'t': (x.get('title') or txt)[:60], 'time': hhmm_of(x.get('rtime') or x.get('ctime')),
+                    'sum': txt[:500], 'src': src if src in ('财联社', '证券时报', '上海证券报', '新华社', '中国基金报') else '同花顺',
+                    'important': 1 if (x.get('import') or x.get('field')) else 0})
+    return out[:limit], None
+
+
+# 每个检索词对应参考稿里的一类「深度事实」。保留关键词本身，
+# 让模型知道这些是刻意查来的，而不是拼凑的快讯。
+DEEP_QUERY = (
+    '美联储12月加息概率 CME',
+    '费城半导体指数 跌幅 周',
+    'DRAM NAND 合约价 集邦',
+    '英伟达 SEC 审查 新加坡',
+    '融资保证金 80% 降费 亿',
+    '主动ETF 360亿 上市',
+    '十大券商 周策略 不必悲观',
+    'A股 上周五 收盘 成交额 低点',
+)
+
+
 HOT_KW = ('美联储', '加息', '降息', '英伟达', '央行', 'A股', '沪指', 'ETF', '存储',
           'DRAM', 'NAND', '油价', '黄金', '关税', '政策', 'MLF', '逆回购', '半导体',
           'AI', '机器人', '出口', 'CPI', 'PCE', 'FOMC', '证监会', '财政部', '国债',
@@ -400,10 +472,10 @@ def build_facts(slot, now_bj=None):
     news_em = grab_news()
     step('东财7x24快讯', news_em, '%d 条' % len(news_em))
 
-    # 多源全文快讯：东财标题 + 新浪/金十/见闻全文，按信息量挑 48 条
+    # 多源全文快讯：东财标题 + 新浪/金十/见闻/同花顺全文，按信息量挑 48 条
     pools = [('东财', news_em)]
     for name, fn in (('新浪7x24', grab_sina_flash), ('金十数据', grab_jin10_flash),
-                     ('华尔街见闻', grab_wscn_flash)):
+                     ('华尔街见闻', grab_wscn_flash), ('同花顺', grab_ths_flash)):
         try:
             rows, e = fn()
             step(name + '快讯', rows, e or ('%d 条' % len(rows)))
@@ -413,11 +485,35 @@ def build_facts(slot, now_bj=None):
     news = curate_news(pools, 48)
     step('多源快讯汇总', news, '%d 条（已按信息量筛选）' % len(news))
 
+    # 定向检索：参考稿的核心竞争力是「昨晚/上周五」的深度事实（CME 概率、
+    # 费半周跌幅、DRAM/NAND 合约价、券商策略、政策细节），这些不在当天的快讯里。
+    # 用 8 组关键词从东财文章库里补，单独放一个字段，避免被快讯的 48 条上限挤掉。
+    deep, seen_deep = [], set()
+    for qk in DEEP_QUERY:
+        try:
+            rows, e = grab_em_search(qk, limit=6)
+            if e:
+                step('检索·' + qk, False, e)
+                continue
+            added = 0
+            for x in rows:
+                key = re.sub(r'[^\u4e00-\u9fa5A-Za-z0-9]', '', x['title'])[:30]
+                if not key or key in seen_deep:
+                    continue
+                seen_deep.add(key)
+                x['query'] = qk
+                deep.append(x)
+                added += 1
+            step('检索·' + qk, added, '%d 篇' % added)
+        except Exception as e:
+            step('检索·' + qk, False, str(e)[:80])
+    step('深度检索汇总', deep, '%d 篇' % len(deep))
+
     diag['missing'].append('美债10年期收益率（东财/新浪公开接口均无返回，已从正文剔除）')
 
     return {'quotes': q, 'futures': fut, 'usd': usd, 'turnover': spot,
             'breadth': breadth, 'sectors_top': top, 'sectors_bottom': bottom,
-            'news': news}, diag
+            'news': news, 'deep': deep}, diag
 
 
 def compact_facts(f, slot):
@@ -445,6 +541,11 @@ def compact_facts(f, slot):
         '快讯': [{'时间': hhmm_of(n['time']), '来源': n.get('src') or '东财7x24',
                    '标题': n['t'], '全文': n['sum'][:400]}
                   for n in f['news'][:48]],
+        # 定向检索来的深度事实：参考稿里的费半周跌幅、CME 加息概率、DRAM/NAND
+        # 合约价、券商周策略都出自这里，必须和快讯分开列，否则模型会当成噪音忽略。
+        '深度资料': [{'检索词': x.get('query', ''), '日期': x.get('date', ''),
+                    '来源': x.get('src', ''), '标题': x['title'], '内容': x['sum'][:500]}
+                   for x in (f.get('deep') or [])[:36]],
         '昨日滚动观点': f.get('rolling') or {},
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
                 '美债收益率等未提供项不要提及。「昨日滚动观点」里的主线要滚动修订，'
@@ -466,7 +567,11 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
 4. 禁止套话：不要反复写「传导至 A 股XX板块」「显示抗跌性」「关注后续进展」。
    要写具体的人、机构、日期、价格、政策名，以及它们之间的因果。
 5. 至少 5 条 news 的 long 里点名来源（金十数据 / 财联社 / 新浪7x24 / 华尔街见闻 / 东财7x24 等）。
-6. 只输出 JSON，不要 markdown 代码块，不要解释文字。
+6. 「深度资料」是按关键词专门检索来的前一两天的硬事实（CME 加息概率、费半周跌幅、
+    DRAM/NAND 合约价、券商周策略、政策细节等）。**必须至少引用其中 4 个数字**，
+    并写明出处机构（CME / 集邦 / 中信证券 / 新华社 等）。这些是拉开质量差距的关键，
+    不要用快讯里的泛泛表述替代它们。
+7. 只输出 JSON，不要 markdown 代码块，不要解释文字。
 
 【输出结构】
 {
@@ -488,9 +593,14 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
   每层都要有具体数字、机构观点、以及受益/受害的板块分层。
 - 第三段「方向排序：做谁、躲谁」：点名 2–3 个最顺方向（政策直接给钱的、资金已经在买的、
   事件脉冲的），再点名 1–2 个要躲的方向，都要说不追高的理由。
-- 第四段「中期时间轴与盘后关注」：先给未来 1–3 个月的关键日期节点（从快讯里找真实日期，
-  如 FOMC、PCE、会议、财报、政策生效日），再给三情景区间（乐观/中性/悲观，各带点位区间与触发条件），
-  最后列今日盘后到明晨要盯的 3–5 件事。这一段就是参考包的「大盘时间轴推演」。
+- 第四段「中期时间轴与盘后关注」必须包含三块，缺一不可：
+  ① **中期预测表浓缩**：挑 2–3 个重大事件，每个写成「事件 → 历史参照（过去同类周期股市怎么走）
+     → 未来 1–3 个月板块影响 → 关键时间节点」。例如存储周期要写 DRAM 强 / NAND 弱的剪刀差、
+     2017/2021 涨价周期的股价表现、12 月合约价与答辩日期。
+  ② **四阶段大盘时间轴**：按「未来两周 / 12 月上旬 / 12 月中下旬 / 次年 1–3 月」四段推演，
+     每段有明确的事件驱动与操作重心，不要笼统说「继续观察」。
+  ③ **三情景区间**：乐观 / 中性 / 悲观各给点位区间与触发条件（点位可作条件位，不得冒充已发生）。
+  最后列今日盘后到明晨要盯的 3–5 件事（带具体时间）。
 
 【滚动要求】
 事实包里的「昨日滚动观点」是昨天同一时段的判断。把其中的主线、时间节点、三情景
@@ -498,7 +608,11 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
 不要整段照抄，也不要当成不存在。
 
 【其余字段】
-- oneLine 90–150 字：整体判断（守什么、等什么）+ 对立方阵 + 条件→行动。
+- oneLine 150–280 字，必须写成参考稿那种「胜负手」结构：
+  「总判断（对立方阵，如外围撕裂：期指送暖、韩股先杀）＋利空一侧的具体数字＋
+  对冲一侧的具体数字＋今天大概率怎么开＋**胜负手：某点位承接与量能（从 X 回到 Y）
+  是全天关键，条件 A 就做 B，条件 C 就当脉冲**」。不要写「控仓避险为主」这种
+  没有触发条件的空结论。数字尽量用深度资料里的硬数字（如 91.4%、27.58 亿、360 亿、3500.83）。
 - bulls / bears 各 4–6 条，每条 40–70 字，「事实（带数字、带来源或机构）+ 传导路径」。
 - weigh 120–200 字：先说谁决定开盘，再说谁决定跌不深，末句「所以判断是 X，不是 Y」。
 - news 10–11 条（不足就按实际条数），long 100–160 字：发生了什么 + 关键数字 + 对板块的影响，
@@ -893,8 +1007,17 @@ def style_issues(c):
     src_hits = sum(1 for k in ('金十', '财联社', '新浪7x24', '华尔街见闻', '东财7x24') if k in text)
     if src_hits < 3:
         issues.append('只点名了 %d 个资讯来源（要至少 3 个）' % src_hits)
-    if pts and not any(k in pts[-1] for k in ('情景', '时间轴', 'FOMC', 'PCE', '中央经济', '会议')):
-        issues.append('第四段缺中期时间轴 / 三情景')
+    if pts:
+        last = pts[-1]
+        if not all(k in last for k in ('乐观', '中性', '悲观')):
+            issues.append('第四段缺三情景（乐观/中性/悲观）')
+        if not any(k in last for k in ('历史参照', '2017', '2021', '上轮', '上一轮')):
+            issues.append('第四段缺中期预测表的历史参照')
+        if not any(k in last for k in ('12月', '12 月', '次年', '1–3月', '1-3月')):
+            issues.append('第四段缺四阶段时间轴（12月/次年1-3月）')
+    one = str(c.get('oneLine') or '')
+    if len(one) < 150 or not any(k in one for k in ('胜负手', '关键', '如果', '若', '站稳', '跌破')):
+        issues.append('一句话太短或没有胜负手条件句')
     return issues
 
 
