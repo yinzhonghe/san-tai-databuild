@@ -713,9 +713,11 @@ def unmatched_numbers(content, facts):
             v = float(s)
         except Exception:
             continue
-        # 整百且 ≥1000 的整数只可能是「整数关口/目标位/条件位」（3500 点、6000 亿），
-        # 不是测量值，任何一只票的真实数据都不会恰好是整百，所以放行，避免误杀。
-        if abs(v) >= 1000 and abs(v) % 100 == 0:
+        # 整十且 ≥1000 的整数只可能是「整数关口/目标位/情景区间端点」
+        # （3500 点、3480—3580、6000 亿），不是测量值，放行避免误杀。
+        # 2026-11-23 试跑：3480/3450/3550 这种情景端点被判无出处，
+        # 差点把 1700 字的好稿整篇退回模板。
+        if abs(v) >= 1000 and abs(v) % 10 == 0:
             continue
         # 年份不是行情数据。参考包式稿子必然写 2027Q1、2030 年展望，
         # 这些年份在事实包里未必出现，不能因此把整篇好稿毙掉。
@@ -1006,12 +1008,12 @@ def main():
     if not content or len(unverified) > 12:
         print('[兜底] 模型不可用或数字仍不可溯源（%d 个），改用模板生成。原因：%s'
               % (len(unverified), verr or '有数字在事实包里找不到出处'))
-    elif unverified:
-        print('[告警] 保留模型稿，但仍有 %d 个数字未在事实包命中：%s'
-              % (len(unverified), ', '.join(unverified[:20])))
         content = template_report(facts_raw, args.slot, diag)
         model = 'template-fallback'
         unverified = []
+    elif unverified:
+        print('[告警] 保留模型稿，但仍有 %d 个数字未在事实包命中：%s'
+              % (len(unverified), ', '.join(unverified[:20])))
 
     content = normalize_content(content)
     content['at'] = hhmm
