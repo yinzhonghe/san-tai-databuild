@@ -1,6 +1,7 @@
-[模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-4.7,glm-4.7-flash,glm-4-flash
-[模型] glm-4.7 成功（33700 ms，正文 4201 字，思考 0 tokens）
-[生成] slot=close date=2026-11-20 at=16:05 model=glm-4.7 长度=10336 字节
-[质量] 利多 6 / 利空 6 / 要点 4 / 新闻 7
-[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "14222 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "5931 家"}, {"name": "行业板块", "ok": true, "note": "8 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}]
+[模型] 通道=zhipu 端点=https://open.bigmodel.cn/api/paas/v4/chat/completions 候选=glm-5.3-flash,glm-4.7,glm-4.7-flash
+[模型] glm-5.3-flash 失败：TimeoutError: The read operation timed out 
+[模型] glm-4.7 成功（30701 ms，正文 4645 字，思考 0 tokens）
+[生成] slot=morning date=2026-11-23 at=08:10 model=glm-4.7 长度=5180 字节
+[质量] 利多 6 / 利空 6 / 要点 4 / 新闻 8
+[诊断] [{"name": "腾讯行情(A股/美股/港股)", "ok": true, "note": "9 个代码"}, {"name": "新浪外盘期货(A50/金/银/油/铜)", "ok": true, "note": "5 个"}, {"name": "东财美元指数", "ok": true, "note": ""}, {"name": "沪深成交额", "ok": true, "note": "14222 亿"}, {"name": "涨跌家数(全市场)", "ok": true, "note": "1631 家"}, {"name": "行业板块", "ok": false, "note": "0 个"}, {"name": "东财7x24快讯", "ok": true, "note": "60 条"}]
 [推送] daily.js -> OK 
