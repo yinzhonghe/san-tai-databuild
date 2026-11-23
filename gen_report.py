@@ -329,75 +329,112 @@ def grab_wscn_flash(limit=60):
     return out, None
 
 
-def grab_em_search(keyword, limit=8, days=3):
+def grab_em_search(keyword, limit=20, days=3, pages=2):
     """东财全站文章检索：用来补「昨晚/上周五」的深度事实。
 
     快讯源只有最近几小时，而参考稿的高价值数字（CME 加息概率、费半周跌幅、
     DRAM/NAND 合约价、券商策略）大多出现在前一两天的文章里。这里按关键词
     定向检索，把命中文章的标题+正文摘要接进事实包。
+
+    多页翻取，不设人为上限：limit 是每页条数、pages 是翻几页，底料宁多勿少。
     """
-    p = {'uid': '', 'keyword': keyword, 'type': ['cmsArticleWebOld'], 'client': 'web',
-         'clientType': 'web', 'clientVersion': 'curr',
-         'param': {'cmsArticleWebOld': {'searchScope': 'default', 'sort': 'time',
-                                        'pageIndex': 1, 'pageSize': limit,
-                                        'preTag': '', 'postTag': ''}}}
-    url = ('https://search-api-web.eastmoney.com/search/jsonp?cb=cb&param='
-           + urllib.parse.quote(json.dumps(p, ensure_ascii=False)))
-    body, ms, err = fetch(url, 'https://so.eastmoney.com/')
+    out = []
+    for page in range(1, pages + 1):
+        p = {'uid': '', 'keyword': keyword, 'type': ['cmsArticleWebOld'], 'client': 'web',
+             'clientType': 'web', 'clientVersion': 'curr',
+             'param': {'cmsArticleWebOld': {'searchScope': 'default', 'sort': 'time',
+                                            'pageIndex': page, 'pageSize': limit,
+                                            'preTag': '', 'postTag': ''}}}
+        url = ('https://search-api-web.eastmoney.com/search/jsonp?cb=cb&param='
+               + urllib.parse.quote(json.dumps(p, ensure_ascii=False)))
+        body, ms, err = fetch(url, 'https://so.eastmoney.com/')
+        if err or not body:
+            if page == 1:
+                return [], err
+            break
+        s = body.decode('utf-8', 'ignore')
+        i, j = s.find('('), s.rfind(')')
+        if i < 0 or j < 0:
+            break
+        try:
+            j2 = json.loads(s[i + 1:j])
+            rows = (j2.get('result') or {}).get('cmsArticleWebOld') or []
+        except Exception:
+            break
+        if not rows:
+            break
+        for x in rows:
+            date = x.get('date') or ''
+            content = clean_flash(x.get('content'))
+            if len(content) < 25:
+                continue
+            out.append({'title': clean_flash(x.get('title')), 'date': date,
+                        'sum': content[:500], 'src': '东财检索'})
+    return out, None
+
+
+def grab_ths_flash(limit=100, pages=3):
+    """同花顺滚动资讯：券商研报、政策细节、产业价格，比快讯源深一层。多页翻取。"""
+    out = []
+    for page in range(1, pages + 1):
+        url = ('https://news.10jqka.com.cn/tapp/news/push/stock/'
+               '?page=%d&tag=&track=website&pagesize=%d' % (page, limit))
+        j, err = get_json(url, 'https://news.10jqka.com.cn/', 20)
+        if err or not j:
+            break
+        rows = (j.get('data') or {}).get('list') or []
+        if not rows:
+            break
+        for x in rows:
+            txt = clean_flash(x.get('digest') or x.get('title'))
+            if len(txt) < 20:
+                continue
+            src = x.get('source') or '同花顺'
+            out.append({'t': (x.get('title') or txt)[:60],
+                        'time': hhmm_of(x.get('rtime') or x.get('ctime')),
+                        'sum': txt[:500],
+                        'src': src if src in ('财联社', '证券时报', '上海证券报', '新华社', '中国基金报') else '同花顺',
+                        'important': 1 if (x.get('import') or x.get('field')) else 0})
+    return out, None
+
+
+def grab_nbd(limit=60):
+    """每日经济新闻：列表页是静态 HTML，能直接解析文章标题+链接。"""
+    body, ms, err = fetch('https://www.nbd.com.cn/', 'https://www.nbd.com.cn/')
     if err or not body:
         return [], err
     s = body.decode('utf-8', 'ignore')
-    i, j = s.find('('), s.rfind(')')
-    if i < 0 or j < 0:
-        return [], 'jsonp 结构变化'
-    try:
-        j2 = json.loads(s[i + 1:j])
-        rows = (j2.get('result') or {}).get('cmsArticleWebOld') or []
-    except Exception as e:
-        return [], 'parse: %s' % e
-    out = []
-    cutoff = time.time() - days * 86400
-    for x in rows:
-        date = x.get('date') or ''
-        content = clean_flash(x.get('content'))
-        if len(content) < 25:
+    pairs = re.findall(r'href="(https?://www\.nbd\.com\.cn/articles/[^"]+\.html)"[^>]*>\s*([^<]{12,120})<', s)
+    seen, out = set(), []
+    for url, title in pairs:
+        t = clean_flash(title)
+        key = re.sub(r'[^\u4e00-\u9fa5A-Za-z0-9]', '', t)[:30]
+        if not key or key in seen:
             continue
-        out.append({'title': clean_flash(x.get('title')), 'date': date,
-                    'sum': content[:500], 'src': '东财检索'})
-    return out[:limit], None
-
-
-def grab_ths_flash(limit=100):
-    """同花顺滚动资讯：券商研报、政策细节、产业价格，比快讯源深一层。"""
-    url = ('https://news.10jqka.com.cn/tapp/news/push/stock/'
-           '?page=1&tag=&track=website&pagesize=%d' % limit)
-    j, err = get_json(url, 'https://news.10jqka.com.cn/', 20)
-    if err or not j:
-        return [], err
-    rows = (j.get('data') or {}).get('list') or []
-    out = []
-    for x in rows:
-        txt = clean_flash(x.get('digest') or x.get('title'))
-        if len(txt) < 20:
-            continue
-        src = x.get('source') or '同花顺'
-        out.append({'t': (x.get('title') or txt)[:60], 'time': hhmm_of(x.get('rtime') or x.get('ctime')),
-                    'sum': txt[:500], 'src': src if src in ('财联社', '证券时报', '上海证券报', '新华社', '中国基金报') else '同花顺',
-                    'important': 1 if (x.get('import') or x.get('field')) else 0})
-    return out[:limit], None
+        seen.add(key)
+        out.append({'t': t[:60], 'time': '', 'sum': t, 'src': '每日经济新闻', 'url': url})
+        if len(out) >= limit:
+            break
+    return out, None
 
 
 # 每个检索词对应参考稿里的一类「深度事实」。保留关键词本身，
 # 让模型知道这些是刻意查来的，而不是拼凑的快讯。
 DEEP_QUERY = (
-    '美联储12月加息概率 CME',
-    '费城半导体指数 跌幅 周',
-    'DRAM NAND 合约价 集邦',
-    '英伟达 SEC 审查 新加坡',
-    '融资保证金 80% 降费 亿',
-    '主动ETF 360亿 上市',
-    '十大券商 周策略 不必悲观',
-    'A股 上周五 收盘 成交额 低点',
+    # 外围与货币政策
+    '美联储12月加息概率 CME', 'FOMC 会议纪要 点阵图', '美国 PCE CPI 通胀 预期',
+    '美债收益率 美元指数 走势', '费城半导体指数 跌幅 周', '纳指 标普 道指 收盘',
+    '特朗普 关税 美联储 政策',
+    # 产业主线
+    'DRAM NAND 合约价 集邦', '存储芯片 美光 海力士 三星', '英伟达 SEC 审查 新加坡',
+    'AI 算力 资本开支 泡沫', '光模块 PCB 出海 订单', '油价 OPEC 地缘 红海',
+    '黄金 白银 走势 避险',
+    # 国内政策与资金
+    '融资保证金 80% 降费 亿', '主动ETF 360亿 上市', '央行 逆回购 MLF 净投放',
+    '十大券商 周策略 不必悲观', '证监会 稳市 政策 组合拳', 'ETF 净申购 宽基 资金',
+    # A股盘面与结构
+    'A股 上周五 收盘 成交额 低点', '沪指 3500 支撑 量能', '两融余额 杠杆资金 流出',
+    '板块 涨跌 领涨 领跌', '个股 解禁 业绩预告', '北向资金 外资 A股',
 )
 
 
@@ -472,26 +509,28 @@ def build_facts(slot, now_bj=None):
     news_em = grab_news()
     step('东财7x24快讯', news_em, '%d 条' % len(news_em))
 
-    # 多源全文快讯：东财标题 + 新浪/金十/见闻/同花顺全文，按信息量挑 48 条
+    # 多源全文快讯：东财/新浪/金十/见闻/同花顺/每经，不设人为上限。
+    # 底料宁多勿少——判断准不准取决于素材充分不充分，不是靠模型凭空发挥。
     pools = [('东财', news_em)]
     for name, fn in (('新浪7x24', grab_sina_flash), ('金十数据', grab_jin10_flash),
-                     ('华尔街见闻', grab_wscn_flash), ('同花顺', grab_ths_flash)):
+                     ('华尔街见闻', grab_wscn_flash), ('同花顺', grab_ths_flash),
+                     ('每日经济新闻', grab_nbd)):
         try:
             rows, e = fn()
             step(name + '快讯', rows, e or ('%d 条' % len(rows)))
             pools.append((name, rows))
         except Exception as e:
             step(name + '快讯', False, str(e)[:80])
-    news = curate_news(pools, 48)
-    step('多源快讯汇总', news, '%d 条（已按信息量筛选）' % len(news))
+    raw_news = curate_news(pools, 400)   # 汇总上限放宽到 400，交给下游分级取用
+    step('多源快讯汇总', raw_news, '%d 条（已按信息量筛选）' % len(raw_news))
 
     # 定向检索：参考稿的核心竞争力是「昨晚/上周五」的深度事实（CME 概率、
     # 费半周跌幅、DRAM/NAND 合约价、券商策略、政策细节），这些不在当天的快讯里。
-    # 用 8 组关键词从东财文章库里补，单独放一个字段，避免被快讯的 48 条上限挤掉。
+    # 24 组关键词 × 每组 20 篇 × 2 页，不设人为上限，宁可多抓再由下游筛选。
     deep, seen_deep = [], set()
     for qk in DEEP_QUERY:
         try:
-            rows, e = grab_em_search(qk, limit=6)
+            rows, e = grab_em_search(qk, limit=20, pages=2)
             if e:
                 step('检索·' + qk, False, e)
                 continue
@@ -513,7 +552,41 @@ def build_facts(slot, now_bj=None):
 
     return {'quotes': q, 'futures': fut, 'usd': usd, 'turnover': spot,
             'breadth': breadth, 'sectors_top': top, 'sectors_bottom': bottom,
-            'news': news, 'deep': deep}, diag
+            'news': raw_news, 'deep': deep}, diag
+
+
+def rank_deep(rows, cap=200):
+    """深度文章太多放不进上下文，按信息密度与主题相关度打分取前 cap 篇。
+
+    打分依据（与参考稿写法对齐）：
+      - 数字越密越好（硬事实多）
+      - 命中宏观/产业/政策关键词越多越好
+      - 正文越长越好（有展开，不是标题党）
+      - 同一检索词下不只取一篇——24 组词都要有代表，避免全被某一个热门词刷屏
+    """
+    kws = ('加息', '降息', '概率', '指数', '收盘', '涨', '跌', '亿', '万亿', '%',
+           'DRAM', 'NAND', '存储', '合约价', '美联储', 'PCE', 'CPI', 'FOMC',
+           '融资', '降费', '保证金', 'ETF', '净申购', '两融', '逆回购', 'MLF',
+           '券商', '策略', '支撑', '压力', '点位', '成交', '解禁', '北向')
+
+    def score(x):
+        s = (x.get('title') or '') + ' ' + (x.get('sum') or '')
+        n = len(NUM_RE.findall(s))
+        return (min(n, 18) * 2 + sum(1 for k in kws if k in s) * 3
+                + min(len(x.get('sum') or ''), 500) // 100)
+
+    ranked = sorted(rows, key=score, reverse=True)
+    # 主题配额：每个检索词最多 8 篇，保证 24 个维度都有素材进来，不被热门词刷屏
+    quota, out = {}, []
+    for x in ranked:
+        q = x.get('query', '')
+        if quota.get(q, 0) >= 8:
+            continue
+        quota[q] = quota.get(q, 0) + 1
+        out.append(x)
+        if len(out) >= cap:
+            break
+    return out
 
 
 def compact_facts(f, slot):
@@ -538,14 +611,16 @@ def compact_facts(f, slot):
         '行业跌幅前8': f['sectors_bottom'][:8],
         # 全文 + 来源：参考包的高质量稿每条新闻都点名来源、带完整数字，
         # 砍成 160 字标题摘要只会逼出「XX 传导至 XX」的套话。
+        # 快讯取 100 条（7 个源汇总 400 条后按信息量排序），是之前的 2 倍。
         '快讯': [{'时间': hhmm_of(n['time']), '来源': n.get('src') or '东财7x24',
-                   '标题': n['t'], '全文': n['sum'][:400]}
-                  for n in f['news'][:48]],
+                   '标题': n['t'], '全文': n['sum'][:340]}
+                  for n in f['news'][:100]],
         # 定向检索来的深度事实：参考稿里的费半周跌幅、CME 加息概率、DRAM/NAND
-        # 合约价、券商周策略都出自这里，必须和快讯分开列，否则模型会当成噪音忽略。
+        # 合约价、券商周策略都出自这里。570 篇全塞会爆上下文，按「数字密度 ×
+        # 关键词命中」打分取前 140 篇，每条压到 260 字——底料充分但可读。
         '深度资料': [{'检索词': x.get('query', ''), '日期': x.get('date', ''),
-                    '来源': x.get('src', ''), '标题': x['title'], '内容': x['sum'][:500]}
-                   for x in (f.get('deep') or [])[:36]],
+                    '来源': x.get('src', ''), '标题': x['title'], '内容': x['sum'][:260]}
+                   for x in rank_deep(f.get('deep') or [], 140)],
         '昨日滚动观点': f.get('rolling') or {},
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
                 '美债收益率等未提供项不要提及。「昨日滚动观点」里的主线要滚动修订，'
