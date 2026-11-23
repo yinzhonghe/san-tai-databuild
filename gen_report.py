@@ -242,6 +242,130 @@ def grab_news(pages=4):
     return uniq[:60]
 
 
+# ---- 补充资讯源（2026-11-23 参照「A股每日新闻早报」自动化包改造）
+# 原事实包只有东财 7x24 的短标题，模型拿到的是一堆「发生了什么」的碎片，
+# 写出来的稿子只能是「XX 传导至 XX」的套话。参考包里的高质量稿靠的是
+# 金十 / 财联社 / 证券日报等多源全文。这里把三个无需 key 的公开源接进来，
+# 并保留全文（不再砍到 160 字），让模型有足够素材写因果链。
+TAG_RE = re.compile(r'<[^>]+>')
+TIME_RE = re.compile(r'(\d{1,2}:\d{2})')
+
+
+def hhmm_of(s):
+    """各源时间格式不一（HH:MM / YYYY-MM-DD HH:MM:SS / 时间戳），统一成 HH:MM。"""
+    m = TIME_RE.search(str(s or ''))
+    return m.group(1).zfill(5) if m else ''
+
+
+def clean_flash(s):
+    s = TAG_RE.sub('', str(s or ''))
+    s = s.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&quot;', '"')
+    return re.sub(r'\s+', ' ', s).strip()
+
+
+def grab_sina_flash(limit=60):
+    """新浪财经 7x24 全球实时财经快讯。"""
+    url = ('https://zhibo.sina.com.cn/api/zhibo/feed?page=1&page_size=%d'
+           '&zhibo_id=152&tag_id=0&dire=f&dpc=1' % limit)
+    j, err = get_json(url, 'https://finance.sina.com.cn/7x24/', 20)
+    if err or not j:
+        return [], err
+    try:
+        rows = j['result']['data']['feed']['list'] or []
+    except Exception:
+        return [], '结构变化'
+    out = []
+    for x in rows:
+        txt = clean_flash(x.get('rich_text'))
+        if len(txt) < 12:
+            continue
+        out.append({'t': txt[:60], 'time': hhmm_of(x.get('create_time')),
+                    'sum': txt[:400], 'src': '新浪7x24'})
+    return out, None
+
+
+def grab_jin10_flash(limit=60):
+    """金十数据快讯（js 变量 newest = [...]）。"""
+    body, ms, err = fetch('https://www.jin10.com/flash_newest.js', 'https://www.jin10.com/')
+    if err or not body:
+        return [], err
+    s = body.decode('utf-8', 'ignore')
+    try:
+        arr = json.loads(s[s.index('['):s.rindex(']') + 1])[:limit]
+    except Exception as e:
+        return [], 'parse: %s' % e
+    out = []
+    for x in arr:
+        d = x.get('data') or {}
+        txt = clean_flash(d.get('content') or d.get('title'))
+        if len(txt) < 12:
+            continue
+        out.append({'t': (d.get('title') or txt)[:60], 'time': hhmm_of(x.get('time')),
+                    'sum': txt[:400], 'src': '金十数据',
+                    'important': 1 if x.get('important') else 0})
+    return out, None
+
+
+def grab_wscn_flash(limit=60):
+    """华尔街见闻 7x24（content_text 是全文）。"""
+    url = ('https://api-one-wscn.awtmt.com/apiv1/content/lives'
+           '?channel=global-channel&client=pc&limit=%d' % limit)
+    j, err = get_json(url, 'https://wallstreetcn.com/live/global', 20)
+    if err or not j:
+        return [], err
+    rows = (j.get('data') or {}).get('items') or []
+    out = []
+    for x in rows:
+        txt = clean_flash(x.get('content_text') or x.get('title'))
+        if len(txt) < 12:
+            continue
+        try:
+            tm = time.strftime('%H:%M', time.localtime(float(x.get('display_time') or 0)))
+        except Exception:
+            tm = ''
+        out.append({'t': (x.get('title') or txt)[:60], 'time': tm,
+                    'sum': txt[:400], 'src': '华尔街见闻',
+                    'important': 1 if (x.get('score') or 0) >= 5 else 0})
+    return out, None
+
+
+HOT_KW = ('美联储', '加息', '降息', '英伟达', '央行', 'A股', '沪指', 'ETF', '存储',
+          'DRAM', 'NAND', '油价', '黄金', '关税', '政策', 'MLF', '逆回购', '半导体',
+          'AI', '机器人', '出口', 'CPI', 'PCE', 'FOMC', '证监会', '财政部', '国债',
+          '美债', '美元', '日经', '韩股', '解禁', '上市', '集采', '降费', '做市商')
+
+
+def curate_news(pools, cap=48):
+    """多源快讯去重 + 按信息量排序，挑出最值得写进正文的一批。
+
+    宁可少而精：模型上下文有限，塞 200 条碎片只会让它抓不到主线。
+    """
+    seen, out = set(), []
+    for src, rows in pools:
+        for x in rows or []:
+            key = re.sub(r'[^\u4e00-\u9fa5A-Za-z0-9]', '', x.get('sum', ''))[:38]
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            s = x.get('sum', '')
+            score = 0
+            if re.search(r'\d', s):
+                score += 2
+            if x.get('important'):
+                score += 2
+            score += sum(1 for k in HOT_KW if k in s)
+            if len(s) >= 80:
+                score += 1
+            x = dict(x)
+            x['_score'] = score
+            out.append(x)
+    out.sort(key=lambda a: (-a['_score'], a.get('time', '')), reverse=False)
+    # 时间倒序作为次级排序（字符串 HH:MM 可直接比）
+    out.sort(key=lambda a: a.get('time', ''), reverse=True)
+    out.sort(key=lambda a: -a['_score'])
+    return out[:cap]
+
+
 # ---------------------------------------------------------------- 组装事实
 def build_facts(slot, now_bj=None):
     """把能拿到的数据整理成一份「事实包」，同时记录进度与缺口。"""
@@ -261,7 +385,11 @@ def build_facts(slot, now_bj=None):
     step('东财美元指数', usd, '' if usd else '失败')
 
     spot, serr = grab_cn_spot()
-    step('沪深成交额', spot is not None, serr or ('%.0f 亿' % (spot or 0)))
+    # 东财偶发返回空 diff，折算出来是 0 亿——这不是「今日零成交」，是抓失败。
+    # 不能把 0 塞进事实包，否则模型会照抄一个不存在的数字。
+    if not spot or spot <= 0:
+        spot, serr = None, serr or '返回 0 亿（接口空数据）'
+    step('沪深成交额', spot is not None, serr or ('%.0f 亿' % spot))
 
     breadth, berr = grab_breadth()
     step('涨跌家数(全市场)', breadth, berr or ('%s 家' % (breadth or {}).get('total')))
@@ -269,8 +397,21 @@ def build_facts(slot, now_bj=None):
     top, bottom = grab_sectors()
     step('行业板块', top, '%d 个' % len(top))
 
-    news = grab_news()
-    step('东财7x24快讯', news, '%d 条' % len(news))
+    news_em = grab_news()
+    step('东财7x24快讯', news_em, '%d 条' % len(news_em))
+
+    # 多源全文快讯：东财标题 + 新浪/金十/见闻全文，按信息量挑 48 条
+    pools = [('东财', news_em)]
+    for name, fn in (('新浪7x24', grab_sina_flash), ('金十数据', grab_jin10_flash),
+                     ('华尔街见闻', grab_wscn_flash)):
+        try:
+            rows, e = fn()
+            step(name + '快讯', rows, e or ('%d 条' % len(rows)))
+            pools.append((name, rows))
+        except Exception as e:
+            step(name + '快讯', False, str(e)[:80])
+    news = curate_news(pools, 48)
+    step('多源快讯汇总', news, '%d 条（已按信息量筛选）' % len(news))
 
     diag['missing'].append('美债10年期收益率（东财/新浪公开接口均无返回，已从正文剔除）')
 
@@ -299,53 +440,71 @@ def compact_facts(f, slot):
         '涨跌家数': f['breadth'],
         '行业涨幅前8': f['sectors_top'][:8],
         '行业跌幅前8': f['sectors_bottom'][:8],
-        '快讯': [{'时间': n['time'][-5:], '标题': n['t'], '摘要': n['sum'][:160]}
-                 for n in f['news'][:60]],
+        # 全文 + 来源：参考包的高质量稿每条新闻都点名来源、带完整数字，
+        # 砍成 160 字标题摘要只会逼出「XX 传导至 XX」的套话。
+        '快讯': [{'时间': hhmm_of(n['time']), '来源': n.get('src') or '东财7x24',
+                   '标题': n['t'], '全文': n['sum'][:400]}
+                  for n in f['news'][:48]],
+        '昨日滚动观点': f.get('rolling') or {},
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
-                '美债收益率等未提供项不要提及。',
+                '美债收益率等未提供项不要提及。「昨日滚动观点」里的主线要滚动修订，'
+                '不要照抄；事件日期与节点可以引用。',
     }
     return out
 
 
 # ---------------------------------------------------------------- 写作提示
-SYSTEM = """你是 A 股盘面分析师，为一个给客户看的看盘网站写「三报」（早报/午间速览/收盘复盘）。
-读者是自己做决策的散户，要的是能落地的判断，不是复述新闻。
+SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写「三报」（早报 / 午间速览 / 收盘复盘）。
+参照物是一份长期维护的《A股每日新闻早报》：它的价值不在复述新闻，而在
+「把当天几条硬信息拆成因果链，说清哪个方向能做、哪个要躲、什么条件下改口」。
 
 【硬规则】
-1. 只使用用户消息里「事实包」提供的数字。禁止任何数据包里没有的数字、点位、涨跌幅、金额。
-   没有的品种（比如美债收益率）直接不提，不要写「数据缺失」「暂无」。
-2. 点位、涨跌幅、金额一律照抄事实包里的精确值（如 3511.11），
-   **禁止自行换算成整数关口或约数**（不要写「3500 点整数关口」「近 5200 只下跌」，
-   要写「3511.11 点」「5344 只下跌」）。四舍五入也算编数字。
-3. 禁止模糊词替代数字：「大幅下跌」「明显放量」「普遍走弱」这类一律不许单独出现，必须带数字。
-4. 判断要有方向、有条件：说清楚「什么情况下成立、什么情况下不成立」，不要两头都说。
-5. 只输出 JSON，不要 markdown 代码块，不要任何解释文字。
+1. 只使用事实包里出现的数字与事实。禁止编造点位、涨跌幅、金额、百分比。
+2. 精确数字照抄；整数关口、目标位、区间（如 3500 点、1.5 万亿、3620—3740）可以作为
+   「观察位 / 情景假设」使用，但必须写成条件句，不能冒充已发生的事实。
+3. 每个判断都要写清成立条件与失效条件。「谨慎乐观」「或将继续震荡」这类两头话一律不合格。
+4. 禁止套话：不要反复写「传导至 A 股XX板块」「显示抗跌性」「关注后续进展」。
+   要写具体的人、机构、日期、价格、政策名，以及它们之间的因果。
+5. 至少 5 条 news 的 long 里点名来源（金十数据 / 财联社 / 新浪7x24 / 华尔街见闻 / 东财7x24 等）。
+6. 只输出 JSON，不要 markdown 代码块，不要解释文字。
 
 【输出结构】
 {
  "verdict": "偏积极|偏消极|中性",
- "oneLine": "整体判断：…（守…，等…）。…。结论：…",
- "bulls": ["带数字的多头理由", …3-6条],
- "bears": ["带数字的空头理由", …3-6条],
- "weigh": "哪一侧作用于开盘价/当日走势，哪一侧决定跌不深，一句话讲清权重",
- "points": ["【一、判断式小标题】正文…", "【二、…】…", "【三、…】…", "【四、…】…"],
- "news": [{"t":"标题","d":"一句话","long":"2-3句展开，含数字","dir":"积极|消极|中性","lvl":"重要|中等|一般","sec":"影响板块"}],
- "watch": "今日关注：点位+数字+时间点，2-4 句"
+ "oneLine": "中性偏谨慎（一句话点出对立方阵）。……。结论：……",
+ "bulls": ["事实+数字+传导，40–70 字", …4-6条],
+ "bears": ["事实+数字+传导，40–70 字", …4-6条],
+ "weigh": "哪一侧作用于开盘/当日走势，哪一侧决定跌不深，最后一句「所以判断是 X，不是 Y」",
+ "points": ["【一、今天怎么开】…", "【二、主线要分两层看】…", "【三、方向排序：做谁、躲谁】…", "【四、中期时间轴与盘后关注】…"],
+ "news": [{"t":"标题","d":"一句话","long":"100–160字全文展开","dir":"积极|消极|中性","lvl":"重要|中等|一般","sec":"影响板块"}],
+ "watch": "① …；② …；③ …；④ …（每条带日期/时间点与可验证的数字）"
 }
 
-【各段的写法 · 字数是硬要求，写不够就是不合格】
-- points 必须四段，每段以【一、…】到【四、…】开头，**每段 250–400 字**，段内用「第一…第二…第三…」
-  把 3 件事串成因果链。每段至少 4 个精确数字，全文合计不少于 20 个。
-  不合格示例（看到这种就是没写完）：「午后市场延续跌势，指数跌破关键位，情绪偏弱，或将继续震荡。」
-- weigh **120–200 字**：先说哪一侧作用于当日走势（空头怎么砸的），再说哪一侧决定跌不深（多头靠什么接），
-  最后一句「所以判断是 X，不是 Y」。只写一句话（如「空头情绪决定跌不深」）算不合格。
-- oneLine **80–140 字**，按模板：整体判断（守一个位，等一个条件）+ 有画面感的对立方阵 + 结论（条件→行动）。
-- bulls/bears 各 3–6 条，**每条 40–70 字**，必须「事实（带数字）+ 传导路径」两段式。
-  不合格示例：「XX 板块涨幅居前，显示抗跌性。」——没有数字、没有传导路径。
-- news 5–8 条，**long 80–150 字**，必须取自事实包「快讯」，写清「发生了什么 + 数字 + 对哪个板块怎么传导」。
-- watch **3–5 条**，每条含具体点位或数字 + 时间段（如「13:00–13:30 开盘半小时」「14:30 尾盘」），
-  不是一句话打包。例：① 13:00 开盘半小时看成交额能否补到 9000 亿以上；② 3508 点得失……
-- verdict 只能取三个值之一，与 bulls/bears 的强弱一致，不要写「谨慎乐观」这种自造词。
+【四段 points 的写法（每段 250–400 字，硬要求）】
+- 第一段「今天怎么开」：先写外围与今晨发生了什么（指数、期指、亚太盘、商品），
+  再给开盘区间的条件判断，最后列 2–3 个对冲变量。用「第一…第二…第三…」串。
+- 第二段「主线要分两层看」：挑当日最重要的一条产业/政策主线，**必须拆成两层**
+  （例：治理折价 vs 产业需求；情绪冲击 vs 产业趋势；政策托底 vs 流动性到期）。
+  每层都要有具体数字、机构观点、以及受益/受害的板块分层。
+- 第三段「方向排序：做谁、躲谁」：点名 2–3 个最顺方向（政策直接给钱的、资金已经在买的、
+  事件脉冲的），再点名 1–2 个要躲的方向，都要说不追高的理由。
+- 第四段「中期时间轴与盘后关注」：先给未来 1–3 个月的关键日期节点（从快讯里找真实日期，
+  如 FOMC、PCE、会议、财报、政策生效日），再给三情景区间（乐观/中性/悲观，各带点位区间与触发条件），
+  最后列今日盘后到明晨要盯的 3–5 件事。这一段就是参考包的「大盘时间轴推演」。
+
+【滚动要求】
+事实包里的「昨日滚动观点」是昨天同一时段的判断。把其中的主线、时间节点、三情景
+拿出来对照今天的新事实：变了就改写并说明变化，没变可以保留但必须补充今天的新数据。
+不要整段照抄，也不要当成不存在。
+
+【其余字段】
+- oneLine 90–150 字：整体判断（守什么、等什么）+ 对立方阵 + 条件→行动。
+- bulls / bears 各 4–6 条，每条 40–70 字，「事实（带数字、带来源或机构）+ 传导路径」。
+- weigh 120–200 字：先说谁决定开盘，再说谁决定跌不深，末句「所以判断是 X，不是 Y」。
+- news 10–11 条（不足就按实际条数），long 100–160 字：发生了什么 + 关键数字 + 对板块的影响，
+  点名来源；不要 5 条就交差。
+- watch 4–5 条，每条带具体日期/时间点与可验证数字，不要一句话打包。
+- verdict 只能取三个值之一，与整体强弱一致。
 """
 
 
@@ -701,6 +860,73 @@ def write_remote(path, content_bytes, message, branch=None):
     return False, st2, err
 
 
+# ---------------------------------------------------------------- 风格门禁
+def style_issues(c):
+    """参考包最在意的是「有因果、有来源、有中期视角」，这里把它变成可判定的条件。"""
+    issues = []
+    pts = [str(x) for x in (c.get('points') or [])]
+    if len(pts) < 4:
+        issues.append('points 只有 %d 段（要 4 段）' % len(pts))
+    for i, p in enumerate(pts):
+        if len(p) < 220:
+            issues.append('第 %d 段只有 %d 字，太短' % (i + 1, len(p)))
+    news = c.get('news') or []
+    if len(news) < 8:
+        issues.append('news 只有 %d 条（要 10 条上下）' % len(news))
+    short = [i + 1 for i, n in enumerate(news) if len(str(n.get('long') or '')) < 90]
+    if short:
+        issues.append('新闻 %s 的展开不足 90 字' % short[:5])
+    text = json.dumps(c, ensure_ascii=False)
+    n_cliche = text.count('传导至')
+    if n_cliche > 4:
+        issues.append('「传导至」出现 %d 次，套话堆砌' % n_cliche)
+    src_hits = sum(1 for k in ('金十', '财联社', '新浪7x24', '华尔街见闻', '东财7x24') if k in text)
+    if src_hits < 3:
+        issues.append('只点名了 %d 个资讯来源（要至少 3 个）' % src_hits)
+    if pts and not any(k in pts[-1] for k in ('情景', '时间轴', 'FOMC', 'PCE', '中央经济', '会议')):
+        issues.append('第四段缺中期时间轴 / 三情景')
+    return issues
+
+
+# ---------------------------------------------------------------- 滚动观点
+# 参考包里最有价值的不是某一期的文字，而是「中期预测表 + 时间轴」逐日滚动修订。
+# 客户页不新增栏目，所以把这两块的精华压缩进 report_state.json，
+# 作为下一天的「昨日滚动观点」喂回提示词，让主线/时间节点连续，而不是每天从零开始。
+def read_rolling(slot):
+    raw, sha, err = read_remote('report_state.json')
+    if not raw:
+        return {}
+    try:
+        st = json.loads(raw.decode('utf-8'))
+    except Exception:
+        return {}
+    one = st.get(slot) or {}
+    pts = one.get('points') or []
+    out = {'date': st.get('date', ''), '判断': (one.get('oneLine') or '')[:180]}
+    if len(pts) >= 2:
+        out['主线分层'] = pts[1][:260]
+    if len(pts) >= 4:
+        out['时间轴三情景'] = pts[3][:320]
+    out['关注'] = (one.get('watch') or '')[:220]
+    return {k: v for k, v in out.items() if v}
+
+
+def make_rolling_state(old_state, slot, content, today):
+    """只留压缩后的滚动字段，避免 state 文件无限膨胀。"""
+    try:
+        st = json.loads(old_state.decode('utf-8')) if old_state else {}
+    except Exception:
+        st = {}
+    if st.get('date') != today:
+        st = {'date': today}
+    st[slot] = {
+        'verdict': content.get('verdict'),
+        'oneLine': (content.get('oneLine') or '')[:400],
+        'points': [(p or '')[:500] for p in (content.get('points') or [])],
+        'watch': (content.get('watch') or '')[:500],
+    }
+    return st
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -717,18 +943,30 @@ def main():
     hhmm = time.strftime('%H:%M', bj)
 
     facts_raw, diag = build_facts(args.slot)
+    # 滚动观点：昨天同一时段的主线分层与时间轴三情景，作为今天的修订起点
+    try:
+        rolling = read_rolling(args.slot)
+    except Exception as e:
+        rolling = {}
+        print('[滚动] 读取昨日观点失败：%s' % e)
+    if rolling:
+        diag['steps'].append({'name': '昨日滚动观点', 'ok': True,
+                              'note': 'date=%s' % rolling.get('date', '')})
+    facts_raw['rolling'] = rolling
     facts = compact_facts(facts_raw, args.slot)
 
     content, model, verr = call_model(facts, args.slot)
     unverified = []
+    issues = []
     if content:
         unverified = unmatched_numbers(content, facts)
         # 篇幅门禁：points 四段合计不足 800 字基本就是模型偷懒（实测弱模型只写 230 字），
         # 这种稿子发出去还不如不发，先让它重写一次
         thin = sum(len(p) for p in (content.get('points') or [])) < 800
+        issues = style_issues(content)
         # 只有「明显有问题」才重写：1–3 个未命中数字多数是「整数关口/目标位」这类合理表述，
         # 为它们重写一次要多花 4 分钟（5.x）并可能降级，不值得
-        if len(unverified) > 3 or thin:
+        if len(unverified) > 3 or thin or issues:
             note = []
             if unverified:
                 note.append('上一版有这些数字在事实包里找不到，必须删掉或换成包内的数字：%s'
@@ -736,18 +974,24 @@ def main():
             if thin:
                 note.append('上一版 points 四段合计不足 800 字，太短了。必须每段 250–400 字，'
                             '用「第一…第二…第三…」串因果链，每段至少 4 个精确数字，写满。')
-            print('[校验] 需要重写：无出处数字 %d 个；points 合计 %d 字'
-                  % (len(unverified), sum(len(p) for p in (content.get('points') or []))))
+            if issues:
+                note.append('上一版写作不合格：%s。请按提示词重写，尤其是四段结构、'
+                            '主线分两层、新闻点名来源、第四段中期时间轴三情景。'
+                            % '；'.join(issues[:8]))
+            print('[校验] 需要重写：无出处数字 %d 个；points 合计 %d 字；风格问题 %d 项'
+                  % (len(unverified), sum(len(p) for p in (content.get('points') or [])), len(issues)))
             content2, model2, _ = call_model(facts, args.slot, '；'.join(note), prefer_fast=True)
             if content2:
                 u2 = unmatched_numbers(content2, facts)
                 t2 = sum(len(p) for p in (content2.get('points') or []))
                 t1 = sum(len(p) for p in (content.get('points') or []))
+                i2 = style_issues(content2)
                 # 重写轮用快速档，篇幅可能短一点（实测 4.7 比 5.3 少约 5%），
-                # 只要没短过 70% 且数字更干净就采用，否则会白白退回模板稿
-                if len(u2) <= len(unverified) and t2 >= t1 * 0.7:
-                    content, model, unverified = content2, model2, u2
-                    print('[校验] 重写后：剩 %d 个无出处数字，points %d 字' % (len(u2), t2))
+                # 只要没短过 70%、数字更干净、风格问题不更多就采用，否则会白白退回模板稿
+                if (len(u2) <= len(unverified) and t2 >= t1 * 0.7 and len(i2) <= len(issues)):
+                    content, model, unverified, issues = content2, model2, u2, i2
+                    print('[校验] 重写后：剩 %d 个无出处数字，points %d 字，风格问题 %d 项'
+                          % (len(u2), t2, len(i2)))
     if not content or len(unverified) > 3:
         print('[兜底] 模型不可用或数字仍不可溯源（%d 个），改用模板生成。原因：%s'
               % (len(unverified), verr or '有数字在事实包里找不到出处'))
@@ -757,9 +1001,13 @@ def main():
 
     content = normalize_content(content)
     content['at'] = hhmm
+    # 参考包每期一句话末尾都标数据截止时间。由代码补写，避免模型写错时间。
+    stamp = '数据截至 %s %s。' % (today, hhmm)
+    if stamp not in (content.get('oneLine') or ''):
+        content['oneLine'] = (content.get('oneLine') or '').rstrip() + stamp
     payload = {'date': today, 'slot': args.slot, 'report': content,
                'diagnostics': diag, 'model': model, 'unverified': unverified,
-               'generated_at': '%s %s' % (today, hhmm)}
+               'style_issues': issues, 'generated_at': '%s %s' % (today, hhmm)}
 
     # 读取旧 daily.js 并合并
     old_bytes, sha, rerr = read_remote('daily.js')
@@ -797,6 +1045,13 @@ def main():
     if ok:
         write_remote('report-meta.json', json.dumps(payload, ensure_ascii=False, indent=1).encode(),
                      'report(%s): meta %s' % (args.slot, today))
+        # 滚动观点只在正文真正上线后才更新，避免失败稿污染下一天
+        old_state_raw, _, _ = read_remote('report_state.json')
+        st_state = make_rolling_state(old_state_raw, args.slot, content, today)
+        sok, _, serr = write_remote('report_state.json',
+                                    json.dumps(st_state, ensure_ascii=False, indent=1).encode(),
+                                    'report(%s): rolling state %s' % (args.slot, today))
+        print('[推送] report_state.json -> %s %s' % ('OK' if sok else 'FAIL(%s)' % serr, serr))
     return 0 if ok else 1
 
 
