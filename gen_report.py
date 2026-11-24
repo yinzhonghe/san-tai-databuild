@@ -1509,7 +1509,11 @@ def style_issues(c, slot='morning'):
         if not any(k in last for k in ('12月', '12 月', '次年', '1–3月', '1-3月')):
             issues.append('第四段缺四阶段时间轴（12月/次年1-3月）')
     one = str(c.get('oneLine') or '')
-    if len(one) < 150 or not any(k in one for k in ('胜负手', '关键', '如果', '若', '站稳', '跌破')):
+    # 代码会在 normalize 后追加「数据截至 ...」约 25 字，门禁在追加前跑，
+    # 收盘稿带「胜负手 + 条件A/条件C」时按 130 字判，避免误报。
+    need = 130 if (slot == 'close' and '胜负手' in one
+                   and ('条件A' in one or '条件 A' in one)) else 150
+    if len(one) < need or not any(k in one for k in ('胜负手', '关键', '如果', '若', '站稳', '跌破')):
         issues.append('一句话太短或没有胜负手条件句')
     # 收盘/午间最致命的错：把盘前预测句式套到已收盘的复盘里。
     if slot == 'close':
