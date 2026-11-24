@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[ OK ] 东财 clist 全市场        2063ms  total=3488 diff=20
-[FAIL] 东财 kline(前复权)       1764ms  RemoteDisconnected: Remote end closed connection without response
-[ OK ] 腾讯实时                1009ms  字段数=175 现价=1460.00
-[ OK ] 同花顺热榜               1772ms  stock_list=100
-[ OK ] 新浪(带Referer)         861ms  var hq_str_sh000001="ָ֤,3567.8405,3538.9480,3548.3694,3585.2
+[ OK ] 东财 clist 全市场        2025ms  total=3488 diff=20
+[FAIL] 东财 kline(前复权)        956ms  RemoteDisconnected: Remote end closed connection without response
+[ OK ] 腾讯实时                1099ms  字段数=175 现价=1460.00
+[ OK ] 同花顺热榜               1812ms  stock_list=100
+[ OK ] 新浪(带Referer)         961ms  var hq_str_sh000001="ָ֤,3567.8405,3538.9480,3548.3694,3585.2
 
 通过 4 / 5
