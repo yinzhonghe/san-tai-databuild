@@ -1080,6 +1080,37 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
 """
 
 
+# 2026-11-24：SYSTEM 最初是按早报写的（「今天怎么开」「今日大概率平开」），
+# 收盘档也照抄，导致收评写成盘前预测。这里按时段覆盖写作目标，必须对模型显式说明。
+SLOT_OVERRIDES = {
+    'morning': '',
+    'noon': """
+【本时段：午间速览】
+上文所有「今天怎么开 / 今日开盘区间的条件判断」统一改写为：
+- 第一段「【一、上午怎么走】」：先复盘上午已发生的指数、成交额、板块与人气变化（用事实包里的收盘/半日数字），
+  再说清楚这是延续还是反转了早报判断，最后给出下午 2–3 个可验证的观察变量。
+- oneLine 写「上午发生了什么 + 多空对冲 + 下午胜负手」，禁止写「今天大概率平开/高开/低开」。
+- weigh 写「上午是谁在买、谁在卖，下午谁决定方向」，不要写「作用于开盘」。
+""",
+    'close': """
+【本时段：收盘复盘——最高优先级，覆盖上文所有盘前表述】
+这是 15:00 收盘之后写的复盘，不是盘前预测。上文凡是出现「今天怎么开」「今日大概率平开/高开/低开」
+「开盘区间」「开盘后需观察」「作用于开盘」的要求，一律改为下面这套收盘口径：
+- 第一段固定标题「【一、今天怎么收】」：先写今日 A 股/港股实际收出的指数、成交额、涨跌家数、领涨领跌行业，
+  再对照早报/午间判断说清「兑现了什么、证伪了什么」，最后列 2–3 个明日开盘前必须验证的变量。
+  禁止写「今日大概率平开或微幅高开」这类盘前句式。
+- oneLine 写「今日收盘事实（多空双方各一个硬数字）＋ 明日胜负手：某点位承接与量能条件，
+  条件 A 就做 B，条件 C 就当脉冲」。不得出现「今日大概率怎么开」。
+- weigh 写「今天是谁在买、谁在卖，明日谁决定方向」，末句仍是「所以判断是 X，不是 Y」。
+- 第四段「中期时间轴与盘后关注」里的「盘后关注」要写明日/次周可验证的事件，不要把今天已收盘的事再说一遍。
+""",
+}
+
+
+def system_prompt(slot):
+    return SYSTEM + SLOT_OVERRIDES.get(slot, '')
+
+
 TIER = (os.environ.get('LLM_TIER') or 'high').strip().lower()
 
 # 各档位的候选模型：5.x 是「高质量档」，始终思考（思考链要吃掉上万 token 才动笔）；
@@ -1121,18 +1152,22 @@ def llm_config():
     return TOKEN, MODEL_URL, MODELS, 'github-models'
 
 
-def call_model(facts, slot, extra_note='', prefer_fast=False):
+def call_model(facts, slot, extra_note='', prefer_fast=False, force_models=None):
     key, url, models, kind = llm_config()
     if not key:
         return None, None, '没有可用的 LLM_API_KEY'
-    if prefer_fast:
+    if force_models:
+        # 人工补跑 / 质量兜底用：跳过档位默认与「重写轮自动加速」，
+        # 例如把收盘档强制交给 glm-4.7，避免 flash 降级稿直接上线。
+        models = [m.strip() for m in str(force_models).split(',') if m.strip()]
+    elif prefer_fast:
         # 重写轮用快速档：glm-5.x 单次就要 4 分钟，重写再来一次等于翻倍，
         # 而且实测 4.7 的篇幅只比 5.3 少约 5%，不值得为这 5% 多等 4 分钟
         fast = [m for m in models if not m.startswith('glm-5')]
         if fast:
             models = fast
     msgs = [
-        {'role': 'system', 'content': SYSTEM},
+        {'role': 'system', 'content': system_prompt(slot)},
         {'role': 'user', 'content':
             '时段：%s\n\n事实包：\n%s\n\n%s请按结构输出 JSON。'
             % (slot, json.dumps(facts, ensure_ascii=False, indent=1),
@@ -1443,7 +1478,7 @@ def write_remote(path, content_bytes, message, branch=None):
 
 
 # ---------------------------------------------------------------- 风格门禁
-def style_issues(c):
+def style_issues(c, slot='morning'):
     """参考包最在意的是「有因果、有来源、有中期视角」，这里把它变成可判定的条件。"""
     issues = []
     pts = [str(x) for x in (c.get('points') or [])]
@@ -1476,6 +1511,20 @@ def style_issues(c):
     one = str(c.get('oneLine') or '')
     if len(one) < 150 or not any(k in one for k in ('胜负手', '关键', '如果', '若', '站稳', '跌破')):
         issues.append('一句话太短或没有胜负手条件句')
+    # 收盘/午间最致命的错：把盘前预测句式套到已收盘的复盘里。
+    if slot == 'close':
+        morning_words = ('今天怎么开', '今日怎么开', '今日大概率', '今天大概率',
+                         '大概率平开', '大概率高开', '大概率低开', '开盘后需观察',
+                         '若直接低开', '作用于开盘', '决定今日开盘')
+        if any(k in json.dumps(pts, ensure_ascii=False) for k in morning_words):
+            issues.append('收盘复盘仍在用盘前「怎么开/大概率平开」句式')
+        if any(k in one for k in morning_words):
+            issues.append('收盘一句话仍在预测今日开盘')
+        if pts and '今天怎么收' not in pts[0] and '今日收盘' not in pts[0] and '收盘复盘' not in pts[0]:
+            issues.append('收盘复盘第一段没有明确「今天怎么收」')
+    elif slot == 'noon':
+        if any(k in one for k in ('今天怎么开', '今日大概率', '大概率平开')):
+            issues.append('午间速览一句话仍在预测今日开盘')
     return issues
 
 
@@ -1554,7 +1603,7 @@ def main():
         # 篇幅门禁：points 四段合计不足 800 字基本就是模型偷懒（实测弱模型只写 230 字），
         # 这种稿子发出去还不如不发，先让它重写一次
         thin = sum(len(p) for p in (content.get('points') or [])) < 800
-        issues = style_issues(content)
+        issues = style_issues(content, args.slot)
         # 只有「明显有问题」才重写：1–3 个未命中数字多数是「整数关口/目标位」这类合理表述，
         # 为它们重写一次要多花 4 分钟（5.x）并可能降级，不值得
         if len(unverified) > 3 or thin or issues:
@@ -1576,13 +1625,33 @@ def main():
                 u2 = unmatched_numbers(content2, facts)
                 t2 = sum(len(p) for p in (content2.get('points') or []))
                 t1 = sum(len(p) for p in (content.get('points') or []))
-                i2 = style_issues(content2)
+                i2 = style_issues(content2, args.slot)
                 # 重写轮用快速档，篇幅可能短一点（实测 4.7 比 5.3 少约 5%），
                 # 只要没短过 70%、数字更干净、风格问题不更多就采用，否则会白白退回模板稿
-                if (len(u2) <= len(unverified) and t2 >= t1 * 0.7 and len(i2) <= len(issues)):
+                ok2 = (len(u2) <= len(unverified) and t2 >= t1 * 0.7 and len(i2) <= len(issues))
+                if ok2:
                     content, model, unverified, issues = content2, model2, u2, i2
                     print('[校验] 重写后：剩 %d 个无出处数字，points %d 字，风格问题 %d 项'
                           % (len(u2), t2, len(i2)))
+                else:
+                    print('[校验] 重写稿未采用：数字 %d→%d 字数 %d→%d 风格 %d→%d'
+                          % (len(unverified), len(u2), t1, t2, len(issues), len(i2)))
+            # 2026-11-24 收盘档事故：5.3 超时、4.7 首版 JSON 坏，落到 flash 后风格问题 4 项
+            # 却被「问题数不增加」的规则放过。flash 只配当救急，不能在风格不过关时直接上线。
+            if model and model.endswith('flash') and issues:
+                note3 = '；'.join(note + ['上一版由 flash 生成且风格不过关，这次必须按时段写，收盘稿禁止盘前预测句式。'])
+                content3, model3, _ = call_model(facts, args.slot, note3, force_models='glm-4.7')
+                if content3:
+                    u3 = unmatched_numbers(content3, facts)
+                    t3 = sum(len(p) for p in (content3.get('points') or []))
+                    i3 = style_issues(content3, args.slot)
+                    if len(u3) <= len(unverified) + 3 and t3 >= t1 * 0.7 and len(i3) <= len(issues) + 1:
+                        content, model, unverified, issues = content3, model3, u3, i3
+                        print('[校验] flash 降级稿已由 glm-4.7 替换：剩 %d 个无出处数字，'
+                              'points %d 字，风格问题 %d 项' % (len(u3), t3, len(i3)))
+                    else:
+                        print('[校验] glm-4.7 补写未采用：数字 %d→%d 字数 %d→%d 风格 %d→%d'
+                              % (len(unverified), len(u3), t1, t3, len(issues), len(i3)))
     # 血泪教训（2026-11-23 试跑）：模型稿 points 1722 字、风格门禁全过，
     # 只因 4 个数未在事实包里命中就被整篇换成模板稿——模板稿全是 None，
     # 比原文差几个档次。少量未溯源数字应留在 meta 里告警，不该毁掉整篇。
