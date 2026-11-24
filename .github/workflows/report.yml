@@ -87,6 +87,8 @@ jobs:
 
       - name: 提交运行记录（便于回溯，不涉及站点）
         if: always()
+        # 日志提交不参与站点产物；并发补跑时 git rebase 可能冲突，不能让它把整次生成标成失败
+        continue-on-error: true
         run: |
           git config user.name  "san-tai-bot"
           git config user.email "bot@users.noreply.github.com"
@@ -109,6 +111,7 @@ jobs:
 
       - name: 结果摘要
         if: always()
+        continue-on-error: true
         run: |
           echo "### 三报生成：${{ steps.pick.outputs.slot }}" >> $GITHUB_STEP_SUMMARY
           python - <<'EOF' >> $GITHUB_STEP_SUMMARY
