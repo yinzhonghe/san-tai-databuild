@@ -1,6 +1,6 @@
 name: 多源舆情采集
 
-# 每个交易日多次采集 54 个公开源（快讯/检索/公告/RSS/个股专属），计算真实主题舆情，
+# 每个交易日多次采集公开源（快讯/检索/公告/RSS/个股专属，真实行业），计算真实主题舆情，
 # 生成 news_data.js 推到 data 分支 → Pages 自动更新 → 前端 AB_NEWS 远端刷新。
 # 不依赖任何人开机。surge 基线逐日累积，满 3 天才算倍数，绝不虚高。
 
@@ -50,7 +50,7 @@ jobs:
         run: |
           python gh_put.py "${GITHUB_REPOSITORY}" data \
             "news_data.js=news_data.js" \
-            --msg "news: $(TZ=Asia/Shanghai date '+%F %H:%M') 多源舆情 54 源"
+            --msg "news: $(TZ=Asia/Shanghai date '+%F %H:%M') 多源舆情 真实行业"
 
       - name: 结果摘要
         if: always()
@@ -67,14 +67,14 @@ jobs:
               print('| 更新时间 | %s |' % d.get('asOf'))
               print('| 源数 | %d |' % len(d.get('sources') or []))
               print('| 去重条目 | %d |' % d.get('total'))
-              print('| 主题 | %d |' % len(d.get('themes') or []))
+              print('| 行业 | %d |' % len(d.get('themes') or []))
               print('| 个股专属新闻覆盖 | %d 只 |' % len(d.get('stockNews') or {}))
               ok = sum(1 for x in d.get('sources') or [] if x.get('n', 0) > 0)
               print('| 有效源 | %d |' % ok)
               print('')
-              print('**主题热度（当日条数 / 媒体数 / 极性）**')
+              print('**行业热度（当日条数 / 媒体数 / 极性）**')
               print('')
-              print('| 主题 | 当日 | 媒体 | 极性 | 激增 |')
+              print('| 行业 | 当日 | 媒体 | 极性 | 激增 |')
               print('|---|---|---|---|---|')
               for t in (d.get('themes') or [])[:8]:
                   sv = ('%.2f×' % t['surge']) if t.get('surge') is not None else '积累中'
