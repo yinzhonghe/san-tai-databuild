@@ -1,0 +1,85 @@
+name: 多源舆情采集
+
+# 每个交易日多次采集 54 个公开源（快讯/检索/公告/RSS/个股专属），计算真实主题舆情，
+# 生成 news_data.js 推到 data 分支 → Pages 自动更新 → 前端 AB_NEWS 远端刷新。
+# 不依赖任何人开机。surge 基线逐日累积，满 3 天才算倍数，绝不虚高。
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1-5'    # 北京 10:00 盘前/早盘
+    - cron: '0 5 * * 1-5'    # 北京 13:00 午后
+    - cron: '30 8 * * 1-5'   # 北京 16:30 收盘后
+
+permissions:
+  contents: write
+
+concurrency:
+  group: news-gen
+  cancel-in-progress: false
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 采集并生成 news_data.js
+        run: |
+          # gen_news.py 在仓库根目录（本地 github_ci/ 对应远端根）
+          # 读取 data 分支上一版 news_data.js 作为累积基线（历史天数）
+          curl -sSL --max-time 30 "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/data/news_data.js" -o prev_news.js || true
+          PREV=""
+          [ -s prev_news.js ] && grep -q 'AB_NEWS' prev_news.js && PREV="--prev prev_news.js"
+          # 用 data 分支的 data.js 选启动/核心标的做个股专属新闻
+          curl -sSL --max-time 60 "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/data/data.js" -o data_snapshot.js || true
+          DATAARG=""
+          [ -s data_snapshot.js ] && DATAARG="--data data_snapshot.js"
+          python gen_news.py --out news_data.js $PREV $DATAARG 2>&1 | tee news-run.log
+
+      - name: 推送到 data 分支
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python gh_put.py "${GITHUB_REPOSITORY}" data \
+            "news_data.js=news_data.js" \
+            --msg "news: $(TZ=Asia/Shanghai date '+%F %H:%M') 多源舆情 54 源"
+
+      - name: 结果摘要
+        if: always()
+        run: |
+          echo "### 多源舆情采集" >> $GITHUB_STEP_SUMMARY
+          python - <<'EOF' >> $GITHUB_STEP_SUMMARY
+          import json, os
+          p = 'news_data.js'
+          if os.path.exists(p):
+              s = open(p, encoding='utf-8').read()
+              d = json.loads(s[s.index('{'):s.rindex('}')+1])
+              print('| 项 | 值 |')
+              print('|---|---|')
+              print('| 更新时间 | %s |' % d.get('asOf'))
+              print('| 源数 | %d |' % len(d.get('sources') or []))
+              print('| 去重条目 | %d |' % d.get('total'))
+              print('| 主题 | %d |' % len(d.get('themes') or []))
+              print('| 个股专属新闻覆盖 | %d 只 |' % len(d.get('stockNews') or {}))
+              ok = sum(1 for x in d.get('sources') or [] if x.get('n', 0) > 0)
+              print('| 有效源 | %d |' % ok)
+              print('')
+              print('**主题热度（当日条数 / 媒体数 / 极性）**')
+              print('')
+              print('| 主题 | 当日 | 媒体 | 极性 | 激增 |')
+              print('|---|---|---|---|---|')
+              for t in (d.get('themes') or [])[:8]:
+                  sv = ('%.2f×' % t['surge']) if t.get('surge') is not None else '积累中'
+                  print('| %s | %s | %s | %+.2f | %s |' % (
+                      t.get('name'), t.get('n1'), t.get('mediaN'), t.get('score') or 0, sv))
+          else:
+              print('news_data.js 未生成，采集可能失败')
+          EOF
