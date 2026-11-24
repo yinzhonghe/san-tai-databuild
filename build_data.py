@@ -641,7 +641,7 @@ def assemble_row(r_old, pct, ind, fund, fundLabel, eo, asof, tier, closes=None,
     for k in ("code", "name", "kind", "tier", "etfLink", "etfLinkName", "market",
               "mcap", "nmc", "size", "fee", "l1", "cat", "alts", "nCand", "index",
               "rank", "newsHits", "themes", "newsItems", "newsMain", "e2",
-              "fund", "fundLabel", "fundProxy", "fundSelf", "fund3d",
+              "fund", "fundLabel", "fundProxy", "fundSelf", "fund3d", "volRatio", "amtRatio",
               "indInfo", "liveMeta", "veto", "action", "strong", "votes"):
         if k in r_old:
             row[k] = r_old[k]
@@ -697,7 +697,41 @@ def _median(xs):
     return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2.0
 
 
+def load_engine_cfg():
+    """读取随仓库携带的完整引擎配置（阈值 / 死区 / 温度 / 行业表 / 排名表 / 舆情索引）。
+
+    2026-11 事故复盘：全市场重建只把 bm（全市场基准）写回 engine，
+    其余字段从旧 data.js 继承；而旧 data.js 自身已被裁剪成只有 bm，
+    于是 thresholds / voteDead / ind / rankTable 全部丢失。
+    后果：six-engine.js 读 E.thresholds[kind] 抛 TypeError，
+    live-refresh.js 的 catch 静默吞掉 → 六派/三态其实从未实时重算，
+    页面看到的仍是构建快照。这里以 _engine_cfg.json 为基线补齐，
+    再让调用方把最新 bm 覆盖回去（bm 是动态的，不能用旧值）。
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(here, "_engine_cfg.json"),
+              os.path.join(here, "..", "_engine_cfg.json")):
+        if os.path.isfile(p):
+            try:
+                with open(p, encoding="utf-8") as f:
+                    cfg = json.load(f)
+                return dict(cfg.get("engine") or {})
+            except Exception as e:
+                print("  [warn] 引擎配置 %s 解析失败：%s" % (p, e))
+    return {}
+
+
+def full_engine(engine):
+    """把完整引擎配置合并进当前 engine（bm 等动态值以传入的为准）。"""
+    merged = load_engine_cfg()
+    merged.update(engine or {})
+    return merged
+
+
 def write_data_js(site, engine, meta, rows_new, top, full):
+    # 引擎配置必须完整：旧 data.js 已被裁成只剩 bm，直接继承会让
+    # six-engine 的 E.thresholds / E.voteDead 变 undefined（实时重算静默失效）。
+    engine = full_engine(engine)
     # 首次构建时 site 里还没有 data.js，_find_data 返回 None，
     # 直接拿去 open() 会 TypeError。这里兜底成目标路径。
     data_js = _find_data(site) or os.path.join(site, "data.js")
@@ -888,6 +922,29 @@ def build_full(site, args, existing):
         pct = compute_pct(kl)
         all_closes = [round(r[2], 2) for r in kl if r[2]]
         closes = all_closes[-clen:] if clen else []
+        # 量能比（近5日均量 / 近20日均量）：ETF 没有东财主力净流入，
+        # 这是唯一诚实可得的「资金活跃度」代理。用原始成交量算，非 log 压缩值。
+        vols = [float(r[5]) for r in kl if len(r) > 5 and r[5] and float(r[5]) > 0]
+        vol_ratio = None
+        if len(vols) >= 20:
+            v20 = sum(vols[-20:]) / 20.0
+            v5 = sum(vols[-5:]) / 5.0
+            if v20 > 0:
+                vol_ratio = round(v5 / v20, 4)
+        # 成交额比（近5日均额 / 近20日均额）：腾讯日K只给量，没有独立成交额字段，
+        # 用「成交量 × 当日代表价(高+低+收)/3」还原当日金额量级。ETF 单价低、
+        # 份额拆分多，金额比比纯份额量比更接近「资金活跃度」，且仍不冒充主力净流入。
+        amts = []
+        for r in kl:
+            if len(r) > 5 and r[5] and float(r[5]) > 0:
+                px = (float(r[3]) + float(r[4]) + float(r[2])) / 3.0 if len(r) >= 5 else float(r[2])
+                amts.append(float(r[5]) * px)
+        amt_ratio = None
+        if len(amts) >= 20:
+            a20 = sum(amts[-20:]) / 20.0
+            a5 = sum(amts[-5:]) / 5.0
+            if a20 > 0:
+                amt_ratio = round(a5 / a20, 4)
         # 年线锚点：250 个交易日前那一根收盘（用于打开时实时重算 w250）
         c250 = all_closes[-251] if len(all_closes) >= 251 else None
         base_date = re.sub(r"\D", "", str(kl[-1][0])) if kl else None
@@ -909,6 +966,7 @@ def build_full(site, args, existing):
             "code": code, "name": name, "kind": item.get("kind") or "stock", "tier": "full",
             "pct": pct, "ind": _ind, "indL1": _l1, "indL2": _l2,
             "fund": None, "fundLabel": None,
+            "volRatio": vol_ratio, "amtRatio": amt_ratio,
             "closes": closes, "c250": c250, "baseDate": base_date, "chan": chan,
             # 仅用于「当前状态已持续几天」的回溯（120 根），不写入 data.js，不增体积
             "closesFull": all_closes[-120:],
@@ -940,7 +998,8 @@ def build_full(site, args, existing):
     print("日K 拉取完成：成功 %d，失败 %d" % (ok, fail))
 
     slim = [{k: it.get(k) for k in ("code", "name", "kind", "tier", "pct", "ind", "fund",
-                                    "fundLabel", "rank", "closes", "c250", "chan", "closesFull")}
+                                    "fundLabel", "rank", "closes", "c250", "chan", "closesFull",
+                                    "volRatio", "amtRatio")}
             for it in items]
     eng = run_engine(slim, site)
     asof = time.strftime("%Y-%m-%d")
@@ -957,6 +1016,8 @@ def build_full(site, args, existing):
         row["mcap"] = it.get("mcap") or row.get("mcap")
         row["nmc"] = it.get("nmc") or row.get("nmc")
         row["klSrc"] = it.get("klSrc")
+        if it.get("amtRatio") is not None:
+            row["amtRatio"] = it["amtRatio"]
         if it.get("indL1"):
             row["indL1"] = it["indL1"]
         if it.get("indL2"):
@@ -1403,6 +1464,7 @@ def _patch_meta(meta, mode, count=None):
 
 def _dry(site, engine, existing, rows_new):
     dry_path = os.path.join(site, "_dry_data.js")
+    engine = full_engine(engine)
     obj = {
         "meta": {**{k: v for k, v in (existing.get("meta") or {}).items()},
                  "source": "akshare(免费开源)全市场重算[dry-run]", "full": True, "count": len(rows_new)},
