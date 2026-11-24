@@ -25,7 +25,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    # 东财统一限流 + 腾讯三入口轮换后，单只请求变慢但覆盖率大幅提升，留足时间
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
 
@@ -49,11 +50,16 @@ jobs:
         run: |
           set -e
           t0=$(date +%s)
-          node tools/fetch_hist.js 8
-          node tools/fetch_ohlc.js 10
+          # 2026-11-24：三个脚本统一走 tools/fetch_gate.js
+          #   东财：单出口限流 + 抖动 + 失败退避（旧版 8~10 并发猛拉单入口，云端被风控后只剩 1281/5461）
+          #   腾讯：三入口轮换 + 每入口最小间隔；hfq/qfq 与东财复权口径一致
+          #   新浪：限速 + 重试；ETF 另有腾讯三入口兜底
+          # 并发降到 4：闸门已限制全局速率，再高只会堆积等待，不提速
+          node tools/fetch_hist.js 4
+          node tools/fetch_ohlc.js 4
           # ETF 走新浪源，合并进同一个 ohlc.json.gz（带 isETF 标记），
           # 不跑这步 chan_pick 的 ETF 池会是空的（nEtf=0）
-          node tools/fetch_etf_ohlc.js 8
+          node tools/fetch_etf_ohlc.js 4
           echo "抓数耗时 $(( $(date +%s) - t0 ))s"
           ls -lh hist.json.gz ohlc.json.gz
 
