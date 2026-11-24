@@ -114,6 +114,27 @@ function main() {
     }
     if (!usedCfg) console.error('[warn] 首次构建：未找到 data.js 与 _engine_cfg.json，用空基准继续');
   }
+  /* 引擎配置兜底（2026-11 事故）：现有 data.js 的 engine 常被裁成只剩 bm，
+     直接拿它重算会让 E.thresholds[kind] / E.voteDead 变 undefined，
+     six-engine 抛错后被本文件 catch 静默跳过 → 产出 0 只。
+     所以无论 data.js 是否存在，都先以 _engine_cfg.json 为配置基线补齐；
+     data.js 里的同名字段（如最新 bm / ind）覆盖基线。 */
+  (function ensureEngineCfg() {
+    var cfgPath = path.join(__dirname, '_engine_cfg.json');
+    if (!fs.existsSync(cfgPath)) cfgPath = path.join(__dirname, '..', '_engine_cfg.json');
+    if (!fs.existsSync(cfgPath)) return;
+    try {
+      var cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      var base = (cfg && cfg.engine) || {};
+      var cur = AB_DATA.engine || {};
+      Object.keys(base).forEach(function (k) {
+        if (cur[k] === undefined || cur[k] === null) cur[k] = base[k];
+      });
+      AB_DATA.engine = cur;
+    } catch (e) {
+      console.error('[warn] 补齐引擎配置失败：' + (e && e.message));
+    }
+  })();
   // six-engine.js 在站点根目录（tools/ 的上一级）
   var sixPath = path.join(__dirname, '..', 'six-engine.js');
   if (!fs.existsSync(sixPath)) sixPath = path.join(__dirname, 'six-engine.js');
@@ -168,6 +189,10 @@ function main() {
       chan: it.chan,                // 缠论：中枢/笔/背驰（结构派用）
       closesFull: it.closesFull,    // 120 根，仅用于回溯状态天数
       turnover: it.turnover,
+      // ETF 无量净流入，用量能比（近5/近20）作资金活跃度代理，引擎会据价方向定号
+      volRatio: it.volRatio,
+      // ETF 金额量能比（量×代表价还原），优先于纯份额量比；仍不是主力净流入
+      amtRatio: it.amtRatio,
       // 传了真实主力净流入就让引擎走「个股自身资金」分支，否则回落到行业代理
       fund: it.fund, fundSelf: it.fund != null
     };
@@ -182,7 +207,7 @@ function main() {
       wyckoff: o.wyckoff, veto: o.veto, action: o.action,
       strong: o.strong, newsHits: o.newsHits, votes: o.votes,
       series: o.series, dataFlags: o.dataFlags, cat: o.cat,
-      ind: o.ind, fundLabel: o.fundLabel, fundProxy: o.fundProxy,
+      ind: o.ind, fundLabel: o.fundLabel, fundProxy: o.fundProxy, amtRatio: it.amtRatio,
       fund3d: o.fund3d
     };
    } catch (e) {
