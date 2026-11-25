@@ -1,11 +1,66 @@
 {
- "updatedAt": "2026-11-19T06:56:09",
- "total": 2,
- "scored": 0,
- "pending": 2,
- "from": "",
- "to": "",
- "byVerdict": {},
- "bySlot": {},
- "recent": []
+ "updatedAt": "2026-11-25T03:29:50",
+ "total": 5,
+ "scored": 4,
+ "pending": 1,
+ "from": "2026-11-19",
+ "to": "2026-11-24",
+ "byVerdict": {
+  "偏消极": {
+   "n": 2,
+   "hit": 100,
+   "cover": 0
+  },
+  "偏积极": {
+   "n": 2,
+   "hit": 100,
+   "cover": 0
+  }
+ },
+ "bySlot": {
+  "morning": {
+   "n": 2,
+   "hit": 100,
+   "cover": 0
+  },
+  "noon": {
+   "n": 2,
+   "hit": 100,
+   "cover": null
+  }
+ },
+ "recent": [
+  {
+   "date": "2026-11-24",
+   "slot": "noon",
+   "verdict": "偏积极",
+   "ret": 0.27,
+   "hit": true,
+   "covered": null
+  },
+  {
+   "date": "2026-11-24",
+   "slot": "morning",
+   "verdict": "偏积极",
+   "ret": 0.27,
+   "hit": true,
+   "covered": false
+  },
+  {
+   "date": "2026-11-19",
+   "slot": "noon",
+   "verdict": "偏消极",
+   "ret": -0.28,
+   "hit": true,
+   "covered": null
+  },
+  {
+   "date": "2026-11-19",
+   "slot": "morning",
+   "verdict": "偏消极",
+   "ret": -0.28,
+   "hit": true,
+   "covered": false
+  }
+ ]
 }
