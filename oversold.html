@@ -325,8 +325,8 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
       <div class="tab" data-lut="can">可参与</div>
       <div class="tab" data-lut="actObs">动作·观察</div>
       <div class="tab" data-lut="avoid">回避</div>
-      <label>查找</label>
-      <input id="luSearch" type="search" placeholder="代码 / 名称 / 行业" style="width:190px" autocomplete="off">
+      <label>全页查找</label>
+      <input id="luSearch" type="search" placeholder="代码 / 名称 / 行业 · 整页生效" style="width:215px" autocomplete="off">
       <span id="luSearchInfo" style="font-size:11.5px;color:var(--muted)"></span>
       <label>排序</label>
       <select id="luSort" class="sel">
@@ -370,16 +370,16 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251523"></script>
+<script src="echarts.min.js?v=202611251531"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251523"></script>
-<script src="fundflow.js?v=202611251523"></script>
-<script src="state-phase.js?v=202611251523"></script>
+<script src="data-service.js?v=202611251531"></script>
+<script src="fundflow.js?v=202611251531"></script>
+<script src="state-phase.js?v=202611251531"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251523';
+var AB_LOCAL_V = '?v=202611251531';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -807,14 +807,15 @@ function abBoot() {
     var R = L.rules || {}, vd = L.verdict || {};
     set('luConf', '· ' + esc((R.confidence || 'none') === 'high' ? '高置信' : (R.confidence || 'none') === 'low' ? '低置信·初步' : '积累中'));
     set('luWhy', esc(vd.why || '正在载入结论…'));
-    var picks = (L.today || []).slice().sort(function (a, b) { return (b._score || 0) - (a._score || 0); }).slice(0, 5);
+    var picks = (L.today || []).filter(function (x) { return luMatchQuery(x, luQuery); })
+      .sort(function (a, b) { return (b._score || 0) - (a._score || 0); }).slice(0, 5);
     var pk = document.getElementById('luPick');
     if (pk) pk.innerHTML = picks.length ? picks.map(function (x) {
       var a = x._action || '观察';
       return '<div class="pk ' + (a === '可参与' ? 'can' : a === '回避' ? 'avoid' : 'obs') + '">'
         + '<b>' + esc(x.name || x.code) + '</b> ' + (x._score != null ? x._score + '分' : '—')
         + ' · ' + esc(a) + (x._hit && x._hit.length ? ' · ' + esc(x._hit.slice(0, 2).join('/')) : '') + '</div>';
-    }).join('') : '<div class="pk">今日无启动候选</div>';
+    }).join('') : '<div class="pk">' + (luQuery ? ('当前查找下无启动候选') : '今日无启动候选') + '</div>';
     var cmp = R.comparison || {}, cm = document.getElementById('luCmp');
     if (cm) {
       var arr = [cmp.A_random, cmp.B_vote4, cmp.C_evo].filter(Boolean);
@@ -948,12 +949,14 @@ function abBoot() {
     // 逐票派发判定，按高危/留意排序
     var G2 = luGroups();
     var pool = G2['新发'].concat(G2['观察']);   // 派发清单也只覆盖新发+观察
-    var ds = pool.map(function (x) { return { x: x, d: dispositionOf(x) }; });
+    var ds = pool.filter(function (x) { return luMatchQuery(x, luQuery); })
+      .map(function (x) { return { x: x, d: dispositionOf(x) }; });
     var order = { '高危': 0, '留意': 1, '未知': 2, '未见': 3 };
     ds.sort(function (a, b) { return (order[a.d.level] - order[b.d.level]); });
     var hi = ds.filter(function (o) { return o.d.level === '高危'; });
-    var show = hi.length ? hi : ds.filter(function (o) { return o.d.level === '留意'; }).slice(0, 8);
-    if (!show.length) show = ds.slice(0, 5);
+    // 搜索时列出全部命中，不再按高危/留意截断（否则搜到低风险票却看不见）
+    var show = luQuery ? ds : (hi.length ? hi : ds.filter(function (o) { return o.d.level === '留意'; }).slice(0, 8));
+    if (!luQuery && !show.length) show = ds.slice(0, 5);
     var html = show.map(function (o) {
       var lvCls = o.d.level === '高危' ? 'high' : o.d.level === '留意' ? 'mid' : 'low';
       var why = o.d.parts && o.d.parts.length ? o.d.parts.join('＋') : (o.d.missing ? ('缺' + o.d.missing.join('、')) : '三要素均未触发');
@@ -963,8 +966,10 @@ function abBoot() {
         + '<span class="why">' + esc(why) + '</span>'
         + '<span class="op" data-dispopen="' + esc(o.x.code) + '" style="color:#a1621a;cursor:pointer;margin-left:auto">详情 ›</span></div>';
     }).join('');
-    if (!html) html = '<div class="dp-empty">启动池暂无可判定标的。</div>';
-    if (!hi.length && !ds.some(function (o) { return o.d.level === '留意'; })) {
+    if (!html) html = '<div class="dp-empty">' + (luQuery
+      ? ('派发清单里没有匹配「' + esc(luQuery) + '」的标的。')
+      : '启动池暂无可判定标的。') + '</div>';
+    if (!luQuery && !hi.length && !ds.some(function (o) { return o.d.level === '留意'; })) {
       html += '<div class="dp-empty">当前没有高危/留意标的；其余均为「未见派发信号」或数据不足，不逐一列出。</div>';
     }
     setHTML('luDispList', html);
@@ -980,13 +985,14 @@ function abBoot() {
     var box = document.getElementById('luObsWatch');
     if (!box || !L || !L.today) return;
     var G = luGroups();
-    var obs = (G['观察'] || []).slice();
-    if (!obs.length) { box.style.display = 'none'; return; }
+    var allObs = (G['观察'] || []).slice();
+    if (!allObs.length) { box.style.display = 'none'; return; }
+    var obs = allObs.filter(function (x) { return luMatchQuery(x, luQuery); });
     box.style.display = '';
     function isBoard(x) { return /连板/.test(x.phaseWhy || ''); }
     var boardN = obs.filter(isBoard).length, weakN = obs.length - boardN;
     var learn = (L.observeStats || {});
-    set('luObsMeta', '共 ' + obs.length + ' 只 · 连板降级 ' + boardN + ' / 走弱回落 ' + weakN
+    set('luObsMeta', '共 ' + obs.length + (luQuery ? ' 只命中' : ' 只') + ' · 连板降级 ' + boardN + ' / 走弱回落 ' + weakN
       + (learn.note ? ' · 自进化学习：' + learn.note : ''));
     set('luObsNote', '这些票仍是「启动态」，但主站阶段判定为观察：连板降级=触发信号时已连涨多日（不是真新发）；'
       + '走弱回落=启动态里出大阴线、先看能否收回。自进化模型把它们单独作为观察组样本前瞻验证，样本不足只标「积累中」，不与新发组混算。');
@@ -1011,7 +1017,8 @@ function abBoot() {
         + '<span class="why">' + why + '</span>'
         + '<span class="op" data-obsopen="' + esc(x.code) + '">详情 ›</span></div>';
     }).join('');
-    setHTML('luObsList', html || '<div class="dp-empty">该档今天没有标的。</div>');
+    setHTML('luObsList', html || '<div class="dp-empty">' + (luQuery
+      ? ('启动观察里没有匹配「' + esc(luQuery) + '」的标的。') : '该档今天没有标的。') + '</div>');
     Array.prototype.forEach.call(document.querySelectorAll('[data-obsopen]'), function (el) {
       el.addEventListener('click', function () {
         window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-obsopen')), '_blank');
@@ -1028,11 +1035,13 @@ function abBoot() {
     }
     box.style.display = '';
     var st = W.stats || {};
-    set('luWatchMeta', '基准 ' + esc(W.asOf || '') + ' · ' + W.list.length + ' 只'
+    var watchHits = luQuery ? W.list.filter(function (x) { return luMatchQuery(x, luQuery); }).length : W.list.length;
+    set('luWatchMeta', '基准 ' + esc(W.asOf || '') + ' · ' + watchHits + (luQuery ? ' 只命中' : ' 只')
       + (st.settled ? (' · 已验证 ' + st.settled + ' 条') : ' · 前瞻积累中'));
     set('luWatchNote', esc(W.note || '') + '。首板=基准日第一次放量涨停，通常比引擎判「启动」早 2~3 天；'
       + '这是观察线索，不是买入信号。');
     var list = W.list.filter(function (x) {
+      if (!luMatchQuery(x, luQuery)) return false;
       if (watchFilter === 'can' && (x.tradable !== true || x.oneWord)) return false;
       if (watchFilter === 'high' && !x.highRun) return false;
       if (watchFilter === 'one' && !x.oneWord) return false;
@@ -1052,7 +1061,9 @@ function abBoot() {
         + '<span class="g">量比 <b>' + (x.volRatio != null ? x.volRatio.toFixed(2) : '—') + '</b></span>'
         + '<span class="g">' + px + '</span>' + tags
         + '<span class="op" data-watchopen="' + esc(x.code) + '">详情 ›</span></div>';
-    }).join('') : '<div class="wm-empty">' + (watchFilter === 'all' ? '今日没有符合首板预警的标的。' : '该档今天没有标的。') + '</div>';
+    }).join('') : '<div class="wm-empty">' + (luQuery
+      ? ('首板预警里没有匹配「' + esc(luQuery) + '」的标的。')
+      : (watchFilter === 'all' ? '今日没有符合首板预警的标的。' : '该档今天没有标的。')) + '</div>';
     setHTML('luWatchList', html);
     Array.prototype.forEach.call(document.querySelectorAll('[data-watchopen]'), function (el) {
       el.addEventListener('click', function () {
@@ -1135,10 +1146,20 @@ function abBoot() {
     });
     renderLUToolbar();
     var sInfo = document.getElementById('luSearchInfo');
-    if (sInfo) sInfo.textContent = luQuery ? ('命中 ' + list.length + '/' + allList.length) : '';
+    if (sInfo) {
+      if (!luQuery) sInfo.textContent = '';
+      else {
+        // 整页命中：首板预警 + 启动新发 + 启动观察，按代码去重；本表命中单独显示
+        var hit = {};
+        ((L.watchlist && L.watchlist.list) || []).concat(allList).forEach(function (x) {
+          if (luMatchQuery(x, luQuery) && x.code) hit[x.code] = 1;
+        });
+        sInfo.textContent = '整页 ' + Object.keys(hit).length + ' 只 · 本表 ' + list.length + '/' + allList.length;
+      }
+    }
     document.getElementById('luList').innerHTML = list.length ? list.map(luCard).join('')
       : '<div class="card" style="color:#8b93a1">' + (luQuery
-        ? ('没有匹配「' + esc(luQuery) + '」的标的，试试代码或名称的一部分；也可清空查找恢复全部。')
+        ? ('没有匹配「' + esc(luQuery) + '」的标的；若该股在上方首板预警/派发清单/启动观察里，已在对应模块显示。清空查找恢复全部。')
         : '该档今天没有标的。宁可空仓，不要为凑数去追弱票。') + '</div>';
     Array.prototype.forEach.call(document.querySelectorAll('[data-luopen]'), function (el) {
       el.addEventListener('click', function () {
