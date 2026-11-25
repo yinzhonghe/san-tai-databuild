@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-25T03:29:50",
+ "updatedAt": "2026-11-25T13:05:54",
  "asOf": "2026-11-25",
  "today": {
-  "nStock": 44,
+  "nStock": 240,
   "nEtf": 46,
   "params": {
    "stop": 8,
@@ -12,7 +12,7 @@
    "cutScore": 6.94,
    "keepPct": 70,
    "model": "c2026-11-25-0.2-0.3-151-32e2e9",
-   "trainedAt": "2026-11-25T03:29:22",
+   "trainedAt": "2026-11-25T13:05:26",
    "oos": {
     "n": 151,
     "win": 71.5,
@@ -198,7 +198,7 @@
   "keepPct": 70,
   "cutScore": 6.94,
   "nSignals": 488,
-  "trainedAt": "2026-11-25T03:29:22",
+  "trainedAt": "2026-11-25T13:05:26",
   "oos": {
    "n": 151,
    "win": 71.5,
@@ -447,19 +447,19 @@
  },
  "live": {
   "total": 0,
-  "ledger": 523,
+  "ledger": 735,
   "byVer": {}
  },
  "verdict": {
-  "updatedAt": "2026-11-25T03:29:50",
-  "total": 5,
-  "scored": 4,
+  "updatedAt": "2026-11-25T13:05:54",
+  "total": 8,
+  "scored": 7,
   "pending": 1,
   "from": "2026-11-19",
-  "to": "2026-11-24",
+  "to": "2026-11-25",
   "byVerdict": {
    "偏消极": {
-    "n": 2,
+    "n": 4,
     "hit": 100,
     "cover": 0
    },
@@ -467,21 +467,55 @@
     "n": 2,
     "hit": 100,
     "cover": 0
+   },
+   "中性": {
+    "n": 1,
+    "hit": 0,
+    "cover": null
    }
   },
   "bySlot": {
    "morning": {
-    "n": 2,
+    "n": 3,
     "hit": 100,
     "cover": 0
    },
    "noon": {
-    "n": 2,
+    "n": 3,
     "hit": 100,
+    "cover": null
+   },
+   "close": {
+    "n": 1,
+    "hit": 0,
     "cover": null
    }
   },
   "recent": [
+   {
+    "date": "2026-11-25",
+    "slot": "noon",
+    "verdict": "偏消极",
+    "ret": -2.03,
+    "hit": true,
+    "covered": null
+   },
+   {
+    "date": "2026-11-25",
+    "slot": "morning",
+    "verdict": "偏消极",
+    "ret": -2.03,
+    "hit": true,
+    "covered": null
+   },
+   {
+    "date": "2026-11-24",
+    "slot": "close",
+    "verdict": "中性",
+    "ret": -2.03,
+    "hit": false,
+    "covered": null
+   },
    {
     "date": "2026-11-24",
     "slot": "noon",
@@ -518,14 +552,14 @@
  },
  "state": {
   "ready": false,
-  "updatedAt": "2026-11-25T03:29:50",
+  "updatedAt": "2026-11-25T13:05:54",
   "days": 1,
   "need": 20,
   "note": "样本累计中"
  },
  "headline": [
   "缠论一买模型 已启用：样本外 T+20 胜率 71.5%（基线 68.4%，n=151）",
-  "点评已对账 4 次，偏消极 命中 100%",
+  "点评已对账 7 次，偏消极 命中 100%",
   "三态校准：样本累计中（每日归档真实快照，20 个交易日后出胜率）"
  ]
 }
