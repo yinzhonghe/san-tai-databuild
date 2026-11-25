@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: '模型（默认最新旗舰 glm-5.3，不用 4.7）'
+        description: '模型（默认用户有额度的 glm-5.3-flash，不用 4.7 / 无额度的 glm-5.3）'
         required: true
-        default: 'glm-5.3'
+        default: 'glm-5.3-flash'
       dry_run:
         description: '只检查门槛与事实包，不调模型（推荐先跑一次）'
         required: true
@@ -48,7 +48,7 @@ jobs:
       - name: 运行假设生成器
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          LLM_MODELS: ${{ github.event.inputs.model || 'glm-5.3' }}
+          LLM_MODELS: ${{ github.event.inputs.model || 'glm-5.3-flash' }}
         run: |
           set -o pipefail
           MODE=""
