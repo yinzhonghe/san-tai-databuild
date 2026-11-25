@@ -118,6 +118,58 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
 .lu-top{background:linear-gradient(180deg,#fffdf6,#fff);border:1px solid #e8d9a8;border-left:4px solid #c08a12;border-radius:12px;padding:13px 15px;margin-bottom:12px}
 .lu-top .l1{font-size:14px;font-weight:700;color:#7a5410;margin-bottom:7px}
 .lu-top .l2{font-size:11.5px;color:#6b6247;line-height:1.8;margin-bottom:9px}
+/* 首板预警：比启动池更早一天，用冷色边框区分，避免和启动池的暖色混淆 */
+.lu-watch{background:#f5fafe;border:1px solid #cfe0f2;border-left:4px solid #3d78b5;border-radius:12px;padding:11px 14px;margin-bottom:12px}
+.lu-watch .wm-h{font-size:13.5px;font-weight:700;color:#24456e;margin-bottom:5px}
+.lu-watch .wm-h .cat{font-size:11px;font-weight:400;color:#8b93a1;margin-left:6px}
+.lu-watch .wm-note{font-size:11px;color:#5a6270;line-height:1.7;margin-bottom:8px}
+.wm-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;background:#fff;border:1px solid #e3ecf7;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:11.5px}
+.wm-row .nm{font-weight:700;color:#24456e;min-width:74px}
+.wm-row .cd{color:#9aa3b0;font-size:10.5px}
+.wm-row .g{color:#5a6270}
+.wm-row .g b{color:#1a4f8a}
+.wm-row .tagw{font-size:10px;border-radius:4px;padding:1px 5px;background:#eef4fb;color:#4a6a92}
+.wm-row .tagw.hi{background:#fff2e0;color:#a1621a}
+.wm-row .tagw.one{background:#fdeaea;color:#b23b3b}
+.wm-row .tagw.ok{background:#e8f5ec;color:#217a46}
+.wm-row .op{color:#3d78b5;cursor:pointer;font-size:11px}
+.wm-empty{color:#8b93a1;font-size:11.5px;padding:6px 0}
+/* 派发风险 + 情绪周期（独立模块，暖色调，与首板预警冷色区分） */
+.lu-disposition{background:#fff8f3;border:1px solid #f0d9c4;border-left:4px solid #c0562b;border-radius:12px;padding:11px 14px;margin-bottom:12px}
+.lu-disposition .dh{font-size:13.5px;font-weight:700;color:#8a3d1c;margin-bottom:5px}
+.lu-disposition .dh .cat{font-size:11px;font-weight:400;color:#9a8578;margin-left:6px}
+.lu-disposition .dn{font-size:11px;color:#6b5a4e;line-height:1.7;margin-bottom:8px}
+.dp-mood{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:9px}
+.dp-mood .box{background:#fff;border:1px solid #f0e0d2;border-radius:8px;padding:7px 11px;font-size:11.5px;color:#6b5a4e}
+.dp-mood .box b{color:#8a3d1c;font-size:14px}
+.dp-mood .box.gap{background:#fafafa;border-style:dashed;color:#9a9a9a}
+.dp-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;background:#fff;border:1px solid #f0e0d2;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:11.5px}
+.dp-row .nm{font-weight:700;color:#8a3d1c;min-width:74px}
+.dp-row .cd{color:#a99d94;font-size:10.5px}
+.dp-row .lv{font-size:10px;border-radius:4px;padding:1px 6px}
+.dp-row .lv.high{background:#fdeaea;color:#b23b3b}
+.dp-row .lv.mid{background:#fff2e0;color:#a1621a}
+.dp-row .lv.low{background:#eef4fb;color:#4a6a92}
+.dp-row .why{color:#6b5a4e}
+.dp-empty{color:#9a8b7f;font-size:11.5px;padding:6px 0}
+/* 启动观察：中性偏蓝灰，与派发(暖)/首板(冷紫)区分 */
+.lu-obswatch{background:#f4f7fb;border:1px solid #d8e2ee;border-left:4px solid #5b7a9e;border-radius:12px;padding:11px 14px;margin-bottom:12px}
+.lu-obswatch .ow-h{font-size:13.5px;font-weight:700;color:#33577c;margin-bottom:5px}
+.lu-obswatch .ow-h .cat{font-size:11px;font-weight:400;color:#8194a8;margin-left:6px}
+.lu-obswatch .ow-note{font-size:11px;color:#5a6b7d;line-height:1.7;margin-bottom:8px}
+.ow-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;background:#fff;border:1px solid #dce5ef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:11.5px}
+.ow-row .nm{font-weight:700;color:#33577c;min-width:74px}
+.ow-row .cd{color:#98a5b3;font-size:10.5px}
+.ow-row .tagb{font-size:10px;border-radius:4px;padding:1px 6px}
+.ow-row .tagb.board{background:#fff2e0;color:#a1621a}
+.ow-row .tagb.weak{background:#eef4fb;color:#4a6a92}
+.ow-row .why{color:#5a6b7d;flex:1;min-width:180px}
+.ow-row .disp{font-size:10.5px;border-radius:4px;padding:1px 6px}
+.ow-row .disp.high{background:#fdeaea;color:#b23b3b}
+.ow-row .disp.mid{background:#fff2e0;color:#a1621a}
+.ow-row .disp.low{background:#edf5ee;color:#3d7a4a}
+.ow-row .disp.unknown{background:#f2f4f7;color:#8b93a1}
+.ow-row .op{color:#a1621a;cursor:pointer;margin-left:auto}
 .lu-pick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .lu-pick .pk{background:#fff;border:1px solid #ecdcb0;border-radius:8px;padding:6px 10px;font-size:11.5px;color:#5a4a22}
 .lu-pick .pk.can{border-left:3px solid var(--up)}
@@ -231,6 +283,36 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     </div>
 
     <!-- 第二层：名单与阶段 -->
+    <!-- 派发风险 + 情绪周期：独立模块，启动新发卡的逐票结论见 luCard -->
+    <div class="lu-disposition" id="luDisp" style="display:none">
+      <div class="dh">派发风险 · 情绪周期 <span class="cat" id="luDispMeta"></span></div>
+      <div class="dn" id="luDispNote"></div>
+      <div class="dp-mood" id="luMood"></div>
+      <div id="luDispList"></div>
+    </div>
+    <!-- 首板预警：比引擎「启动」更早一天，基准日第一次放量涨停；与启动池分开 -->
+    <div class="lu-watch" id="luWatch" style="display:none">
+      <div class="wm-h">首板预警 <span class="cat" id="luWatchMeta"></span></div>
+      <div class="wm-note" id="luWatchNote"></div>
+      <div class="ctrl" style="margin:6px 0">
+        <div class="tab on" data-wt="all">全部</div>
+        <div class="tab" data-wt="can">可成交</div>
+        <div class="tab" data-wt="high">高位板</div>
+        <div class="tab" data-wt="one">一字板·买不进</div>
+      </div>
+      <div id="luWatchList"></div>
+    </div>
+    <!-- 启动观察：主站阶段=观察的票（连板降级 / 走弱回落），从折叠区提升为可见模块；纳入自进化观察组学习 -->
+    <div class="lu-obswatch" id="luObsWatch" style="display:none">
+      <div class="ow-h">启动观察 <span class="cat" id="luObsMeta"></span></div>
+      <div class="ow-note" id="luObsNote"></div>
+      <div class="ctrl" style="margin:6px 0">
+        <div class="tab on" data-ot="all">全部</div>
+        <div class="tab" data-ot="board">连板降级</div>
+        <div class="tab" data-ot="weak">走弱回落</div>
+      </div>
+      <div id="luObsList"></div>
+    </div>
     <div class="lu-live" id="luLive">实时行情：正在连接…</div>
     <div class="lu-toolbar" id="luToolbar">
       <div class="row"><span class="lb">排序</span><span id="luSortBtns"></span></div>
@@ -238,11 +320,11 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     </div>
     <div class="ctrl">
       <div class="tab on" data-lut="all">全部</div>
+      <div class="tab" data-lut="new">启动新发</div>
+      <div class="tab" data-lut="phaseObs">启动观察</div>
       <div class="tab" data-lut="can">可参与</div>
-      <div class="tab" data-lut="obs">观察</div>
+      <div class="tab" data-lut="actObs">动作·观察</div>
       <div class="tab" data-lut="avoid">回避</div>
-      <div class="tab" data-lut="new">新发1-2日</div>
-      <div class="tab" data-lut="health">健康期3-8日</div>
       <label>排序</label>
       <select id="luSort" class="sel">
         <option value="score">自进化总分↓</option>
@@ -261,10 +343,6 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
       <div class="lu-tl" id="luTimeline">正在载入动作表…</div>
     </div>
     <div class="lu-evo" id="luEvo">正在载入样本进度…</div>
-
-    <details style="margin-top:10px"><summary>被实时降级的候选（观察 / 退化，主站也不算新发）</summary>
-      <div id="luExcluded" style="font-size:11.5px;color:#5a6270;line-height:1.8"></div>
-    </details>
 
     <!-- 第三层：依据与验证 -->
     <details style="margin-top:14px"><summary>依据与验证 · 条件清单 / 四公式前瞻 / 三组对照</summary>
@@ -289,16 +367,16 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251311"></script>
+<script src="echarts.min.js?v=202611251501"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251311"></script>
-<script src="fundflow.js?v=202611251311"></script>
-<script src="state-phase.js?v=202611251311"></script>
+<script src="data-service.js?v=202611251501"></script>
+<script src="fundflow.js?v=202611251501"></script>
+<script src="state-phase.js?v=202611251501"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251311';
+var AB_LOCAL_V = '?v=202611251501';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -317,6 +395,8 @@ function abLoadAll(base, q) {
 function abBoot() {
   var D = window.AB_OVERSOLD, C = window.AB_CHANPICK;
   function set(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+  // setHTML 只用于内部拼好的 HTML 片段（内容均已 esc 转义），不能用 set()/textContent 否则会显示源码文本
+  function setHTML(id, v) { var e = document.getElementById(id); if (e) e.innerHTML = v; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function show(page) {
@@ -367,10 +447,16 @@ function abBoot() {
   // ===== 板块③：启动·新发（自进化 v2）=====
   var L = window.AB_LIMITUP;
   var luFilter = 'all';
+  var obsFilter = 'all';   // 启动观察 tab：all / board(连板降级) / weak(走弱回落)
+  var watchFilter = 'all';   // 首板预警 tab：all / can / high / one
   var luQuotes = {};       // 实时报价 map，取不到的票不写 0
   var luQuoteMeta = { at: '', count: 0, source: '' };
   var luFunds = {};        // 实时资金 map（东财当日主力净流入），取不到不写 0
   var luFundMeta = { at: '', count: 0 };
+  /* 派发风险：换手率(f8)/流通市值(f21) 实时 map（东财），取不到不写 0；
+     流通市值单位=元，展示时转亿。与资金分批复了几道限流。 */
+  var luTurn = {};         // code -> { turn: 百分数, fcap: 亿元 }
+  var luTurnMeta = { at: '', count: 0 };
   /* 表头排序/筛选状态：key=字段，dir=-1 降序 / 1 升序；filters=各字段筛选值 */
   var luSortKey = 'score', luSortDir = -1;
   var luFilters = { action: '', bucket: '', rrg: '', ind: '', fund: '', vote: '' };
@@ -410,12 +496,20 @@ function abBoot() {
     if (!L || !L.today) return { '新发': [], '观察': [], '退化': [], '其他': [] };
     if (window.AB_PHASE && window.AB_PHASE.split) return window.AB_PHASE.split(L.today, luQuotes);
     var g = { '新发': [], '观察': [], '退化': [], '其他': [] };
-    L.today.forEach(function (x) { g[(x.dayBucket === '健康期' ? '新发' : (x.phase || '其他'))].push(x); });
+    L.today.forEach(function (x) {
+      var b = x.phase || x.dayBucket || '其他';
+      if (b !== '新发' && b !== '观察') return;   // 健康期/退化不展示
+      g[b].push(x);
+    });
     return g;
   }
   function refreshLUQuotes() {
     if (!L || !L.today || !L.today.length || !window.AB_DS) return;
     var codes = L.today.map(function (x) { return x.code; });
+    // 首板预警票也一起拉实时价（数量少，几只），否则预警卡片会一直显示生成时的旧报价
+    var watchList = (L.watchlist && L.watchlist.list) || [];
+    var watchCodes = watchList.map(function (x) { return x.code; }).filter(function (c) { return codes.indexOf(c) < 0; });
+    codes = codes.concat(watchCodes);
     var bj = codes.filter(function (c) { return /\.BJ$/i.test(c); });
     var others = codes.filter(function (c) { return !/\.BJ$/i.test(c); });
     var jobs = [];
@@ -427,6 +521,16 @@ function abBoot() {
         Object.keys((r && r.map) || {}).forEach(function (k) { map[k] = r.map[k]; n++; });
       });
       luQuotes = map;
+      // 同步更新预警卡片的报价；一字板判定也按最新价重算（开高低来自报价，取不到不臆断）
+      watchList.forEach(function (w) {
+        var q = map[w.code];
+        if (q && q.price > 0) {
+          w.quote = q;
+          if (q.open != null && q.high != null && q.low != null && w.limitPrice > 0) {
+            w.oneWord = q.open >= w.limitPrice - 0.02 && Math.abs(q.high - q.low) <= 0.02 && Math.abs(q.open - q.price) <= 0.02;
+          }
+        }
+      });
       luQuoteMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: n, source: '腾讯/东财' };
       renderLU();
     }).catch(function () {
@@ -461,10 +565,185 @@ function abBoot() {
     }
     nextBatch();
   }
+  /* ===== 派发风险数据层（只作用于超跌页，不动主站）=====
+     东财 ulist 批量取 f8=换手率(%)、f21=流通市值(元)、f3=涨幅(%)；每批 20 只、间隔 400ms 防限流。
+     取不到的票不写 0、不臆断，判定时明确标「数据不足」。 */
+  function emSecid(code) {
+    var bare = String(code).split('.')[0];
+    var m = /\.SH$/i.test(code) ? '1' : '0';
+    return m + '.' + bare;
+  }
+  /* 腾讯批量换手率：qt.gtimg.cn 稳定通道，一次 60 只。字段38=换手率(%)、44=流通市值(亿元)、32=涨幅。
+     东财 f8 批量接口高频被限流（实测 20 只/批经常整批失败），改腾讯为主；北交所腾讯不认(bj)仍走东财兜底。 */
+  function txSym2(code) {
+    var bare = String(code).split('.')[0];
+    if (/\.SH$/i.test(code)) return 'sh' + bare;
+    if (/\.BJ$/i.test(code)) return 'bj' + bare;
+    return 'sz' + bare;
+  }
+  function fetchTurnTencent(codes, done) {
+    var syms = codes.map(txSym2);
+    if (!syms.length) { done({}); return; }
+    var url = 'https://qt.gtimg.cn/q=' + syms.join(',');
+    var loaded = false, timer = null;
+    function finish() {
+      if (loaded) return; loaded = true;
+      if (timer) clearTimeout(timer);
+      var map = {};
+      syms.forEach(function (sym, idx) {
+        var v = window['v_' + sym];
+        if (typeof v !== 'string' || v.length < 40) return;
+        var a = v.split('~');
+        var turn = parseFloat(a[38]), fcap = parseFloat(a[44]), chg = parseFloat(a[32]);
+        map[codes[idx]] = {
+          turn: isFinite(turn) && turn >= 0 ? turn : null,
+          fcap: isFinite(fcap) && fcap > 0 ? +fcap.toFixed(2) : null,
+          chg: isFinite(chg) ? chg : null
+        };
+        try { delete window['v_' + sym]; } catch (e) { }
+      });
+      done(map);
+    }
+    var s = document.createElement('script');
+    s.src = url; s.charset = 'gbk';
+    s.onload = finish; s.onerror = finish;
+    timer = setTimeout(finish, 9000);
+    document.head.appendChild(s);
+  }
+  function fetchTurnBatch(codes, done) {
+    if (!codes.length) { done({}); return; }
+    var secids = codes.map(emSecid).join(',');
+    var url = 'https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2'
+      + '&fields=f2,f3,f8,f12,f13,f21&secids=' + encodeURIComponent(secids)
+      + '&ut=fa5fd1943c7b386f172d6893dbfba10b&cb=__abTurnCb';
+    var name = '__abTurnCb', timer = null, settled = false;
+    window[name] = function (j) {
+      if (settled) return; settled = true;
+      if (timer) clearTimeout(timer);
+      try { delete window[name]; } catch (e) { window[name] = undefined; }
+      var map = {};
+      var diff = (j && j.data && j.data.diff) || [];
+      diff.forEach(function (it) {
+        var t = Number(it.f8), fc = Number(it.f21), chg = Number(it.f3);
+        var code = String(it.f12 || '');
+        // 补后缀：按 market f13（1=沪）
+        if (code && !/\./.test(code)) code += (String(it.f13) === '1' ? '.SH' : '.SZ');
+        map[code] = {
+          turn: isFinite(t) && t >= 0 ? t : null,
+          fcap: isFinite(fc) && fc > 0 ? +(fc / 1e8).toFixed(2) : null,
+          chg: isFinite(chg) ? chg : null
+        };
+      });
+      done(map);
+    };
+    timer = setTimeout(function () {
+      if (settled) return; settled = true;
+      try { delete window[name]; } catch (e) { window[name] = undefined; }
+      done({});
+    }, 6000);
+    var s = document.createElement('script');
+    s.src = url; s.onerror = function () {
+      if (settled) return; settled = true;
+      if (timer) clearTimeout(timer);
+      done({});
+    };
+    document.head.appendChild(s);
+  }
+  function refreshLUTurn() {
+    if (!L || !L.today || !L.today.length) {
+      luTurnMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: 0 };
+      return;
+    }
+    var queue = L.today.slice();
+    var got = 0;
+    function finish() {
+      luTurnMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: got };
+      renderLU();
+    }
+    // 主通道：腾讯，60 只/批；收满后统计缺失，东财只补缺的那一小撮（北交所/停牌），不再整批重拉
+    var i = 0, missing = [];
+    function nextTx() {
+      var batch = queue.slice(i, i + 60); i += 60;
+      if (!batch.length) { retryMissing(); return; }
+      fetchTurnTencent(batch.map(function (x) { return x.code; }), function (map) {
+        batch.forEach(function (x) {
+          var v = map[x.code];
+          if (v && v.turn != null) { luTurn[x.code] = v; got++; }
+          else missing.push(x.code);
+        });
+        setTimeout(nextTx, 250);
+      });
+    }
+    function retryMissing() {
+      if (!missing.length) { finish(); return; }
+      // 东财兜底：小批 10 只、间隔 400ms；仍取不到就保持缺，绝不写 0
+      var j = 0;
+      function nextEm() {
+        var batch = missing.slice(j, j + 10); j += 10;
+        if (!batch.length) { finish(); return; }
+        fetchTurnBatch(batch, function (map) {
+          batch.forEach(function (c) { if (map[c] && map[c].turn != null) { luTurn[c] = map[c]; got++; } });
+          setTimeout(nextEm, 400);
+        });
+      }
+      nextEm();
+    }
+    nextTx();
+  }
+  /* 换手率健康上限：按流通市值分档（媒体口径，仅作风险筛查阈值，非买卖建议）
+     30亿内 18% / 40-80亿 15% / 百亿 10%；介于档间的取区间上限。 */
+  function turnCeil(fcap) {
+    if (fcap == null) return null;
+    if (fcap < 30) return 18;
+    if (fcap < 40) return 16;
+    if (fcap <= 80) return 15;
+    if (fcap < 100) return 12;
+    return 10;
+  }
+  /* 派发判定：主力净流出 + 滞涨 + 换手超档，三要素齐全才算高危。
+     任一关键数据取不到 → 明确「数据不足」，不判高危也不判安全。 */
+  function dispositionOf(x) {
+    var f = luFunds[x.code], q = luQuotes[x.code], t = luTurn[x.code];
+    var fundKnown = f && typeof f.yi === 'number';
+    var chgKnown = q && typeof q.chg === 'number';
+    var turnKnown = t && typeof t.turn === 'number';
+    var missing = [];
+    if (!fundKnown) missing.push('资金');
+    if (!chgKnown) missing.push('实时涨幅');
+    if (!turnKnown) missing.push('换手率');
+    if (missing.length) return { level: '未知', missing: missing, text: '派发判断数据不足（缺' + missing.join('、') + '），不下结论' };
+    var outflow = f.yi < 0;
+    var stall = q.chg < 3;                       // 涨停票今日涨幅 <3% 视为滞涨/分歧
+    var ceil = turnCeil(t.fcap);
+    var hot = ceil != null && t.turn > ceil;      // 换手超市值档上限
+    var n = (outflow ? 1 : 0) + (stall ? 1 : 0) + (hot ? 1 : 0);
+    var parts = [];
+    if (outflow) parts.push('主力净流出' + f.yi.toFixed(2) + '亿');
+    if (stall) parts.push('滞涨(今涨' + q.chg.toFixed(1) + '%)');
+    if (hot) parts.push('换手' + t.turn.toFixed(1) + '%超' + ceil + '%档');
+    if (n >= 2) return { level: '高危', parts: parts, text: '派发警示：' + parts.join('＋') + '（' + n + '/3 要素）' };
+    if (n === 1) return { level: '留意', parts: parts, text: '派发观察：' + parts.join('、') + '（1/3 要素，暂不构成警示）' };
+    return { level: '未见', parts: [], text: '未见派发信号（资金/涨幅/换手均未触发），仍需盯次日承接' };
+  }
+  function moodOf() {
+    var rows = (window.AB_OVERSOLD && window.AB_OVERSOLD.rows) || [];
+    // 超跌池不是全市场，涨停数/上涨占比只能基于收盘快照全市场算；limitup_data 里有全市场快照引用时取其 meta
+    // 这里诚实降级：用启动池 quote 覆盖度做「热度代理」，并明确标注全市场涨停数/晋级率/炸板率缺口
+    var G = luGroups();
+    var all = G['新发'].concat(G['观察']);   // 只看新发+观察，健康期/退化不计入情绪代理
+    var upN = 0, known = 0;
+    all.forEach(function (x) { var q = luQuotes[x.code]; if (q && typeof q.chg === 'number') { known++; if (q.chg > 0) upN++; } });
+    var ratio = known ? Math.round(upN / known * 100) : null;
+    return {
+      upN: upN, known: known, ratio: ratio,
+      asOf: (window.AB_OVERSOLD && window.AB_OVERSOLD.date) || '',
+      note: '上涨占比基于启动池实时报价样本（' + known + '只），非全市场；全市场涨停数/晋级率/炸板率当前数据源未覆盖，标注缺口不臆断。'
+    };
+  }
   function actionCls(a) { return a === '可参与' ? 'hot' : a === '回避' ? 'cold' : 'mid'; }
   function luCard(x) {
     var v = x.resonance || 0, act = x._action || '观察', cls = actionCls(act);
-    var sg = ['启动第' + (x.stateDays || '—') + '日', (x.dayBucket === '健康期' ? '健康期' : '新发段'), '六派' + v + '/6'];
+    var sg = ['启动第' + (x.stateDays || '—') + '日', ((x._phase && x._phase.t === '观察') || x.dayBucket === '观察' ? '观察段' : '新发段'), '六派' + v + '/6'];
     if (x.strong) sg.push('强势确认');
     var w5 = x.w5, w20 = x.w20, w60 = x.w60;
     var score = x._score != null ? x._score : '—';
@@ -487,8 +766,15 @@ function abBoot() {
       + (x._hit && x._hit.length ? '<br><b>命中条件</b>：' + esc(x._hit.join('、')) : '')
       + (x._negHit && x._negHit.length ? '<br><b>负向条件</b>：' + esc(x._negHit.join('、')) : '')
       + (x._phase && x._phase.t !== '新发' ? '<br><b>阶段降级</b>：' + esc(x._phase.why) : '')
+      + dispLine(x)
       + '<br><b>说明</b>：真实启动池标的；分数来自自进化条件命中，历史频率不是预测，样本不足时不作结论。'
       + '</div></div>';
+  }
+  /* 每张涨停/启动卡后面的一句话派发结论：数据不足明确说不足，不编造 */
+  function dispLine(x) {
+    var d = dispositionOf(x);
+    var color = d.level === '高危' ? 'var(--down)' : d.level === '未知' ? '#8b93a1' : '#6b7484';
+    return '<br><b>派发结论</b>：<span style="color:' + color + '">' + esc(d.text) + '</span>';
   }
   function renderExcluded(downList) {
     var el = document.getElementById('luExcluded');
@@ -614,7 +900,7 @@ function abBoot() {
     };
     var defs = [
       { k: 'action', t: '动作', opts: ['可参与', '观察', '回避'] },
-      { k: 'bucket', t: '阶段', opts: ['新发', '健康期'] },
+      { k: 'bucket', t: '阶段', opts: ['新发', '观察'] },
       { k: 'vote', t: '六派', opts: uniq(function (x) { return String(x.resonance || 0); }).sort() },
       { k: 'rrg', t: 'RRG象限', opts: uniq(function (x) { return x.rrg || '—'; }) },
       { k: 'ind', t: '板块', opts: uniq(function (x) { return x.ind || ''; }) },
@@ -630,6 +916,140 @@ function abBoot() {
       return '<select class="lu-fsel" data-filter="' + d.k + '" title="按' + d.t + '筛选"><option value="">' + d.t + '：全部</option>' + opts + '</select>';
     }).join('');
   }
+  /* 首板预警：数据来自 limitup_data.js 的 watchlist（独立台账，v2 口径）。
+     实时报价取不到的票只用快照基准日数据，不写 0、不冒充实时。 */
+  /* 派发风险 + 情绪周期独立模块渲染 */
+  function renderDisp() {
+    var box = document.getElementById('luDisp');
+    if (!box) return;
+    if (!L || !L.today || !L.today.length) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    set('luDispMeta', '换手/市值 ' + (luTurnMeta.count ? ('已取' + luTurnMeta.count + '只') : '拉取中')
+      + ' · 资金 ' + (luFundMeta.count ? ('已取' + luFundMeta.count + '只') : '拉取中'));
+    set('luDispNote', '判定=主力净流出＋滞涨(今涨<3%)＋换手超市值档上限，三要素齐全才判高危；'
+      + '任一数据取不到就标「数据不足」，不臆断。换手阈值按流通市值分档（<30亿:18% / 40-80亿:15% / 百亿:10%），'
+      + '来自公开媒体口径，仅作风险筛查参考，不是买卖建议。');
+    var m = moodOf();
+    var moodHtml = '<div class="box">启动池上涨占比 <b>' + (m.ratio != null ? m.ratio + '%' : '—') + '</b>（' + m.upN + '/' + m.known + '）</div>'
+      + '<div class="box gap">全市场涨停数 <b>—</b> 未覆盖</div>'
+      + '<div class="box gap">晋级率/炸板率 <b>—</b> 未覆盖</div>';
+    setHTML('luMood', moodHtml);
+    // 逐票派发判定，按高危/留意排序
+    var G2 = luGroups();
+    var pool = G2['新发'].concat(G2['观察']);   // 派发清单也只覆盖新发+观察
+    var ds = pool.map(function (x) { return { x: x, d: dispositionOf(x) }; });
+    var order = { '高危': 0, '留意': 1, '未知': 2, '未见': 3 };
+    ds.sort(function (a, b) { return (order[a.d.level] - order[b.d.level]); });
+    var hi = ds.filter(function (o) { return o.d.level === '高危'; });
+    var show = hi.length ? hi : ds.filter(function (o) { return o.d.level === '留意'; }).slice(0, 8);
+    if (!show.length) show = ds.slice(0, 5);
+    var html = show.map(function (o) {
+      var lvCls = o.d.level === '高危' ? 'high' : o.d.level === '留意' ? 'mid' : 'low';
+      var why = o.d.parts && o.d.parts.length ? o.d.parts.join('＋') : (o.d.missing ? ('缺' + o.d.missing.join('、')) : '三要素均未触发');
+      return '<div class="dp-row"><span class="nm">' + esc(o.x.name || o.x.code) + '</span>'
+        + '<span class="cd">' + esc(o.x.code) + '</span>'
+        + '<span class="lv ' + lvCls + '">' + esc(o.d.level) + '</span>'
+        + '<span class="why">' + esc(why) + '</span>'
+        + '<span class="op" data-dispopen="' + esc(o.x.code) + '" style="color:#a1621a;cursor:pointer;margin-left:auto">详情 ›</span></div>';
+    }).join('');
+    if (!html) html = '<div class="dp-empty">启动池暂无可判定标的。</div>';
+    if (!hi.length && !ds.some(function (o) { return o.d.level === '留意'; })) {
+      html += '<div class="dp-empty">当前没有高危/留意标的；其余均为「未见派发信号」或数据不足，不逐一列出。</div>';
+    }
+    setHTML('luDispList', html);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-dispopen]'), function (el) {
+      el.addEventListener('click', function () {
+        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-dispopen')), '_blank');
+      });
+    });
+  }
+  /* 启动观察：主站阶段=观察的票，独立成区。分「连板降级」(phaseWhy 含连板) 与「走弱回落」(大阴线等)。
+     每只带派发结论 + 降级原因，点详情进主站个股页。这是自进化观察组样本的可视入口。 */
+  function renderObs() {
+    var box = document.getElementById('luObsWatch');
+    if (!box || !L || !L.today) return;
+    var G = luGroups();
+    var obs = (G['观察'] || []).slice();
+    if (!obs.length) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    function isBoard(x) { return /连板/.test(x.phaseWhy || ''); }
+    var boardN = obs.filter(isBoard).length, weakN = obs.length - boardN;
+    var learn = (L.observeStats || {});
+    set('luObsMeta', '共 ' + obs.length + ' 只 · 连板降级 ' + boardN + ' / 走弱回落 ' + weakN
+      + (learn.note ? ' · 自进化学习：' + learn.note : ''));
+    set('luObsNote', '这些票仍是「启动态」，但主站阶段判定为观察：连板降级=触发信号时已连涨多日（不是真新发）；'
+      + '走弱回落=启动态里出大阴线、先看能否收回。自进化模型把它们单独作为观察组样本前瞻验证，样本不足只标「积累中」，不与新发组混算。');
+    var list = obs.filter(function (x) {
+      if (obsFilter === 'board') return isBoard(x);
+      if (obsFilter === 'weak') return !isBoard(x);
+      return true;
+    });
+    // 连板降级排前，其次按自进化分
+    list.sort(function (a, b) {
+      if (isBoard(a) !== isBoard(b)) return isBoard(a) ? -1 : 1;
+      return (b._score || 0) - (a._score || 0);
+    });
+    var html = list.map(function (x) {
+      var d = dispositionOf(x);
+      var dCls = d.level === '高危' ? 'high' : d.level === '留意' ? 'mid' : d.level === '未见' ? 'low' : 'unknown';
+      var why = esc(x.phaseWhy || '阶段观察');
+      return '<div class="ow-row"><span class="nm">' + esc(x.name || x.code) + '</span>'
+        + '<span class="cd">' + esc(x.code) + '</span>'
+        + '<span class="tagb ' + (isBoard(x) ? 'board' : 'weak') + '">' + (isBoard(x) ? '连板降级' : '走弱回落') + '</span>'
+        + '<span class="disp ' + dCls + '">' + esc(d.level === '未知' ? '派发数据不足' : ('派发' + d.level)) + '</span>'
+        + '<span class="why">' + why + '</span>'
+        + '<span class="op" data-obsopen="' + esc(x.code) + '">详情 ›</span></div>';
+    }).join('');
+    setHTML('luObsList', html || '<div class="dp-empty">该档今天没有标的。</div>');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-obsopen]'), function (el) {
+      el.addEventListener('click', function () {
+        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-obsopen')), '_blank');
+      });
+    });
+  }
+  function renderWatch() {
+    var box = document.getElementById('luWatch');
+    if (!box) return;
+    var W = L && L.watchlist;
+    if (!W || !W.list || !W.list.length) {
+      box.style.display = 'none';
+      return;
+    }
+    box.style.display = '';
+    var st = W.stats || {};
+    set('luWatchMeta', '基准 ' + esc(W.asOf || '') + ' · ' + W.list.length + ' 只'
+      + (st.settled ? (' · 已验证 ' + st.settled + ' 条') : ' · 前瞻积累中'));
+    set('luWatchNote', esc(W.note || '') + '。首板=基准日第一次放量涨停，通常比引擎判「启动」早 2~3 天；'
+      + '这是观察线索，不是买入信号。');
+    var list = W.list.filter(function (x) {
+      if (watchFilter === 'can' && (x.tradable !== true || x.oneWord)) return false;
+      if (watchFilter === 'high' && !x.highRun) return false;
+      if (watchFilter === 'one' && !x.oneWord) return false;
+      return true;
+    });
+    var html = list.length ? list.map(function (x) {
+      var q = x.quote || {};
+      var px = (q.price > 0) ? ('现价 <b>' + q.price.toFixed(2) + '</b>（' + (q.chg >= 0 ? '+' : '') + (q.chg != null ? q.chg.toFixed(2) : '—') + '%）')
+        : '实时价 <b>— 未取到</b>';
+      var tags = '';
+      if (x.oneWord) tags += '<span class="tagw one">一字板·买不进</span>';
+      else if (x.highRun) tags += '<span class="tagw hi">高位板</span>';
+      else if (x.tradable === true) tags += '<span class="tagw ok">可成交</span>';
+      if (x.tradable == null) tags += '<span class="tagw">成交性未知</span>';
+      return '<div class="wm-row"><span class="nm">' + esc(x.name) + '</span><span class="cd">' + esc(x.code) + '</span>'
+        + '<span class="g">基准 <b>+' + (x.baseChg != null ? x.baseChg.toFixed(1) : '—') + '%</b></span>'
+        + '<span class="g">量比 <b>' + (x.volRatio != null ? x.volRatio.toFixed(2) : '—') + '</b></span>'
+        + '<span class="g">' + px + '</span>' + tags
+        + '<span class="op" data-watchopen="' + esc(x.code) + '">详情 ›</span></div>';
+    }).join('') : '<div class="wm-empty">' + (watchFilter === 'all' ? '今日没有符合首板预警的标的。' : '该档今天没有标的。') + '</div>';
+    set('luWatchList', html);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-watchopen]'), function (el) {
+      el.addEventListener('click', function () {
+        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-watchopen')), '_blank');
+      });
+    });
+  }
+
   function renderLU() {
     if (!L || !L.today) {
       set('en3', '数据未加载');
@@ -638,15 +1058,15 @@ function abBoot() {
       return;
     }
     var G = luGroups();
-    var allList = L.today.slice();
-    var downList = (G['观察'] || []).concat(G['退化'] || []);
-    set('en3', allList.length + ' 只启动候选 · 基准 ' + (L.asOf || ''));
+    // 用户定稿：超跌页启动池只要「新发 + 观察」两类，健康期/退化不再展示、不再进自进化统计。
+    var allList = (G['新发'] || []).concat(G['观察'] || []);
+    set('en3', allList.length + ' 只（新发+观察）· 基准 ' + (L.asOf || ''));
     set('luCount', allList.length + '只');
     set('luAsOf', '数据基准 ' + (L.asOf || '') + ' · 生成 ' + (L.generatedAt || ''));
     var stale = L.staleDays;
-    var newN = allList.filter(function (x) { return x.dayBucket === '新发'; }).length;
+    var newN = (G['新发'] || []).length, obsN = (G['观察'] || []).length;
     var canN = allList.filter(function (x) { return x._action === '可参与'; }).length;
-    set('luFunnel', '启动池 ' + allList.length + ' 只（新发1-2日 ' + newN + ' / 健康期3-8日 ' + (allList.length - newN) + '）'
+    set('luFunnel', '启动池 ' + allList.length + ' 只（启动新发 ' + newN + ' / 启动观察 ' + obsN + '；健康期/退化不展示、不进统计）'
       + ' · 自进化可参与 ' + canN + ' 只。'
       + (stale != null && stale > 1 ? (' ⚠ 数据基准距今 ' + stale + ' 天，快照尚未更新，数量会跟着变。') : ''));
     var live = document.getElementById('luLive');
@@ -659,9 +1079,11 @@ function abBoot() {
         + (luFundMeta.count ? ('已取到 ' + luFundMeta.count + '/' + allList.length + ' 只') : '拉取中/未取到')
         + ' · 盘中每 60 秒刷新；取不到的显示「— 未取到」，不用快照冒充。';
     }
+    renderWatch();
+    renderDisp();
+    renderObs();
     renderTop();
     renderEvidence();
-    renderExcluded(downList);
     // 时间轴动作表
     var tl = document.getElementById('luTimeline'), pb = (L.rules || {}).playbook || [];
     if (tl) tl.innerHTML = pb.length ? pb.map(function (p) {
@@ -670,11 +1092,12 @@ function abBoot() {
     // 列表筛选：tab 快捷筛选 + 表头筛选（可叠加）
     var list = allList.filter(function (x) {
       var a = x._action || '观察';
+      var phase = (x._phase && x._phase.t) || x.dayBucket || '';
       if (luFilter === 'can' && a !== '可参与') return false;
-      if (luFilter === 'obs' && a !== '观察') return false;
+      if (luFilter === 'actObs' && a !== '观察') return false;
       if (luFilter === 'avoid' && a !== '回避') return false;
-      if (luFilter === 'new' && x.dayBucket !== '新发') return false;
-      if (luFilter === 'health' && x.dayBucket !== '健康期') return false;
+      if (luFilter === 'new' && phase !== '新发') return false;
+      if (luFilter === 'phaseObs' && phase !== '观察') return false;
       if (luFilters.action && a !== luFilters.action) return false;
       if (luFilters.bucket && (x.dayBucket || '') !== luFilters.bucket) return false;
       if (luFilters.rrg && (x.rrg || '—') !== luFilters.rrg) return false;
@@ -712,7 +1135,7 @@ function abBoot() {
     if (lgEl) lgEl.innerHTML = LG.map(function (r) {
       return '<div class="ledger-row"><span class="d">' + esc(r.date) + '</span>'
         + '<span class="n">基准 ' + esc(r.asOf) + '</span>'
-        + '<span class="n">共' + (r.n || 0) + ' · 新发' + (r.realNew != null ? r.realNew : '—') + ' · 健康' + (r.health != null ? r.health : '—') + '</span></div>';
+        + '<span class="n">共' + (r.n || 0) + ' · 新发' + (r.newPhase != null ? r.newPhase : (r.realNew != null ? r.realNew : '—')) + ' · 观察' + (r.observe != null ? r.observe : (r.health != null ? r.health : '—')) + '</span></div>';
     }).join('');
     // 口径
     var MT = L.method || {}, mEl = document.getElementById('luMethod');
@@ -725,11 +1148,13 @@ function abBoot() {
     renderLU();
     refreshLUQuotes();
     refreshLUFunds();
+    refreshLUTurn();
     setInterval(function () {
       if (document.getElementById('p3') && document.getElementById('p3').classList.contains('on')) {
         refreshLUQuotes();
         if (window.AB_FUNDFLOW) window.AB_FUNDFLOW.clear();  // 过期缓存清掉，重新拉当日资金
         refreshLUFunds();
+        refreshLUTurn();
       }
     }, 60000);
   }
@@ -739,6 +1164,22 @@ function abBoot() {
       e.classList.add('on');
       luFilter = e.getAttribute('data-lut');
       renderLU();
+    });
+  });
+  document.querySelectorAll('[data-wt]').forEach(function (e) {
+    e.addEventListener('click', function () {
+      document.querySelectorAll('[data-wt]').forEach(function (x) { x.classList.remove('on'); });
+      e.classList.add('on');
+      watchFilter = e.getAttribute('data-wt');
+      renderWatch();
+    });
+  });
+  document.querySelectorAll('[data-ot]').forEach(function (e) {
+    e.addEventListener('click', function () {
+      document.querySelectorAll('[data-ot]').forEach(function (x) { x.classList.remove('on'); });
+      e.classList.add('on');
+      obsFilter = e.getAttribute('data-ot');
+      renderObs();
     });
   });
   var luSortEl = document.getElementById('luSort');
