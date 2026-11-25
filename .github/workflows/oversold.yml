@@ -68,12 +68,16 @@ jobs:
           echo "抓数耗时 $(( $(date +%s) - t0 ))s"
           ls -lh hist.json.gz ohlc.json.gz
 
-      - name: 缠论一买 + 超跌池名单
+      - name: 缠论一买 + 超跌池名单 + 新发涨停观察
         run: |
           set -e
           node --max-old-space-size=8192 tools/chan_pick.js
           node --max-old-space-size=8192 tools/final_pick.js
+          # 新发涨停观察：从当日 ohlc 回放最新新发池 + 打分 + 台账
+          # 失败不阻塞主链路（超跌页会提示「数据未加载」而不是静默用旧稿）
+          node --max-old-space-size=8192 tools/limitup_watch.js || echo "新发涨停观察失败，沿用上轮 limitup_data.js"
           ls -lh chan_pick_data.js oversold_data.js
+          [ -f limitup_data.js ] && ls -lh limitup_data.js || true
 
       - name: 自进化校准（失败不阻塞，保留上轮参数）
         run: |
@@ -86,7 +90,7 @@ jobs:
         run: |
           set -e
           FILES=""
-          for f in chan_pick_data.js oversold_data.js learn_report.js; do
+          for f in chan_pick_data.js oversold_data.js learn_report.js limitup_data.js; do
             [ -f "$f" ] && FILES="$FILES $f=$f"
           done
           echo "推送:$FILES"
