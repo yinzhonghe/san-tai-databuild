@@ -1,0 +1,48 @@
+{
+ "version": "l2026-11-18-1",
+ "type": "limitup_scorecard",
+ "trainedAt": "2026-11-25 02:16",
+ "asOf": "2026-11-18",
+ "target": "hit5",
+ "weights": {
+  "chg": 1,
+  "amp": 1.5,
+  "pos": 1,
+  "vol": 1,
+  "mid": 1.5,
+  "board": 1
+ },
+ "checks": 1,
+ "adoptions": 1,
+ "lastCheck": "2026-11-25 02:16",
+ "lastAction": "adopt",
+ "lastReason": "验证集目标分 14.4→15.1，顶部档涨停率 14.4%→15.1%",
+ "history": [
+  {
+   "date": "2026-11-18",
+   "action": "adopt",
+   "version": "l2026-11-18-1",
+   "changes": [
+    {
+     "factor": "amp",
+     "desc": "当日振幅",
+     "from": 1,
+     "to": 1.5,
+     "trainLift": 10.3
+    },
+    {
+     "factor": "mid",
+     "desc": "中期动能",
+     "from": 1,
+     "to": 1.5,
+     "trainLift": 9.4
+    }
+   ],
+   "reason": "验证集目标分 14.4→15.1，顶部档涨停率 14.4%→15.1%",
+   "trainN": 153785,
+   "validN": 39799,
+   "validOld": 14.4,
+   "validNew": 15.1
+  }
+ ]
+}
