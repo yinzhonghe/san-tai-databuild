@@ -5,7 +5,8 @@
  * 红线：只服务超跌反弹页板块③，不改三态看板。信号一律来自主站 data.js 的真实字段。
  *
  * v2（2026-11-25，按 grill-me 决策重写）：
- *   1) 池子：从「新发」扩到启动态全量 stateDays 1~8，分「新发(1~2)/健康期(3~8)」两层。
+ *   1) 池子：主站启动态 1~8 日里只保留阶段=「新发 / 观察」两类；健康期与退化
+ *      （2026-11-25 用户定稿）不进超跌页列表，也不进统计/打分/规则树。
  *   2) 去重：一个连续启动周期只算一次样本（首次进入为信号日）；次日数据另做两套标记
  *      （阶段持续性 + 次日追入胜率），不混入主统计。
  *   3) 结果：ohlc.json.gz 完整 [日期,开,收,高,低]，四口径同算：
@@ -35,6 +36,7 @@ var PHASE = require('../state-phase.js');
 var ROOT = path.dirname(__dirname);
 var DATAJS = path.join(ROOT, 'data.js');
 var OHLC = path.join(ROOT, 'ohlc.json.gz');
+var WATCH_OUT = path.join(ROOT, 'learn', 'limitup_watch.jsonl');
 var LEDGER = path.join(ROOT, 'learn', 'limitup_live.jsonl');
 var RULES = path.join(ROOT, 'learn', 'limitup_rules.json');
 var STATS_LOG = path.join(ROOT, 'learn', 'limitup_stats.jsonl');
@@ -46,6 +48,12 @@ var RULE_MIN = 15;    // 单条规律最小样本
 var TREE_NEED = 1000; // 规则树启用门槛
 var DAY_MAX = 8;      // 扩池上限：启动态 1~8 日
 var NEW_MAX = 2;      // 新发段上限（1~2 日）
+/* 2026-11-25 口径升级：
+ * v1 = 旧口径（stateDays<=2 就算新发，连板污染未剔除）
+ * v2 = 真新发（PHASE.compute 的「新发」：stateDays<=2 且近 5 日涨停<2）+ 首板预警层
+ * 两版样本绝不混算：旧台账打 v1 标记，统计只吃 v2。 */
+var RULE_VERSION = 2;
+var WATCH_NEED = 15;  // 预警层独立样本门槛（不足只写「积累中」）
 var WF_TRAIN = 20;    // 前瞻验证：训练段交易日
 var WF_TEST = 10;     // 前瞻验证：验证段交易日
 var WF_MIN_ROUND = 3; // 至少 3 轮才允许切主公式
@@ -69,6 +77,17 @@ function kindOf(code) {
 function limitOf(k) { return k === 'gem' ? 19.8 : k === 'bj' ? 29.5 : 9.8; }
 function stopOf(k) { return k === 'gem' ? 7 : k === 'bj' ? 9 : 5; }   // 盘中最低判输阈值
 function isNum(v) { return typeof v === 'number' && isFinite(v); }
+/* 2026-11-25 用户定稿：超跌页启动池/自进化只吃「新发 + 观察」两类。
+   健康期(3~8日)和退化(大跌/连板走完)不再进页面列表、统计、打分与规则树。
+   主站三态看板不改，state-phase.js 阈值保持共用不变。 */
+var POOL_PHASES = ['新发', '观察'];
+function bucketOf(p) {
+  if (!p) return '';
+  if (p.phase) return p.phase;
+  if (p.dayBucket) return p.dayBucket;
+  return ((p.stateDays || 99) <= NEW_MAX ? '新发' : '健康期');   // 老 v1 快照兜底
+}
+function inPool(p) { return POOL_PHASES.indexOf(bucketOf(p)) >= 0; }
 function todayStr() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 function nowStr() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' '); }
 function daysBetween(a, b) {
@@ -112,7 +131,14 @@ async function fetchQuotes(codes) {
         if (a.length < 34) return;
         var bare = m[1].slice(2), full = bare + (m[1].slice(0, 2) === 'sh' ? '.SH' : '.SZ');
         var price = parseFloat(a[3]), chg = parseFloat(a[32]);
-        if (isNum(price) && price > 0) map[full] = { price: price, chg: isNum(chg) ? chg : null, source: 'tencent', at: at };
+        /* 开/高/低用于首板预警的一字板判定（开=高=低=涨停 → 买不进）。
+           旧调用方只用 price/chg，多带三个字段不影响；取不到就留空。 */
+        var open = parseFloat(a[5]), high = parseFloat(a[33]), low = parseFloat(a[34]);
+        if (isNum(price) && price > 0) map[full] = { price: price, chg: isNum(chg) ? chg : null,
+          open: isNum(open) && open > 0 ? open : null,
+          high: isNum(high) && high > 0 ? high : null,
+          low: isNum(low) && low > 0 ? low : null,
+          source: 'tencent', at: at };
       });
     } catch (e) { /* 单块失败不影响其他块 */ }
   }
@@ -121,7 +147,7 @@ async function fetchQuotes(codes) {
     try {
       var secids = bj.map(function (c) { return '0.' + c.split('.')[0]; }).join(',');
       var url = 'https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2'
-        + '&fields=f2,f3,f12,f13,f60&secids=' + encodeURIComponent(secids) + '&ut=' + EM_UT + '&cb=_abLQ';
+        + '&fields=f2,f3,f12,f13,f60,f17,f15,f16&secids=' + encodeURIComponent(secids) + '&ut=' + EM_UT + '&cb=_abLQ';
       var r2 = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'Mozilla/5.0' } });
       var t2 = await r2.text();
       var j = /_abLQ\((.*)\)/.exec(t2);
@@ -130,7 +156,10 @@ async function fetchQuotes(codes) {
         ((d.data && d.data.diff) || []).forEach(function (it) {
           var code = String(it.f12 || '') + '.BJ';
           var price = Number(it.f2), chg = Number(it.f3);
-          if (isNum(price) && price > 0) map[code] = { price: price, chg: isNum(chg) ? chg : null, source: 'eastmoney', at: at };
+          var open = Number(it.f17), high = Number(it.f15), low = Number(it.f16);
+          if (isNum(price) && price > 0) map[code] = { price: price, chg: isNum(chg) ? chg : null,
+            open: open > 0 ? open : null, high: high > 0 ? high : null, low: low > 0 ? low : null,
+            source: 'eastmoney', at: at };
         });
       }
     } catch (e) { }
@@ -176,6 +205,15 @@ async function main() {
     return r && r.kind === 'stock' && r.state === '启动' && d >= 1 && d <= DAY_MAX;
   });
   var qres = await fetchQuotes(fresh.map(function (r) { return r.code; }));
+
+  // 首板预警候选：先用快照收盘筛出代码（不依赖报价），再单独拉这批票的实时价。
+  // 两批互斥（启动态 vs 非启动态），分别拉避免把全市场 6000 只都拉一遍触发限流。
+  var watchPre = buildWatchlist(allRows, {});
+  var watchCodes = watchPre.list.map(function (x) { return x.code; });
+  var wqres = watchCodes.length ? await fetchQuotes(watchCodes) : { map: {}, at: qres.at, covered: 0 };
+  var allQuotes = Object.assign({}, qres.map, wqres.map);
+  var watch = buildWatchlist(allRows, allQuotes);
+
   var snapshot = {
     date: todayStr(), asOf: asOf, generatedAt: nowStr(),
     quoteAt: qres.at, quoteCovered: qres.covered,
@@ -199,9 +237,12 @@ async function main() {
         quote: q,
         phase: ph ? ph.t : null,
         phaseWhy: ph ? ph.why : '',
-        dayBucket: (r.stateDays || 99) <= NEW_MAX ? '新发' : '健康期'
+        /* v2 口径：dayBucket 直接采用阶段判定的结果（真新发已剔除连板），
+           不再用 stateDays<=2 的旧算法；旧台账无此字段按 v1 处理、统计隔离。 */
+        dayBucket: ph ? ph.t : ((r.stateDays || 99) <= NEW_MAX ? '新发' : '健康期'),
+        ruleVersion: RULE_VERSION
       };
-    })
+    }).filter(inPool)
   };
 
   // ===== 台账写入（同一 asOf 覆盖）=====
@@ -210,6 +251,32 @@ async function main() {
   if (at >= 0) history[at] = snapshot; else history.push(snapshot);
   history.sort(function (a, b) { return String(a.asOf).localeCompare(String(b.asOf)); });
   fs.writeFileSync(LEDGER, history.map(function (x) { return JSON.stringify(x); }).join('\n') + '\n');
+
+  // ===== 预警台账（独立文件，同一 asOf 覆盖，不与启动池混算）=====
+  var watchHistory = [];
+  if (fs.existsSync(WATCH_OUT)) {
+    fs.readFileSync(WATCH_OUT, 'utf8').split('\n').forEach(function (line) {
+      if (!line.trim()) return;
+      try { watchHistory.push(JSON.parse(line)); } catch (e) { }
+    });
+  }
+  var watchSnap = {
+    date: todayStr(), asOf: asOf, generatedAt: nowStr(), ruleVersion: RULE_VERSION,
+    quoteAt: wqres.at, skipped: watch.skipped,
+    pool: watch.list.map(function (w) {
+      return {
+        asOf: asOf, code: w.code, name: w.name, ind: w.ind, kind: w.kind,
+        baseChg: w.baseChg, baseClose: w.baseClose, limitPrice: w.limitPrice,
+        highRun: w.highRun, oneWord: w.oneWord, tradable: w.tradable,
+        volRatio: w.volRatio, amtRatio: w.amtRatio, w5: w.w5, w20: w.w20,
+        resonance: w.resonance, votes: w.votes, quote: w.quote
+      };
+    })
+  };
+  var wi = watchHistory.findIndex(function (x) { return x.asOf === asOf; });
+  if (wi >= 0) watchHistory[wi] = watchSnap; else watchHistory.push(watchSnap);
+  watchHistory.sort(function (a, b) { return String(a.asOf).localeCompare(String(b.asOf)); });
+  fs.writeFileSync(WATCH_OUT, watchHistory.map(function (x) { return JSON.stringify(x); }).join('\n') + '\n');
 
   // ===== 真实日 K：[日期, 开, 收, 高, 低] =====
   var O = null;
@@ -231,6 +298,57 @@ async function main() {
   // 涨停价（按前收 + 板块幅度，四舍五入到分）
   function limitPrice(prevClose, k) { return +(prevClose * (1 + limitOf(k) / 100)).toFixed(2); }
   function nearLimit(open, prevClose, k) { return open >= prevClose * (1 + (limitOf(k) - 0.5) / 100); }
+
+  /* ===== 首板预警层（2026-11-25 新增）=====
+   * 目标：比引擎「启动」更早一天捕捉第一次放量涨停/突破。
+   * 数据全部来自主站快照的真实收盘序列 + 实时报价，绝不编造。
+   * 条件（grill-me 分支2 A）：
+   *   ① 当前非「启动」态（盘整/走完才谈得上预警）且是个股；
+   *   ② 基准日收盘涨幅达涨停档（主板 9.8 / 创业板科创 19.8 / 北交所 29.5）；
+   *   ③ 此前 5 个交易日没有涨停（PHASE.streakOf 去掉最后一根后=0，保证是「第一板」）；
+   *   ④ 量能确认：volRatio 或 amtRatio ≥ 1.2（缩量首板不要）。
+   * 四道闸门（分支4 A）：
+   *   ST/退市剔除；一字板单列不可成交；20日涨幅>25% 标「高位板」；数据不足留空不硬判。
+   */
+  function buildWatchlist(rows, quoteMap) {
+    var out = [], skipped = { st: 0, notFirst: 0, noVol: 0, thin: 0 };
+    (rows || []).forEach(function (r) {
+      if (!r || r.kind !== 'stock' || r.state === '启动') return;
+      if (/ST|退|\*/.test(String(r.name || ''))) { skipped.st++; return; }
+      var c = Array.isArray(r.closes) ? r.closes : [];
+      if (c.length < 20) { skipped.thin++; return; }
+      var k = kindOf(r.code), lim = limitOf(k);
+      var last = c[c.length - 1], prev = c[c.length - 2];
+      if (!(last > 0) || !(prev > 0)) { skipped.thin++; return; }
+      var chg = (last / prev - 1) * 100;
+      if (chg < lim - 0.5) { skipped.notFirst++; return; }   // 基准日不是涨停
+      var priorStreak = PHASE.streakOf({ code: r.code, closes: c.slice(0, -1) });
+      if (priorStreak != null && priorStreak >= 1) { skipped.notFirst++; return; } // 前 5 日已涨停 → 不是首板
+      var vr = isNum(r.volRatio) ? r.volRatio : (isNum(r.amtRatio) ? r.amtRatio : null);
+      if (vr == null || vr < 1.2) { skipped.noVol++; return; }
+      var w20 = r.pct && isNum(r.pct.w20) ? r.pct.w20 : null;
+      var highRun = w20 != null && w20 > 25;                  // 闸门③：累计涨幅过高标高位板，仍展示但不算首板
+      var q = (quoteMap || {})[r.code] || null;
+      var lp = limitPrice(last, k);                            // 以基准日收盘为前收算今日涨停价
+      var oneWord = false;
+      if (q && q.price > 0 && q.open != null && q.high != null && q.low != null) {
+        // 今日开=高=低且贴涨停 → 一字板，买不进
+        oneWord = q.open >= lp - 0.02 && Math.abs(q.high - q.low) <= 0.02 && Math.abs(q.open - q.price) <= 0.02;
+      }
+      var tradable = q && q.price > 0 ? !nearLimit(q.open != null ? q.open : q.price, last, k) : null;
+      out.push({
+        code: r.code, name: String(r.name || '').replace(/\s+/g, ''), ind: r.ind || '', kind: k,
+        state: r.state, asOf: asOf, baseDate: r.baseDate || null,
+        baseClose: last, baseChg: +chg.toFixed(2), limitPrice: lp,
+        w5: r.pct && r.pct.w5, w20: w20, w60: r.pct && r.pct.w60,
+        volRatio: r.volRatio, amtRatio: r.amtRatio, votes: r.votes || {}, resonance: r.resonance,
+        highRun: highRun, oneWord: oneWord, tradable: tradable,
+        quote: q, closes: c.slice(-21)
+      });
+    });
+    out.sort(function (a, b) { return (b.volRatio || 0) - (a.volRatio || 0); });
+    return { list: out, skipped: skipped };
+  }
 
   /*
    * 四口径回填。sig.asOf 为信号基准日；买价一律用真实日K，不用快照价。
@@ -287,6 +405,7 @@ async function main() {
   var positions = {};   // code -> [{asOf, rec}]
   history.forEach(function (snap) {
     (snap.pool || []).forEach(function (p) {
+      if (!inPool(p)) return;   // 健康期/退化不进超跌页样本，旧台账同样过滤
       (positions[p.code] = positions[p.code] || []).push({ asOf: snap.asOf, rec: p });
     });
   });
@@ -335,8 +454,10 @@ async function main() {
   function sampleOf(r, ev, key) {
     return {
       key: key, code: r.code, name: r.name, asOf: r.asOf,
-      stateDays: r.stateDays, bucket: (r.stateDays || 99) <= NEW_MAX ? '新发' : '健康期',
-      phase: r.phase || '', resonance: r.resonance, resonancePrev: r.resonancePrev,
+      stateDays: r.stateDays,
+      /* v2 样本统一用阶段判定的 bucket（连板污染已剔除）；老快照无 phase 才退回旧算法。 */
+      bucket: bucketOf(r),
+      phase: r.phase || '', phaseWhy: r.phaseWhy || '', resonance: r.resonance, resonancePrev: r.resonancePrev,
       w5: r.w5, w20: r.w20, w60: r.w60,
       fund: r.fund, volRatio: r.volRatio, amtRatio: r.amtRatio, rrg: r.rrg, ind: r.ind,
       signalChg: r.quote ? r.quote.chg : null,
@@ -344,10 +465,67 @@ async function main() {
     };
   }
 
+  // ===== 预警层前瞻验证（独立台账，v2 起步，样本不足只写积累中）=====
+  var watchStats = { total: 0, settled: 0, pending: 0, tradable: 0, untradable: 0,
+    highRun: 0, winA: 0, ret5: [], need: WATCH_NEED,
+    note: '', ready: false };
+  watchHistory.forEach(function (snap) {
+    if (snap.ruleVersion !== RULE_VERSION) return;   // 版本隔离：旧预警记录不混算
+    (snap.pool || []).forEach(function (p) {
+      watchStats.total++;
+      if (p.highRun) watchStats.highRun++;
+      if (p.oneWord || p.tradable === false) watchStats.untradable++; else watchStats.tradable++;
+      var ev = evaluate({ code: p.code, asOf: p.asOf });   // 基准日收盘=首板日；次日开盘买
+      if (!ev) { watchStats.pending++; return; }
+      watchStats.settled++;
+      if (ev.a.win) watchStats.winA++;
+      if (isNum(ev.c.ret)) watchStats.ret5.push(ev.c.ret);
+    });
+  });
+  watchStats.ready = watchStats.settled >= WATCH_NEED;
+  var avgRet = watchStats.ret5.length
+    ? +(watchStats.ret5.reduce(function (a, b) { return a + b; }, 0) / watchStats.ret5.length).toFixed(2) : null;
+  watchStats.avgRet5 = avgRet;
+  watchStats.winRate = watchStats.settled ? +(watchStats.winA / watchStats.settled * 100).toFixed(1) : null;
+  watchStats.note = !watchStats.settled ? '首板预警刚开始积累，暂无真实结果'
+    : (!watchStats.ready ? ('真实结果累积中（' + watchStats.settled + '/' + WATCH_NEED + '），暂不给胜率结论')
+      : ('已有 ' + watchStats.settled + ' 条真实结果 · 主口径胜率 ' + watchStats.winRate + '% · T+5 平均 ' + avgRet + '%'));
+  appendLog(STATS_LOG, { type: 'watch', date: todayStr(), asOf: asOf, ruleVersion: RULE_VERSION,
+    total: watchStats.total, settled: watchStats.settled, tradable: watchStats.tradable,
+    untradable: watchStats.untradable, winRate: watchStats.winRate, avgRet5: avgRet });
+
+  // ===== 观察组前瞻验证（连板降级 / 走弱回落 分开，与主样本隔离）=====
+  // 观察组是「启动态但被主站降级」的票：连板降级=信号触发时已连涨多日；走弱回落=启动态出大阴线。
+  // 用已 settle 的主样本按 phase/phaseWhy 切片，不重复 evaluate；样本不足只标积累中，不混进新发胜率。
+  function obsSlice(pool) {
+    var n = pool.length, win = pool.filter(winOf).length;
+    var rets = pool.map(function (x) { return x.ev.c.ret; }).filter(isNum);
+    var wr = n ? +(win / n * 100).toFixed(1) : null;
+    var ar = rets.length ? +(rets.reduce(function (a, b) { return a + b; }, 0) / rets.length).toFixed(2) : null;
+    return { n: n, win: win, winRate: wr, avgRet5: ar };
+  }
+  var obsAll = settled.filter(function (x) { return x.bucket === '观察'; });
+  var observeStats = {
+    n: obsAll.length,
+    board: obsSlice(obsAll.filter(function (x) { return /连板/.test(x.phaseWhy || ''); })),
+    weak: obsSlice(obsAll.filter(function (x) { return !/连板/.test(x.phaseWhy || ''); })),
+    need: RULE_MIN, ready: obsAll.length >= RULE_MIN,
+    note: ''
+  };
+  observeStats.note = !obsAll.length ? '观察组暂无可结算样本'
+    : (!observeStats.ready ? ('观察组真实结果累积中（' + obsAll.length + '/' + RULE_MIN + '），暂不给分组胜率结论')
+      : ('观察组 ' + obsAll.length + ' 条真实结果 · 连板降级 ' + observeStats.board.winRate
+        + '% / 走弱回落 ' + observeStats.weak.winRate + '%（历史频率不是预测）'));
+  appendLog(STATS_LOG, { type: 'observe', date: todayStr(), asOf: asOf, ruleVersion: RULE_VERSION,
+    n: observeStats.n, boardN: observeStats.board.n, weakN: observeStats.weak.n,
+    boardWin: observeStats.board.winRate, weakWin: observeStats.weak.winRate });
+
   // ===== 条件特征 =====
   var TESTS = [
     { k: 'phaseNew', label: '阶段=新发（主站同款）', grp: 'phase', f: function (x) { return x.bucket === '新发'; } },
-    { k: 'phaseHealth', label: '启动健康期（第3~8日）', grp: 'phase', f: function (x) { return x.bucket === '健康期'; } },
+    { k: 'phaseObserve', label: '阶段=观察（主站降级）', grp: 'phase', f: function (x) { return x.bucket === '观察'; } },
+    { k: 'obsBoard', label: '观察·连板降级', grp: 'phase', f: function (x) { return x.bucket === '观察' && /连板/.test(x.phaseWhy || ''); } },
+    { k: 'obsWeak', label: '观察·走弱回落', grp: 'phase', f: function (x) { return x.bucket === '观察' && !/连板/.test(x.phaseWhy || ''); } },
     { k: 'day1', label: '启动第 1 日', grp: 'day', f: function (x) { return x.stateDays === 1; } },
     { k: 'day2', label: '启动第 2 日', grp: 'day', f: function (x) { return x.stateDays === 2; } },
     { k: 'v4', label: '六派 ≥4', grp: 'vote', f: function (x) { return (x.resonance || 0) >= 4; } },
@@ -503,7 +681,7 @@ async function main() {
 
   // ===== 时间分层：第几天参与最好 =====
   var byBucket = {};
-  ['新发', '健康期'].forEach(function (b) {
+  POOL_PHASES.forEach(function (b) {
     var pool = tradablePool.filter(function (x) { return x.bucket === b; });
     byBucket[b] = { n: pool.length, rate: pct(pool.length, pool.filter(winOf).length) };
   });
@@ -516,7 +694,7 @@ async function main() {
   // ===== 规则树（≥1000 条自动启用，共用特征，不改打分）=====
   var tree = { enabled: settled.length >= TREE_NEED, need: TREE_NEED, rules: [], note: '' };
   if (tree.enabled) {
-    ['新发', '健康期'].forEach(function (b) {
+    POOL_PHASES.forEach(function (b) {
       var pool = tradablePool.filter(function (x) { return x.bucket === b; });
       if (pool.length < RULE_MIN) return;
       var best = sigItems.map(function (it) {
@@ -551,7 +729,7 @@ async function main() {
     ];
   } else {
     playbook = [
-      { when: '信号当日（收盘后）', state: '启动池（新发 1~2 日 / 健康期 3~8 日）', action: '待验证框架：先入观察名单，不预设涨停率' },
+      { when: '信号当日（收盘后）', state: '启动池（仅新发 / 观察两类）', action: '待验证框架：先入观察名单，不预设涨停率' },
       { when: 'T+1 开盘', state: '能否成交', action: '待验证框架：一字板买不进单列，可成交组才统计' },
       { when: 'T+1 / T+3 / T+5', state: '阶段与涨停', action: '待验证框架：按真实日 K 回填后再给结论；现在样本不足，不编概率' }
     ];
@@ -597,8 +775,8 @@ async function main() {
   var ledger = history.map(function (x) {
     var pl = x.pool || [];
     return { date: x.date, asOf: x.asOf, n: pl.length,
-      realNew: pl.filter(function (p) { return (p.stateDays || 99) <= NEW_MAX; }).length,
-      health: pl.filter(function (p) { return (p.stateDays || 99) > NEW_MAX; }).length };
+      newPhase: pl.filter(function (p) { return bucketOf(p) === '新发'; }).length,
+      observe: pl.filter(function (p) { return bucketOf(p) === '观察'; }).length };
   });
 
   // ===== 今日候选打分（给页面「今天怎么做」用）=====
@@ -630,12 +808,21 @@ async function main() {
   var out = {
     asOf: asOf, generatedAt: snapshot.generatedAt,
     quoteAt: qres.at, quoteCovered: qres.covered, staleDays: staleDays,
-    source: '三态主站 data.js · state=启动 且 stateDays 1~8 · 阶段判定共用 state-phase.js',
+    source: '三态主站 data.js · state=启动 且 stateDays 1~8 · 只保留阶段=新发/观察 · 共用 state-phase.js · v2 真新发口径',
+    ruleVersion: RULE_VERSION,
     today: todayPool, newPhase: newPhase, downPhase: snapshot.pool.length - newPhase,
+    /* 首板预警层：独立于启动池，时间更早（基准日首板 vs 引擎第 3~4 日才切启动）。 */
+    watchlist: {
+      asOf: asOf, quoteAt: wqres.at, skipped: watch.skipped,
+      list: watch.list, stats: watchStats,
+      note: '基准日 ' + asOf + ' 收盘首板 + 量比≥1.2；ST 已剔除、一字板单列不可成交、20日涨幅>25% 标高位板；' + watchStats.note
+    },
+    /* 观察组：启动态但被主站降级的票（连板降级/走弱回落），自进化单独前瞻验证，不与新发混算 */
+    observeStats: observeStats,
     ledger: ledger, accumulate: accumulate, rules: rules,
     verdict: {
       regime: ready ? '高置信 · 按自进化排序' : (items.length ? '低置信 · 仅有初步条件' : '数据积累中 · 暂不判断'),
-      why: '启动池 ' + snapshot.pool.length + ' 只（新发 ' + newPhase + ' / 健康期 ' + (snapshot.pool.length - newPhase)
+      why: '启动池 ' + snapshot.pool.length + ' 只（新发 ' + newPhase + ' / 观察 ' + (snapshot.pool.length - newPhase)
         + '）· 连续周期样本 ' + settled.length + ' 条 · ' + accumulate.note,
       topPick: todayPool.length ? todayPool.slice().sort(function (a, b) { return b._score - a._score; }).slice(0, 5)
         .map(function (x) { return x.name + ' ' + x._score + '分/' + x._action; }).join('、') : '今日无启动候选',
@@ -645,7 +832,7 @@ async function main() {
       comparison: rules.comparison, scoring: rules.scoring
     },
     method: {
-      signal: '主站 data.js 中 state=启动 且 stateDays 1~8；连续启动周期去重只算首日；一字板买不进单列',
+      signal: '主站 data.js 中 state=启动 且 stateDays 1~8；连续启动周期去重只算首日；一字板买不进单列。v2 起「新发」改用 state-phase.js 真新发口径（连板≥2 降级为观察）；首板预警层从非启动态里筛，独立台账，不与启动池混算；观察组（连板降级/走弱回落）单独前瞻验证，不与新发组混算',
       result: 'ohlc.json.gz 真实日K：[开,收,高,低]；①次日开盘买+盘中最低破阈值先判输+窗口涨停；②信号收盘；③T+5收益；④T+1封板T+2再板',
       limit: '历史快照无法回溯：data.js 无每日存档，真实台账从本脚本上线日起逐日累积',
       missing: 'K线未覆盖标记待回填；单条件需 ' + RULE_MIN + ' 条、总体需 ' + NEED + ' 条、规则树需 ' + TREE_NEED + ' 条',
@@ -655,9 +842,9 @@ async function main() {
   };
 
   fs.writeFileSync(OUT, 'window.AB_LIMITUP = ' + JSON.stringify(out) + ';\n');
-  console.log('启动池 ' + asOf + '：候选 ' + snapshot.pool.length + '（新发' + newPhase + '/健康期' + (snapshot.pool.length - newPhase)
+  console.log('启动池 ' + asOf + '：候选 ' + snapshot.pool.length + '（新发' + newPhase + '/观察' + (snapshot.pool.length - newPhase)
     + '）· 周期样本 ' + settled.length + '（可成交' + baseN + '/一字' + untradable.length + '）· 待回填 ' + pending
     + ' · 条件 ' + items.length + ' · 主公式 ' + primaryFormula + ' · 前瞻 ' + wfRounds.length + ' 轮 · 对照 A' + baselineA
-    + '/B' + baselineB + '/C' + baselineC + '%');
+    + '/B' + baselineB + '/C' + baselineC + '% · 观察组样本 ' + observeStats.n);
 }
 main().catch(function (e) { console.error(e); process.exit(1); });
