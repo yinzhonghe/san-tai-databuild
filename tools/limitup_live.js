@@ -5,8 +5,9 @@
  * 红线：只服务超跌反弹页板块③，不改三态看板。信号一律来自主站 data.js 的真实字段。
  *
  * v2（2026-11-25，按 grill-me 决策重写）：
- *   1) 池子：主站启动态 1~8 日里只保留阶段=「新发 / 观察」两类；健康期与退化
- *      （2026-11-25 用户定稿）不进超跌页列表，也不进统计/打分/规则树。
+ *   1) 池子：主站启动态 1~8 日里保留阶段=「新发 / 观察 / 健康」三类；
+ *      退化（大跌/走完）不进超跌页列表，也不进统计/打分/规则树。
+ *      （2026-11-25 15:40 用户改口径：「健康」段重新纳入，自进化按三类全量统计）
  *   2) 去重：一个连续启动周期只算一次样本（首次进入为信号日）；次日数据另做两套标记
  *      （阶段持续性 + 次日追入胜率），不混入主统计。
  *   3) 结果：ohlc.json.gz 完整 [日期,开,收,高,低]，四口径同算：
@@ -77,15 +78,15 @@ function kindOf(code) {
 function limitOf(k) { return k === 'gem' ? 19.8 : k === 'bj' ? 29.5 : 9.8; }
 function stopOf(k) { return k === 'gem' ? 7 : k === 'bj' ? 9 : 5; }   // 盘中最低判输阈值
 function isNum(v) { return typeof v === 'number' && isFinite(v); }
-/* 2026-11-25 用户定稿：超跌页启动池/自进化只吃「新发 + 观察」两类。
-   健康期(3~8日)和退化(大跌/连板走完)不再进页面列表、统计、打分与规则树。
+/* 2026-11-25 15:40 用户改口径：超跌页启动池/自进化吃「新发 + 观察 + 健康」三类全量。
+   退化(大跌/连板走完)仍不进页面列表、统计、打分与规则树。
    主站三态看板不改，state-phase.js 阈值保持共用不变。 */
-var POOL_PHASES = ['新发', '观察'];
+var POOL_PHASES = ['新发', '观察', '健康'];   // 与 state-phase.js compute() 的 t='健康' 一致
 function bucketOf(p) {
   if (!p) return '';
   if (p.phase) return p.phase;
   if (p.dayBucket) return p.dayBucket;
-  return ((p.stateDays || 99) <= NEW_MAX ? '新发' : '健康期');   // 老 v1 快照兜底
+  return ((p.stateDays || 99) <= NEW_MAX ? '新发' : '健康');   // 老 v1 快照兜底
 }
 function inPool(p) { return POOL_PHASES.indexOf(bucketOf(p)) >= 0; }
 function todayStr() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
@@ -188,7 +189,7 @@ function loadHistory() {
     (snap.pool || []).forEach(function (p) {
       if (!p.asOf) p.asOf = snap.asOf;
       if (!p.stateDays && p.stateDays !== 0) p.stateDays = (p.dayBucket === '新发' ? 1 : 3);
-      if (!p.phase) p.phase = (p.stateDays || 99) <= NEW_MAX ? '新发' : '健康期';
+      if (!p.phase) p.phase = (p.stateDays || 99) <= NEW_MAX ? '新发' : '健康';
     });
   });
   return history;
@@ -239,7 +240,7 @@ async function main() {
         phaseWhy: ph ? ph.why : '',
         /* v2 口径：dayBucket 直接采用阶段判定的结果（真新发已剔除连板），
            不再用 stateDays<=2 的旧算法；旧台账无此字段按 v1 处理、统计隔离。 */
-        dayBucket: ph ? ph.t : ((r.stateDays || 99) <= NEW_MAX ? '新发' : '健康期'),
+        dayBucket: ph ? ph.t : ((r.stateDays || 99) <= NEW_MAX ? '新发' : '健康'),
         ruleVersion: RULE_VERSION
       };
     }).filter(inPool)
@@ -405,7 +406,7 @@ async function main() {
   var positions = {};   // code -> [{asOf, rec}]
   history.forEach(function (snap) {
     (snap.pool || []).forEach(function (p) {
-      if (!inPool(p)) return;   // 健康期/退化不进超跌页样本，旧台账同样过滤
+      if (!inPool(p)) return;   // 退化不进超跌页样本；「健康」段本次起重新纳入，旧台账同样按新口径过滤
       (positions[p.code] = positions[p.code] || []).push({ asOf: snap.asOf, rec: p });
     });
   });
@@ -776,7 +777,8 @@ async function main() {
     var pl = x.pool || [];
     return { date: x.date, asOf: x.asOf, n: pl.length,
       newPhase: pl.filter(function (p) { return bucketOf(p) === '新发'; }).length,
-      observe: pl.filter(function (p) { return bucketOf(p) === '观察'; }).length };
+      observe: pl.filter(function (p) { return bucketOf(p) === '观察'; }).length,
+      health: pl.filter(function (p) { return bucketOf(p) === '健康'; }).length };
   });
 
   // ===== 今日候选打分（给页面「今天怎么做」用）=====
@@ -799,6 +801,8 @@ async function main() {
   });
 
   var newPhase = snapshot.pool.filter(function (x) { return x.dayBucket === '新发'; }).length;
+  var obsPhase = snapshot.pool.filter(function (x) { return x.dayBucket === '观察'; }).length;
+  var healthPhase = snapshot.pool.filter(function (x) { return x.dayBucket === '健康'; }).length;
   var staleDays = daysBetween(asOf, todayStr());
   var accumulate = { settled: settled.length, pending: pending, need: NEED, ready: ready,
     snapshots: history.length, pendingK: noKline,
@@ -808,9 +812,10 @@ async function main() {
   var out = {
     asOf: asOf, generatedAt: snapshot.generatedAt,
     quoteAt: qres.at, quoteCovered: qres.covered, staleDays: staleDays,
-    source: '三态主站 data.js · state=启动 且 stateDays 1~8 · 只保留阶段=新发/观察 · 共用 state-phase.js · v2 真新发口径',
+    source: '三态主站 data.js · state=启动 且 stateDays 1~8 · 保留阶段=新发/观察/健康（退化剔除）· 共用 state-phase.js · v2 真新发口径',
     ruleVersion: RULE_VERSION,
-    today: todayPool, newPhase: newPhase, downPhase: snapshot.pool.length - newPhase,
+    today: todayPool, newPhase: newPhase, observePhase: obsPhase, healthPhase: healthPhase,
+    downPhase: snapshot.pool.length - newPhase,   // 兼容旧字段：新发以外（观察+健康）
     /* 首板预警层：独立于启动池，时间更早（基准日首板 vs 引擎第 3~4 日才切启动）。 */
     watchlist: {
       asOf: asOf, quoteAt: wqres.at, skipped: watch.skipped,
@@ -822,7 +827,7 @@ async function main() {
     ledger: ledger, accumulate: accumulate, rules: rules,
     verdict: {
       regime: ready ? '高置信 · 按自进化排序' : (items.length ? '低置信 · 仅有初步条件' : '数据积累中 · 暂不判断'),
-      why: '启动池 ' + snapshot.pool.length + ' 只（新发 ' + newPhase + ' / 观察 ' + (snapshot.pool.length - newPhase)
+      why: '启动池 ' + snapshot.pool.length + ' 只（新发 ' + newPhase + ' / 观察 ' + obsPhase + ' / 健康 ' + healthPhase
         + '）· 连续周期样本 ' + settled.length + ' 条 · ' + accumulate.note,
       topPick: todayPool.length ? todayPool.slice().sort(function (a, b) { return b._score - a._score; }).slice(0, 5)
         .map(function (x) { return x.name + ' ' + x._score + '分/' + x._action; }).join('、') : '今日无启动候选',
@@ -842,7 +847,7 @@ async function main() {
   };
 
   fs.writeFileSync(OUT, 'window.AB_LIMITUP = ' + JSON.stringify(out) + ';\n');
-  console.log('启动池 ' + asOf + '：候选 ' + snapshot.pool.length + '（新发' + newPhase + '/观察' + (snapshot.pool.length - newPhase)
+  console.log('启动池 ' + asOf + '：候选 ' + snapshot.pool.length + '（新发' + newPhase + '/观察' + obsPhase + '/健康' + healthPhase
     + '）· 周期样本 ' + settled.length + '（可成交' + baseN + '/一字' + untradable.length + '）· 待回填 ' + pending
     + ' · 条件 ' + items.length + ' · 主公式 ' + primaryFormula + ' · 前瞻 ' + wfRounds.length + ' 轮 · 对照 A' + baselineA
     + '/B' + baselineB + '/C' + baselineC + '% · 观察组样本 ' + observeStats.n);
