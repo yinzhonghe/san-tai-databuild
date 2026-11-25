@@ -103,7 +103,7 @@ jobs:
             # 强推会把整棵树换掉：必须把其他任务写在 data 分支的产物逐个带回，
             # 否则每天 16:30 oversold.yml 推的一买文件、三报的 daily.js、舆情都会被清掉，
             # 前端读不到就静默回退旧快照（实测一买停在 11-18 就是这个原因）。
-            for f in daily.js news_data.js chan_pick_data.js oversold_data.js learn_report.js report-meta.json report_state.json; do
+            for f in daily.js news_data.js chan_pick_data.js oversold_data.js learn_report.js limitup_data.js report-meta.json report_state.json; do
               curl -sf -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
                 "https://api.github.com/repos/${{ github.repository }}/contents/$f?ref=data" \
                 | python -c "import sys,json,base64;d=json.load(sys.stdin);open('/tmp/pub/$f','wb').write(base64.b64decode(d['content']))" \
