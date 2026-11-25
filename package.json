@@ -1,10 +1,10 @@
 {
   "name": "san-tai-kan-pan",
-  "version": "20261125c",
+  "version": "20261125g",
   "private": true,
   "description": "三态看盘 · 纯静态 A 股看板（便携版）· 六派交叉验证引擎",
   "scripts": {
-    "test": "node tests/engine.test.js && node tests/resolve.test.js && node tests/limitup.test.js"
+    "test": "node tests/engine.test.js && node tests/resolve.test.js && node tests/limitup.test.js && node tests/watch.test.js && node tests/observe.test.js"
   },
   "license": "MIT"
 }
