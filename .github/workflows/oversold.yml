@@ -102,7 +102,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FILES=""
-          for f in learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
+          for f in learn/limitup_params.json learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
                    learn/index_hist.json learn/commentary_rules.md learn/report.json \
                    learn/state_calib.json learn/verdict_stats.json \
                    learn/chan_signals.json.gz learn/brief_log.jsonl learn/brief_scored.jsonl; do
@@ -116,5 +116,8 @@ jobs:
         run: |
           echo "=== 产出 ==="
           ls -lh chan_pick_data.js oversold_data.js learn_report.js 2>/dev/null || true
-          echo "=== 参数 ==="
-          head -c 400 learn/chan_params.json 2>/dev/null || true
+          echo "=== 缠论参数 ==="
+          head -c 300 learn/chan_params.json 2>/dev/null || true
+          echo ""
+          echo "=== 新发涨停自进化参数 ==="
+          head -c 500 learn/limitup_params.json 2>/dev/null || true
