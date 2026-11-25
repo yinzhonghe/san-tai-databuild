@@ -1,0 +1,93 @@
+name: 盘中快报
+
+# 固定两档：北京 10:30 对照早报、14:00 对照午评；
+# 事件插播：11:00 / 13:00 / 14:30 检查异动，达标才出，每天最多 2 条。
+# 不覆盖早报/午评/收盘，只往 daily.js 的 intraday 数组追加。
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '快报档位'
+        required: true
+        default: 'auto'
+        type: choice
+        options: [auto, am_flash, pm_flash, event]
+      force:
+        description: '事件档跳过触发阈值（人工补跑用）'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+      model:
+        description: '强制模型（留空用 glm-4.7）'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: '试运行（只打印不写 daily.js）'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+  schedule:
+    - cron: '30 2 * * 1-5'   # 北京 10:30 开盘一小时回顾
+    - cron: '0 3 * * 1-5'    # 北京 11:00 事件检查
+    - cron: '0 5 * * 1-5'    # 北京 13:00 事件检查
+    - cron: '0 6 * * 1-5'    # 北京 14:00 下午一小时回顾
+    - cron: '30 6 * * 1-5'   # 北京 14:30 事件检查
+
+permissions:
+  contents: write
+
+# 与三报共用串行组，避免同时写 data 分支的 daily.js
+concurrency:
+  group: report-gen
+  cancel-in-progress: false
+
+jobs:
+  intraday:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 判定时段
+        id: pick
+        run: |
+          SLOT="${{ github.event.inputs.slot }}"
+          if [ -z "$SLOT" ] || [ "$SLOT" = "auto" ]; then
+            case "${{ github.event.schedule }}" in
+              '30 2 * * 1-5') SLOT=am_flash ;;
+              '0 6 * * 1-5')  SLOT=pm_flash ;;
+              *)              SLOT=event ;;
+            esac
+          fi
+          echo "slot=$SLOT" >> $GITHUB_OUTPUT
+          echo "北京 $(TZ=Asia/Shanghai date '+%F %H:%M') → 盘中快报 $SLOT"
+
+      - name: 生成并追加盘中快报
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODELS: ${{ github.event.inputs.model || 'glm-4.7' }}
+        run: |
+          set -o pipefail
+          FORCE=""
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then FORCE="--force"; fi
+          DRY=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
+          python gen_intraday.py --slot ${{ steps.pick.outputs.slot }} $FORCE $DRY 2>&1 | tee intraday-run.log
+
+      - name: 运行记录
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name  "san-tai-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add intraday-run.log 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "intraday(${{ steps.pick.outputs.slot }}): $(TZ=Asia/Shanghai date '+%F %H:%M')"
+          git pull --rebase --autostash origin main || true
+          git push || true
