@@ -1,0 +1,27 @@
+name = "santai-cron"
+main = "tools/cf_worker.js"
+compatibility_date = "2026-11-25"
+
+# Cloudflare Cron Triggers 使用 UTC。北京时间 = UTC + 8h。
+# 每个表达式对应一个任务点，Worker 内部再按北京时间精确匹配（见 cf_worker.js JOBS）。
+# 早报 07:30BJT=23:30UTC / 午间 11:35=03:35 / 收盘 15:05=07:05
+# 盘中 10:30=02:30 / 11:00=03:00 / 13:00=05:00 / 14:00=06:00 / 14:30=06:30
+# 自检 08:05=00:05 / 12:10=04:10 / 15:40=07:40
+[triggers]
+crons = [
+  "30 23 * * *",
+  "35 3 * * *",
+  "5 7 * * *",
+  "30 2 * * *",
+  "0 3 * * *",
+  "0 5 * * *",
+  "0 6 * * *",
+  "30 6 * * *",
+  "5 0 * * *",
+  "10 4 * * *",
+  "40 7 * * *",
+]
+
+# 部署前用 wrangler secret put 设置：
+#   GH_TOKEN     GitHub classic PAT（repo + workflow）
+#   CRON_SECRET  自定义随机串（用于 /trigger 手动测试，可留空）
