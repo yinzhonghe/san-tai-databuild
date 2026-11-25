@@ -171,6 +171,10 @@ async function main() {
       try { history.push(JSON.parse(line)); } catch (e) { }
     });
   }
+  // 迁移旧版快照：旧脚本没把 asOf 写进每条信号，导致回填永远匹配不到 K 线
+  history.forEach(function (snap) {
+    (snap.pool || []).forEach(function (p) { if (!p.asOf) p.asOf = snap.asOf; });
+  });
   var at = history.findIndex(function (x) { return x.asOf === asOf; });
   if (at >= 0) history[at] = snapshot; else history.push(snapshot);
   history.sort(function (a, b) { return String(a.asOf).localeCompare(String(b.asOf)); });
