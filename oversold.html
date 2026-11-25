@@ -77,6 +77,20 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
 .lu-evo{background:#f7f9fc;border:1px solid #d8e2ef;border-left:4px solid #3b6ea8;border-radius:10px;padding:11px 14px;margin:12px 0;font-size:11.5px;line-height:1.8;color:#3d4a5c}
 .lu-evo .eh{font-size:13px;font-weight:700;color:#24456e;margin-bottom:4px}
 .lu-evo .ew{color:#5b6b80}
+.lu-rules{background:#fff;border:1px solid #d9e3f3;border-left:4px solid #2f6bff;border-radius:10px;padding:12px 15px;margin-bottom:12px}
+.lu-rules .rh{font-size:13.5px;font-weight:700;color:#24456e;margin-bottom:8px}
+.lu-rules table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.7}
+.lu-rules th,.lu-rules td{padding:6px 6px;border-bottom:1px solid #edf1f7;text-align:left;vertical-align:top}
+.lu-rules th{color:#7b8493;font-weight:600;font-size:11px}
+.lu-rules .pos{color:var(--up);font-weight:600}
+.lu-rules .neg{color:var(--down);font-weight:600}
+.lu-rules .rk-note{font-size:11.5px;color:#6b7484;line-height:1.8}
+.lu-rules .pb{margin-top:8px;padding-top:8px;border-top:1px dashed #d9e3f3;font-size:11.5px;line-height:1.85;color:#4a5361}
+.lu-rules .pb b{color:#24456e}
+.lu-live{background:#f3f7fd;border:1px solid #dbe6f5;border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11.5px;color:#3c5680;line-height:1.7}
+.lu-live .warn{color:#a15c00}
+.lu-exclude{padding:7px 0;border-bottom:1px dashed var(--line)}
+.lu-exclude:last-child{border-bottom:0}
 .lu-evo .elog{margin-top:6px;padding-top:6px;border-top:1px dashed #ccd8e6;color:#6b7788}
 .lu-evo .elog div{margin:1px 0}
 .lu-evo .act-adopt{color:#b3342f;font-weight:600}
@@ -115,7 +129,7 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     </div>
     <div class="entry b3" data-page="p3">
       <div class="et">③ 新发涨停观察</div>
-      <div class="ed">启动·新发信号打分量价特征，给连板概率与快进快出提示。46万信号回测：9-11分档涨停率14.7%。</div>
+      <div class="ed">与主站同源的「启动·新发」：实时股价 + 每日真实台账。统计规律只从主站信号累积，样本不够就明确写积累中。</div>
       <div class="en" id="en3">— 只新发</div>
     </div>
   </div>
@@ -170,6 +184,13 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     <div class="back" data-back>‹ 返回板块选择</div>
     <div class="lu-verdict" id="luVerdict">正在载入统计…</div>
     <div class="lu-evo" id="luEvo">正在载入样本进度…</div>
+
+    <div class="lu-rules" id="luRules">
+      <div class="rh">规律与动作 · 只由真实台账算出 <span id="luRuleStamp" style="font-weight:400;font-size:11px;color:#7b8493"></span></div>
+      <div id="luRuleBody">正在载入规律…</div>
+    </div>
+
+    <div class="lu-live" id="luLive">实时行情：正在连接…</div>
     <div class="ctrl">
       <div class="tab on" data-lut="all">全部</div>
       <div class="tab" data-lut="hot">六派≥4</div>
@@ -184,10 +205,15 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
       </select>
     </div>
     <div class="sec-t">今日新发 <span class="tag tag-ready" id="luCount">0只</span> <span style="font-size:11px;color:var(--muted);font-weight:400" id="luAsOf"></span></div>
+    <div id="luFunnel" style="font-size:11.5px;color:#6b7484;margin-bottom:8px"></div>
     <div id="luList"></div>
 
+    <details style="margin-top:10px"><summary>被实时降级的候选（观察 / 退化，主站也不算新发）</summary>
+      <div id="luExcluded" style="font-size:11.5px;color:#5a6270;line-height:1.8"></div>
+    </details>
+
     <details style="margin-top:14px"><summary>样本累积与自进化进度（真实结果回填）</summary>
-      <p style="font-size:11.5px;color:#5a6270;line-height:1.7">这个板块只认三态主站的「启动·新发」（state=启动 且 stateDays≤2）。历史每日快照无法回溯，所以概率从上线日起逐日累积；每只信号用真实日K回填 T+1/T+3/T+5 涨停结果。样本不足时不给任何概率，避免拿代理口径冒充主站。</p>
+      <p style="font-size:11.5px;color:#5a6270;line-height:1.7">候选先取主站「启动 且 启动≤2 日」，再与主站用同一份 state-phase.js 按实时涨跌 / 20 日回撤 / 六派票数变化判阶段；只有「新发」才计入上面的数量。历史每日快照无法回溯，概率从上线日起逐日累积，每只信号用真实日 K 回填 T+1/T+3/T+5。样本不足时不给概率，不用代理口径冒充主站。</p>
       <div id="luStats" style="font-size:12px;line-height:1.8;color:#4a5361"></div>
     </details>
 
@@ -203,12 +229,15 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251017"></script>
+<script src="echarts.min.js?v=202611251045"></script>
+<!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
+<script src="data-service.js?v=202611251045"></script>
+<script src="state-phase.js?v=202611251045"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251017';
+var AB_LOCAL_V = '?v=202611251045';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -277,7 +306,49 @@ function abBoot() {
   // ===== 板块③：新发涨停观察 =====
   var L = window.AB_LIMITUP;
   var luFilter = 'all';
+  var luQuotes = {};       // 实时报价 map，取不到的票不写 0
+  var luQuoteMeta = { at: '', count: 0, source: '' };
   function luCell(k, v, cls) { return '<div><span class="k">' + k + '</span><span class="v ' + (cls || '') + '">' + v + '</span></div>'; }
+  function luPct(v) { return (v > 0 ? '+' : '') + (Number(v)).toFixed(2) + '%'; }
+  function luPriceHtml(x) {
+    var q = luQuotes[x.code];
+    var hasChg = typeof q.chg === 'number' && isFinite(q.chg);
+    if (!q || typeof q.price !== 'number' || !isFinite(q.price)) {
+      return luCell('实时价', '— 未取到', '') + luCell('今日涨幅', '—', '');
+    }
+    var c = hasChg ? (q.chg > 0 ? 'red' : q.chg < 0 ? 'green' : '') : '';
+    return luCell('实时价', '¥' + Number(q.price).toFixed(2), c)
+      + luCell('今日涨幅', hasChg ? luPct(q.chg) : '—', c);
+  }
+  /* 与主站同一份阶段判定：候选 + 实时报价 → 新发 / 观察 / 退化 */
+  function luGroups() {
+    if (!L || !L.today) return { '新发': [], '观察': [], '退化': [], '其他': [] };
+    if (window.AB_PHASE && window.AB_PHASE.split) return window.AB_PHASE.split(L.today, luQuotes);
+    var g = { '新发': [], '观察': [], '退化': [], '其他': [] };
+    L.today.forEach(function (x) { g[x.phase || '其他'].push(x); });
+    return g;
+  }
+  function refreshLUQuotes() {
+    if (!L || !L.today || !L.today.length || !window.AB_DS) return;
+    var codes = L.today.map(function (x) { return x.code; });
+    var bj = codes.filter(function (c) { return /\.BJ$/i.test(c); });
+    var others = codes.filter(function (c) { return !/\.BJ$/i.test(c); });
+    var jobs = [];
+    if (others.length) jobs.push(window.AB_DS.getQuotesByChunks(others, 60));
+    if (bj.length) jobs.push(window.AB_DS.getQuotesByChunks(bj, 30));  // 腾讯不认北交，这里自动走东财
+    Promise.all(jobs).then(function (rs) {
+      var map = {}, n = 0;
+      rs.forEach(function (r) {
+        Object.keys((r && r.map) || {}).forEach(function (k) { map[k] = r.map[k]; n++; });
+      });
+      luQuotes = map;
+      luQuoteMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: n, source: '腾讯/东财' };
+      renderLU();
+    }).catch(function () {
+      luQuoteMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: 0, source: '未取到' };
+      renderLU();
+    });
+  }
   function luCard(x) {
     var v = x.resonance || 0, cls = v >= 4 ? 'hot' : v >= 3 ? 'warm' : 'mid';
     var sg = [];
@@ -292,8 +363,10 @@ function abBoot() {
       + '<div class="c-top"><span class="lu-score ' + cls + '">' + v + '/6</span>'
       + '<b>' + esc(x.name || x.code) + '</b><span class="code">' + x.code + '</span>'
       + (x.ind ? '<span class="ind">' + esc(x.ind) + '</span>' : '')
-      + '<span class="lu-tag ' + cls + '">' + esc(x.stage || '') + '</span></div>'
+      + '<span class="lu-tag ' + cls + '">' + esc(x.stage || '') + '</span>'
+      + (x._phase ? '<span class="lu-tag ' + (x._phase.cls === 'bad' ? 'cold' : x._phase.cls === 'mid' ? 'warm' : 'hot') + '" title="' + esc(x._phase.why) + '">' + esc(x._phase.t) + '</span>' : '') + '</div>'
       + '<div class="c-grid">'
+      + luPriceHtml(x)
       + luCell('5日涨幅', w5 == null ? '—' : (w5 > 0 ? '+' : '') + w5 + '%', w5 > 0 ? 'red' : w5 < 0 ? 'green' : '')
       + luCell('20日涨幅', w20 == null ? '—' : (w20 > 0 ? '+' : '') + w20 + '%', w20 > 0 ? 'red' : w20 < 0 ? 'green' : '')
       + luCell('60日涨幅', w60 == null ? '—' : (w60 > 0 ? '+' : '') + w60 + '%', w60 > 0 ? 'red' : w60 < 0 ? 'green' : '')
@@ -302,8 +375,49 @@ function abBoot() {
       + luCell('板块', esc(x.ind || '—'))
       + '</div>'
       + '<div class="lu-advice"><b>主站信号</b>：' + esc(sg.join(' · '))
-      + '<br><b>说明</b>：这是三态主站此刻的真实「启动·新发」，后续涨停结果按交易日回填；样本不足时页面不给概率或买卖建议。'
+      + (x._phase && x._phase.t !== '新发' ? '<br><b>阶段降级</b>：' + esc(x._phase.why) : '')
+      + '<br><b>说明</b>：与主站同口径的真实「启动·新发」，后续涨停按真实日 K 回填；样本不足时不给概率或买卖建议。'
       + '</div></div>';
+  }
+  function renderExcluded(downList) {
+    var el = document.getElementById('luExcluded');
+    if (!el) return;
+    el.innerHTML = downList.length ? downList.map(function (x) {
+      var p = x._phase || {};
+      return '<div class="lu-exclude"><b>' + esc(x.name || x.code) + '</b> <span class="code">' + esc(x.code) + '</span>'
+        + ' → <b style="color:' + (p.cls === 'bad' ? 'var(--down)' : '#b5650b') + '">' + esc(p.t || '—') + '</b>'
+        + ' <span style="color:#6b7484">' + esc(p.why || '') + '</span></div>';
+    }).join('') : '<div style="color:#8b93a1">当前没有候选被降级。</div>';
+    Array.prototype.forEach.call(el.querySelectorAll('[data-luopen]'), function (node) {
+      node.addEventListener('click', function () {
+        window.open('index.html#/lens?code=' + encodeURIComponent(node.getAttribute('data-luopen')), '_blank');
+      });
+    });
+  }
+  function renderRules() {
+    var R = L.rules || {}, body = document.getElementById('luRuleBody');
+    if (!body) return;
+    set('luRuleStamp', (R.updatedAt ? '· 更新 ' + esc(R.updatedAt) : '') + (R.sampleN != null ? ' · 已结算 ' + R.sampleN + ' 条' : ''));
+    var html = '<div class="rk-note">' + esc(R.note || '规律积累中') + '</div>';
+    if (R.ready && (R.items || []).length) {
+      html += '<table><thead><tr><th>条件（真实字段）</th><th>样本</th><th>T+1</th><th>T+5内涨停</th><th>相对基线</th><th>动作</th></tr></thead><tbody>';
+      R.items.slice(0, 6).forEach(function (it) {
+        var sign = it.kind === 'positive' ? 'pos' : 'neg';
+        html += '<tr><td>' + esc(it.label) + '</td><td>' + it.n + '</td><td>' + it.t1 + '%</td>'
+          + '<td class="' + sign + '">' + it.t5 + '%</td>'
+          + '<td class="' + sign + '">' + (it.edge > 0 ? '+' : '') + it.edge + 'pp（' + it.lift + '×）</td>'
+          + '<td>' + esc(it.action || '') + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<div class="rk-note" style="margin-top:6px">样本还不够，以下只是<b>待验证框架</b>（来自三态阶段语义，不是统计结论）；每天收盘回填真实结果，满足条件后自动换成上面这张数据表。</div>';
+    }
+    html += '<div class="pb"><b>时间 × 状态 → 动作</b><br>';
+    (R.playbook || []).forEach(function (p, i) {
+      html += (i + 1) + '. <b>' + esc(p.when) + '</b>　状态：' + esc(p.state) + '　→　' + esc(p.action) + '<br>';
+    });
+    html += '<span style="color:#8b93a1">历史频率不是预测；每条规律都要求 ≥' + (R.minN || 15) + ' 条真实样本，样本越多结论越稳。</span></div>';
+    body.innerHTML = html;
   }
   function renderLU() {
     if (!L || !L.today) {
@@ -312,9 +426,25 @@ function abBoot() {
       if (v0) v0.textContent = '新发数据未加载：云端产物可能缺失，请稍后刷新或检查 limitup_data.js。';
       return;
     }
-    set('en3', L.today.length + ' 只新发 · 基准 ' + (L.asOf || ''));
-    set('luCount', L.today.length + '只');
+    var G = luGroups();
+    var newList = G['新发'] || [], downList = (G['观察'] || []).concat(G['退化'] || []);
+    set('en3', newList.length + ' 只新发 · 基准 ' + (L.asOf || ''));
+    set('luCount', newList.length + '只');
     set('luAsOf', '数据基准 ' + (L.asOf || '') + ' · 生成 ' + (L.generatedAt || ''));
+    var stale = L.staleDays;
+    set('luFunnel', '主站候选 ' + L.today.length + ' 只（启动≤2日）→ 实时阶段筛掉 ' + downList.length
+      + ' 只观察/退化 → 当前新发 ' + newList.length + ' 只。'
+      + (stale != null && stale > 1 ? (' ⚠ 数据基准距今 ' + stale + ' 天，主站快照尚未更新，数量会跟着变。') : ''));
+    var live = document.getElementById('luLive');
+    if (live) {
+      var covered = luQuoteMeta.count;
+      live.innerHTML = '实时行情：<b>' + esc(luQuoteMeta.source || '—') + '</b> '
+        + (covered ? ('已取到 ' + covered + '/' + L.today.length + ' 只，更新于 ' + esc(luQuoteMeta.at))
+          : '未取到（首屏稍后自动重试）')
+        + ' · 盘中每 60 秒自动刷新；取不到的票显示「— 未取到」，不用快照收盘价冒充实时价。';
+    }
+    renderRules();
+    renderExcluded(downList);
 
     // 主站判断（没有足够真实样本就不给买卖结论）
     var vd = L.verdict || {};
@@ -336,8 +466,8 @@ function abBoot() {
         + '<div class="ew">' + esc(A.note || '') + '</div>';
     }
 
-    // 列表（只按主站真实字段筛选/排序，不再用代理打分）
-    var list = L.today.filter(function (x) {
+    // 列表（只按主站同口径筛出的「新发」+ 真实字段排序，不用代理打分）
+    var list = newList.filter(function (x) {
       var v = x.resonance || 0;
       return luFilter === 'all' ? true
         : luFilter === 'hot' ? v >= 4
@@ -385,17 +515,24 @@ function abBoot() {
     document.getElementById('luLedger').innerHTML = LG.map(function (r) {
       return '<div class="ledger-row"><span class="d">' + esc(r.date) + '</span>'
         + '<span class="n">数据基准 ' + esc(r.asOf) + '</span>'
-        + '<span class="n">真新发 ' + r.n + '</span></div>';
+        + '<span class="n">候选 ' + r.n + ' · 阶段新发 ' + (r.realNew != null ? r.realNew : '—') + '</span></div>';
     }).join('');
 
     // 口径
     var MT = L.method || {};
     document.getElementById('luMethod').innerHTML = Object.keys(MT).map(function (k) {
-      var label = { signal: '新发定义', result: '涨停回填', limit: '历史限制', missing: '数据缺口', disclaimer: '免责声明' }[k] || k;
+      var label = { signal: '新发定义', result: '涨停回填', limit: '历史限制', missing: '数据缺口', freshness: '数据时效', disclaimer: '免责声明' }[k] || k;
       return '<b>' + label + '</b>：' + esc(MT[k]) + '<br>';
     }).join('');
   }
-  if (L) renderLU();
+  if (L) {
+    renderLU();
+    refreshLUQuotes();
+    // 盘中 60 秒刷新：实时价与主站阶段判定一起更新，数量会跟着行情变（与主站一致）
+    setInterval(function () {
+      if (document.getElementById('p3') && document.getElementById('p3').classList.contains('on')) refreshLUQuotes();
+    }, 60000);
+  }
   document.querySelectorAll('[data-lut]').forEach(function (e) {
     e.addEventListener('click', function () {
       document.querySelectorAll('[data-lut]').forEach(function (x) { x.classList.remove('on'); });
