@@ -1,0 +1,83 @@
+name: 自进化·大模型假设生成（手动·带证据门槛）
+
+# 大模型只提候选假设，不改打分、不碰三态主站。
+# 证据门槛：已结算真实样本 < 200 时脚本直接退出，不发网络请求、不产生费用。
+# 故这里【只做手动触发】，不设定时 cron —— 避免样本没攒够就空跑，也避免自动花钱。
+# 等 limitup_live.js 真实回填到门槛后，手动点一次即可；确认稳定后再考虑加定时。
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: '模型（默认最新旗舰 glm-5.3，不用 4.7）'
+        required: true
+        default: 'glm-5.3'
+      dry_run:
+        description: '只检查门槛与事实包，不调模型（推荐先跑一次）'
+        required: true
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evolve-llm
+  cancel-in-progress: false
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 拉最新台账（main 分支 learn 目录）
+        run: |
+          # 用仓库自身 main 分支即可（checkout 已是最新）；此处仅打印现状便于回溯
+          echo "asOf: $(python3 -c "import json;print(json.load(open('learn/limitup_rules.json')).get('asOf'))" 2>/dev/null || echo NA)"
+          echo "settled: $(python3 -c "import json;print((json.load(open('learn/limitup_rules.json')).get('rules') or {}).get('sampleN'))" 2>/dev/null || echo NA)"
+
+      - name: 运行假设生成器
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODELS: ${{ github.event.inputs.model || 'glm-5.3' }}
+        run: |
+          set -o pipefail
+          MODE=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then MODE="--dry-run"; fi
+          # 约定：本地 github_ci/ = 远端仓库根，脚本从根跑不 cd
+          SRC=evolve_llm.py
+          [ -f "$SRC" ] || SRC=github_ci/evolve_llm.py
+          python "$SRC" $MODE 2>&1 | tee evolve-run.log
+
+      - name: 产物回写 main（仅候选文件，不改打分/不碰主站）
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PUT=gh_put.py
+          [ -f "$PUT" ] || PUT=github_ci/gh_put.py
+          if [ -f learn/limitup_evolution.json ]; then
+            python "$PUT" "${{ github.repository }}" main \
+              learn/limitup_evolution.json=learn/limitup_evolution.json \
+              --msg "evolve-llm: 候选假设 $(date -u +%Y-%m-%dT%H:%MZ)"
+          else
+            echo "无候选文件（门槛未达或调用失败），跳过回写"
+          fi
+
+      - name: 运行日志留痕
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-llm-log
+          path: evolve-run.log
+          if-no-files-found: ignore
+          retention-days: 7
