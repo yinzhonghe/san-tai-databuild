@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!-- 入口文档每次向服务器校验，避免重新上架后仍停留在旧版 HTML（子资源用版本号兜底） -->
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<title>三态看盘 · 用三态看懂 A 股处在启动·盘整·走完</title>
+<meta property="og:site_name" content="三态看盘" />
+<meta property="og:title" content="三态看盘" />
+<meta property="og:description" content="用三态看懂 A 股处在启动·盘整·走完 —— 每日信号 + 我的看板" />
+<link rel="stylesheet" href="styles.css?v=202611251045" />
+</head>
+<body>
+  <!-- guard.js（网关注入）风险轻提示的预留挂载槽：保证在 sticky 顶栏之上 -->
+  <div id="abRiskBarSlot"></div>
+
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">三</div>
+      <div>三态看盘<small>启动 · 盘整 · 走完</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#/all" data-route="/all">全市场</a>
+      <a href="#/" data-route="/">大盘</a>
+      <a href="#/health" data-route="/health">我的持仓</a>
+      <a href="#/more" data-route="/more">更多</a>
+    </nav>
+    <div class="right">
+      <div class="search" id="search">
+        <input id="searchInput" type="text" placeholder="搜代码 / 名称 / 行业" autocomplete="off" />
+        <div class="results" id="searchResults"></div>
+      </div>
+      <button class="share-top" id="shareBtn" title="分享给朋友（带二维码）">分享</button>
+      <button class="icon-btn" id="refreshBtn" title="刷新实时行情">↻</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="state-banner" id="stateBanner">
+      <span class="dot" id="stateDot"></span>
+      <span id="stateText">数据加载中…</span>
+      <button class="refresh" id="stateRefresh">手动刷新</button>
+    </div>
+    <div id="view"><div style="padding:48px 16px;text-align:center;color:#8a8f99;font-size:13px;line-height:1.9">正在加载全市场行情数据…<br><span style="font-size:11px;color:#b0b4bb">首次约 6MB，之后走浏览器缓存；加载完成后会自动实时刷新</span></div></div>
+    <footer class="foot">
+      <div>三态看盘 · <b>免费体验 5 个交易日</b> · 到期后加微信开通，可继续免费使用。</div>
+      <div>观察工具，<b>非投资建议，不预示未来收益</b>。三态为阶段判断，与涨跌无必然关系。</div>
+      <div>实时行情：东财（主）/ 腾讯 / 新浪 三源降级；基础数据由腾讯 / 新浪免费行情全市场重算（截至页面标注时点）。</div>
+      <div class="cat">构建版本 20261125a · 若底部看不到这行，说明仍是浏览器缓存的旧版，可在网址后加 <b>?v=202611251045</b> 再打开</div>
+    </footer>
+  </main>
+
+  <!-- 个股透镜抽屉（去 iframe，同文档内联） -->
+  <div class="drawer-mask" id="drawerMask"></div>
+  <aside class="drawer" id="drawer">
+    <div class="d-head">
+      <div id="drawerTitle">个股透镜</div>
+      <button class="x" id="drawerClose">×</button>
+    </div>
+    <div class="d-body" id="drawerBody"></div>
+  </aside>
+
+  <!-- 动态分享海报：canvas 只用来画，画完立刻转成 <img>。
+       原因：微信里长按 <canvas> 没有「保存到相册」菜单，只有 <img> 有。 -->
+  <div class="poster-mask" id="posterMask"></div>
+  <div class="poster-modal" id="posterModal">
+    <div class="pm-head"><b id="posterTitle">分享卡</b><button class="x" id="posterClose">×</button></div>
+    <div class="pm-body">
+      <div class="pm-tip" id="posterTip">长按图片 → 保存到相册</div>
+      <canvas id="posterCanvas" width="750" height="1120"></canvas>
+      <img id="posterImg" alt="三态看盘 · 今日速览">
+    </div>
+    <div class="pm-foot">
+      <button class="btn" id="posterCopy">复制深链</button>
+      <button class="btn btn-primary" id="posterDownload">复制文字</button>
+      <span class="cat" id="posterHint">长按图片可保存到相册 · 也可复制文字直接粘到微信</span>
+    </div>
+  </div>
+
+  <!-- 手机端底部导航 -->
+  <nav class="mobnav" id="mobnav">
+    <a href="#/all" data-route="/all"><span class="mi">▤</span>全市场</a>
+    <a href="#/" data-route="/"><span class="mi">⌂</span>大盘</a>
+    <a href="#/health" data-route="/health"><span class="mi">✚</span>持仓</a>
+    <a href="#/more" data-route="/more"><span class="mi">⋯</span>更多</a>
+  </nav>
+
+  <!-- 全市场快照（约 5600 只）体积较大：优先用 gzip 版本异步加载（约 1.7MB，5~7 秒），
+       浏览器不支持 DecompressionStream 或解压失败时，自动回退到未压缩的 data.js。
+       app.js 的 boot() 会等待 window.AB_DATA 就绪后再渲染，因此无需同步阻塞。 -->
+  <script>
+  (function () {
+    var V = '?v=202611251045';
+    /* 数据来源：默认用本地快照（秒开）；带 ?remote=1 时改从 GitHub Pages 拉最新构建的 data.js。
+       为什么不用每次都拉远端——9MB，首屏会被拖到十几秒，而大多数时候本地就是最新的。
+       所以策略是「本地秒开 + 后台检查版本 + 有更新时给一条可点的提示」。 */
+    var REMOTE = 'https://yinzhonghe.github.io/san-tai-databuild/data.js';
+    var REMOTE_GZ = 'https://yinzhonghe.github.io/san-tai-databuild/data.json.gz';
+    var useRemote = /[?&]remote=1/.test(location.search);
+    var done = false;
+    function remote() {
+      if (done) return; done = true;
+      var el = document.getElementById('view');
+      if (el) el.innerHTML = '<div style="padding:40px;text-align:center;color:#4a5160">'
+        + '正在从云端加载最新数据（约 2MB 压缩版，通常 5–10 秒）…<br>'
+        + '<span style="font-size:12px;color:#7b8494">若长时间无响应，可去掉地址里的 ?remote=1 回到本地数据</span></div>';
+      function err() {
+        var e2 = document.getElementById('view');
+        if (e2) e2.innerHTML = '<div style="padding:40px;text-align:center;color:#cf1322">'
+          + '云端数据加载失败（网络或 Pages 未就绪）<br>'
+          + '<a href="?" style="color:#1d4ed8">回到本地数据</a></div>';
+      }
+      // 回退：直接加载未压缩的 data.js（9MB）
+      function viaJs() {
+        var s0 = document.createElement('script');
+        s0.src = REMOTE + '?t=' + Date.now();
+        s0.onerror = err;
+        document.head.appendChild(s0);
+      }
+      /* 优先拉 gz（约 2MB）+ 浏览器原生解压；不支持或失败再退回 data.js。
+         解压后直接赋 window.AB_DATA —— app.js 的 boot() 会以 120ms 轮询等待它就绪。 */
+      if (typeof DecompressionStream === 'function' && window.fetch) {
+        fetch(REMOTE_GZ + '?t=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error('gz ' + r.status); return r.body.pipeThrough(new DecompressionStream('gzip')); })
+          .then(function (st) { return new Response(st).text(); })
+          .then(function (txt) { window.AB_DATA = JSON.parse(txt); })
+          .catch(viaJs);
+      } else {
+        viaJs();
+      }
+    }
+    if (useRemote) { remote(); return; }
+    function fallback() {
+      if (done) return; done = true;
+      var s = document.createElement('script');
+      s.src = 'data.js' + V;
+      s.onerror = function () {
+        var el = document.getElementById('view');
+        if (el) el.innerHTML = '<div style="padding:40px;text-align:center;color:#cf1322">数据文件加载失败，请刷新重试</div>';
+      };
+      document.head.appendChild(s);
+    }
+    if (typeof DecompressionStream !== 'function' || !window.fetch) { fallback(); return; }
+    fetch('data.json.gz' + V)
+      .then(function (r) { if (!r.ok) throw new Error('gz ' + r.status); return r.body.pipeThrough(new DecompressionStream('gzip')); })
+      .then(function (stream) { return new Response(stream).text(); })
+      .then(function (txt) { window.AB_DATA = JSON.parse(txt); })
+      .catch(fallback);
+    /* 加载完成后查一次云端版本（100 字节），本地落后就出一条可点提示 */
+    setTimeout(function () {
+      if (!window.fetch) return;
+      fetch('https://yinzhonghe.github.io/san-tai-databuild/version.json?t=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (v) {
+          var local = (window.AB_DATA && window.AB_DATA.meta && window.AB_DATA.meta.asOf) || '';
+          if (!v || !v.asOf || !local || v.asOf <= local) return;
+          var bar = document.createElement('div');
+          bar.id = 'dataUpdBar';
+          /* 原来是 position:fixed 的浮层，手机上一路挡着列表和路径块的内容。
+             改成页面内的一条（插在顶部状态条上方），滚动时跟着走，不遮任何东西。 */
+          bar.style.cssText = 'position:static;display:block;margin:10px 0;'
+            + 'background:#1d4ed8;color:#fff;font-size:12.5px;line-height:1.5;padding:9px 14px;border-radius:10px;'
+            + 'box-shadow:0 2px 8px rgba(29,78,216,.18);cursor:pointer;font-family:inherit;text-align:center';
+          bar.textContent = '云端数据已更新到 ' + v.asOf + '（' + v.count + ' 只）· 点此加载最新';
+          bar.onclick = function () {
+            bar.textContent = '正在加载…';
+            location.href = location.pathname + '?remote=1' + (location.hash || '#/');
+          };
+          var host = document.getElementById('stateBanner');
+          if (host && host.parentNode) host.parentNode.insertBefore(bar, host);
+          else document.body.insertBefore(bar, document.body.firstChild);
+        })
+        .catch(function () { });
+    }, 2500);
+  })();
+  </script>
+  <!-- 离线日K / 行业成分股：由 tools/regen_offline.py 生成；未生成时为空骨架，
+       页面自动跳过并走实时多源，不影响使用。 -->
+  <script src="kline.js?v=202611251045"></script>
+  <script src="industry.js?v=202611251045"></script>
+  <!-- 便携版：ECharts 已本地化，断网也能画 RRG / 走势图 -->
+  <script defer src="echarts.min.js?v=202611251045"></script>
+  <!-- 试用 / 邀请 / 风险提示门（guard.js）。必须在 app.js 之前执行：
+       它可能直接锁屏，避免先渲染出内容再被盖住。
+       依赖云端记账（invite_events / consent_events），断网时自动降级为「仅本地计时」。 -->
+  <script defer src="daily.js?v=202611251045"></script>
+  <!-- 多源舆情快照：云端每日采集公开源（快讯/检索/公告/RSS/个股专属，真实行业口径），带真实来源与时间。
+       必须在 six-engine.js / app.js 之前加载，引擎据此计算舆情票。读不到时自动退回静态历史缓存。 -->
+  <script defer src="news_data.js?v=202611251045"></script>
+  <script defer src="poster_daily.js?v=202611251045"></script>
+  <script defer src="guard.js?v=202611251045"></script>
+  <script defer src="fundflow.js?v=202611251045"></script>
+  <script defer src="data-service.js?v=202611251045"></script>
+  <!-- 三态阶段判定唯一口径：主站与超跌页「新发涨停观察」共用，避免同一票两页显示的阶段不一致 -->
+  <script defer src="state-phase.js?v=202611251045"></script>
+  <script defer src="six-engine.js?v=202611251045"></script>
+  <script defer src="app.js?v=202611251045"></script>
+  <script defer src="live-refresh.js?v=202611251045"></script>
+  <script defer src="state-path.js?v=202611251045"></script>
+  <script defer src="selfcheck.js?v=202611251045"></script>
+  <!-- 三报远端刷新：本地 daily.js 是发布那一刻的快照；GitHub Actions 每个交易日
+       07:30 / 11:35 / 15:35 把新一版 daily.js 推到 Pages。这里在首屏渲染完成后取一次远端，
+       比本地新就替换 window.AB_DAILY 并重绘一次（保持滚动位置）。
+       失败一律静默：本地快照照常显示，客户无感；抽屉打开时不重绘，避免打断正在看的标的。 -->
+  <script>
+  (function () {
+    var REMOTE = 'https://yinzhonghe.github.io/san-tai-databuild/daily.js';
+    var T0 = Date.now();
+    function stamp(D) {
+      if (!D || !D.date) return '';
+      var s = '';
+      ['morning', 'noon', 'close'].forEach(function (k) {
+        var v = D[k];
+        if (v && v.at && v.at > s) s = v.at;
+      });
+      return D.date + ' ' + s;
+    }
+    function apply() {
+      if (!window.fetch && !window.XMLHttpRequest) return;
+      var local = window.AB_DAILY || null;
+      var localKey = stamp(local);
+      var x = new XMLHttpRequest();
+      x.open('GET', REMOTE + '?t=' + Date.now(), true);
+      x.timeout = 8000;
+      x.onload = function () {
+        if (x.status !== 200 || !x.responseText) return;
+        var txt = x.responseText, i = txt.indexOf('{'), j = txt.lastIndexOf('}');
+        if (i < 0 || j < 0) return;
+        var D;
+        try { D = JSON.parse(txt.slice(i, j + 1)); } catch (e) { return; }
+        if (!D || !D.date) return;
+        if (localKey && stamp(D) <= localKey) return;   // 远端不比本地新，保持不动
+        window.AB_DAILY = D;
+        if (Date.now() - T0 > 20000) return;            // 用户已经读了一会儿，不再重绘
+        var dr = document.getElementById('drawer');
+        if (dr && dr.classList.contains('open')) return;
+        try { if (window.AB_DIAG && window.AB_DIAG.render) window.AB_DIAG.render(); } catch (e) {}
+      };
+      try { x.send(); } catch (e) {}
+    }
+    if (document.readyState === 'complete') setTimeout(apply, 900);
+    else window.addEventListener('load', function () { setTimeout(apply, 900); });
+  })();
+  </script>
+  <!-- 多源舆情远端刷新：本地 news_data.js 是发布那刻的快照；云端每个交易日多次采集公开源
+       推到 Pages。这里取一次，比本地新就替换 AB_NEWS 并重算舆情票 + 重绘。
+       注意：six-engine 的 _themeAgg/_nameIdx 有缓存，替换后要清掉才会重算。 -->
+  <script>
+  (function () {
+    var REMOTE = 'https://yinzhonghe.github.io/san-tai-databuild/news_data.js';
+    function apply() {
+      if (!window.XMLHttpRequest) return;
+      var local = window.AB_NEWS || null;
+      var localKey = local && local.asOf ? local.asOf : '';
+      var x = new XMLHttpRequest();
+      x.open('GET', REMOTE + '?t=' + Date.now(), true);
+      x.timeout = 8000;
+      x.onload = function () {
+        if (x.status !== 200 || !x.responseText) return;
+        var txt = x.responseText, i = txt.indexOf('{'), j = txt.lastIndexOf('}');
+        if (i < 0 || j < 0) return;
+        var D;
+        try { D = JSON.parse(txt.slice(i, j + 1)); } catch (e) { return; }
+        if (!D || !D.asOf) return;
+        if (localKey && D.asOf <= localKey) return;   // 远端不更新，保持不动
+        window.AB_NEWS = D;
+        // 清引擎缓存让舆情票用新数据重算；再把真实条目回填到三态总表每行
+        try { if (window.AB_SIX && window.AB_SIX.resetCache) window.AB_SIX.resetCache(); } catch (e) {}
+        try { if (window.AB_DS && window.AB_DS.refreshNews) window.AB_DS.refreshNews(); } catch (e) {}
+        var dr = document.getElementById('drawer');
+        if (dr && dr.classList.contains('open')) return;
+        try { if (window.AB_DIAG && window.AB_DIAG.render) window.AB_DIAG.render(); } catch (e) {}
+      };
+      try { x.send(); } catch (e) {}
+    }
+    if (document.readyState === 'complete') setTimeout(apply, 1200);
+    else window.addEventListener('load', function () { setTimeout(apply, 1200); });
+  })();
+  </script>
+</body>
+</html>
