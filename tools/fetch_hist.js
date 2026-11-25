@@ -107,7 +107,7 @@ async function one(code) {
       done++;
       if (done % 300 === 0) {
         const el = (Date.now() - t0) / 1000;
-        console.log('  %d/%d 成功%d(东财%d/腾讯hfq%d) 失败%d · %.0fs', done, codes.length, ok, nEM, nTX, fail, el);
+        console.log('  %d/%d 成功%d(东财%d/腾讯hfq%d) 失败%d · %ss', done, codes.length, ok, nEM, nTX, fail, el.toFixed(0));
       }
     }
   }
