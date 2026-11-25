@@ -38,6 +38,15 @@ body{margin:0;background:var(--bg);color:var(--dark);font:14px/1.6 -apple-system
 .c-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:7px 10px;font-size:12px}
 .c-grid .k{color:var(--muted);font-size:10.5px;display:block}
 .c-grid .v{font-weight:600;font-variant-numeric:tabular-nums}
+.lu-toolbar{background:#f7f9fc;border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:10px}
+.lu-toolbar .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lu-toolbar .row+.row{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}
+.lu-toolbar .lb{font-size:10.5px;color:var(--muted);margin-right:2px;min-width:26px}
+.lu-sbtn{font-size:11px;padding:3px 8px;border:1px solid var(--line);border-radius:5px;background:#fff;color:#4a5361;cursor:pointer;white-space:nowrap}
+.lu-sbtn:hover{border-color:#8fb0d8}
+.lu-sbtn.on{background:#2c5d92;color:#fff;border-color:#2c5d92}
+.lu-sbtn .ar{font-size:9px;margin-left:2px;opacity:.85}
+.lu-fsel{font-size:11px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff;color:#4a5361;max-width:132px}
 .c-grid .v.red{color:var(--up)}
 .c-grid .v.green{color:var(--down)}
 .c-act{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:11.5px;line-height:1.8}
@@ -223,6 +232,10 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
 
     <!-- 第二层：名单与阶段 -->
     <div class="lu-live" id="luLive">实时行情：正在连接…</div>
+    <div class="lu-toolbar" id="luToolbar">
+      <div class="row"><span class="lb">排序</span><span id="luSortBtns"></span></div>
+      <div class="row"><span class="lb">筛选</span><span id="luFilterSels"></span></div>
+    </div>
     <div class="ctrl">
       <div class="tab on" data-lut="all">全部</div>
       <div class="tab" data-lut="can">可参与</div>
@@ -276,15 +289,16 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251137"></script>
+<script src="echarts.min.js?v=202611251311"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251137"></script>
-<script src="state-phase.js?v=202611251137"></script>
+<script src="data-service.js?v=202611251311"></script>
+<script src="fundflow.js?v=202611251311"></script>
+<script src="state-phase.js?v=202611251311"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251137';
+var AB_LOCAL_V = '?v=202611251311';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -355,6 +369,21 @@ function abBoot() {
   var luFilter = 'all';
   var luQuotes = {};       // 实时报价 map，取不到的票不写 0
   var luQuoteMeta = { at: '', count: 0, source: '' };
+  var luFunds = {};        // 实时资金 map（东财当日主力净流入），取不到不写 0
+  var luFundMeta = { at: '', count: 0 };
+  /* 表头排序/筛选状态：key=字段，dir=-1 降序 / 1 升序；filters=各字段筛选值 */
+  var luSortKey = 'score', luSortDir = -1;
+  var luFilters = { action: '', bucket: '', rrg: '', ind: '', fund: '', vote: '' };
+  /* 数值字段排序取值：实时价/涨幅来自报价 map，主力资金来自资金 map，其余来自快照 */
+  function luVal(x, key) {
+    if (key === 'price') { var q = luQuotes[x.code]; return q && typeof q.price === 'number' ? q.price : null; }
+    if (key === 'chg') { var q2 = luQuotes[x.code]; return q2 && typeof q2.chg === 'number' ? q2.chg : null; }
+    if (key === 'fund') { var f = luFunds[x.code]; return f && typeof f.yi === 'number' ? f.yi : (typeof x.fund === 'number' ? x.fund : null); }
+    if (key === 'score') return x._score;
+    if (key === 'vote') return x.resonance;
+    if (key === 'day') return x.stateDays;
+    return x[key];
+  }
   function luCell(k, v, cls) { return '<div><span class="k">' + k + '</span><span class="v ' + (cls || '') + '">' + v + '</span></div>'; }
   function luPct(v) { return (v > 0 ? '+' : '') + (Number(v)).toFixed(2) + '%'; }
   function luPriceHtml(x) {
@@ -366,6 +395,15 @@ function abBoot() {
     var c = hasChg ? (q.chg > 0 ? 'red' : q.chg < 0 ? 'green' : '') : '';
     return luCell('实时价', '¥' + Number(q.price).toFixed(2), c)
       + luCell('今日涨幅', hasChg ? luPct(q.chg) : '—', c);
+  }
+  function luFundCell(x) {
+    var f = luFunds[x.code];
+    if (!f || typeof f.yi !== 'number') {
+      return '<div title="东财当日资金流未取到，不用快照 null 冒充"><span class="k">主力资金</span><span class="v">— 未取到</span></div>';
+    }
+    var c = f.yi > 0 ? 'red' : f.yi < 0 ? 'green' : '';
+    return '<div title="' + esc(f.label || '') + '"><span class="k">主力资金</span>'
+      + '<span class="v ' + c + '">' + (f.yi > 0 ? '+' : '') + Number(f.yi).toFixed(2) + '亿</span></div>';
   }
   /* 与主站同一份阶段判定：候选 + 实时报价 → 新发 / 观察 / 退化 */
   function luGroups() {
@@ -396,6 +434,33 @@ function abBoot() {
       renderLU();
     });
   }
+  /* 实时资金：复用主站 fundflow.js（东财当日主力净流入，ETF 为资金流净额）。
+     91 只逐个 JSONP 会触发限流，这里按每批 8 只、间隔 500ms 拉取；取不到保持空，不写 0。 */
+  function refreshLUFunds() {
+    if (!L || !L.today || !L.today.length || !window.AB_FUNDFLOW) {
+      luFundMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: 0 };
+      return;
+    }
+    var queue = L.today.slice();
+    var got = 0, i = 0;
+    function nextBatch() {
+      var batch = queue.slice(i, i + 8); i += 8;
+      if (!batch.length) {
+        luFundMeta = { at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), count: got };
+        renderLU();
+        return;
+      }
+      var pending = batch.length;
+      batch.forEach(function (x) {
+        var kind = /etf/i.test(x.kind || '') ? 'etf' : 'stock';
+        window.AB_FUNDFLOW.get(x.code, function (ff) {
+          if (ff && typeof ff.yi === 'number') { luFunds[x.code] = ff; got++; }
+          if (--pending === 0) setTimeout(nextBatch, 500);
+        }, kind);
+      });
+    }
+    nextBatch();
+  }
   function actionCls(a) { return a === '可参与' ? 'hot' : a === '回避' ? 'cold' : 'mid'; }
   function luCard(x) {
     var v = x.resonance || 0, act = x._action || '观察', cls = actionCls(act);
@@ -416,7 +481,7 @@ function abBoot() {
       + luCell('20日涨幅', w20 == null ? '—' : (w20 > 0 ? '+' : '') + w20 + '%', w20 > 0 ? 'red' : w20 < 0 ? 'green' : '')
       + luCell('60日涨幅', w60 == null ? '—' : (w60 > 0 ? '+' : '') + w60 + '%', w60 > 0 ? 'red' : w60 < 0 ? 'green' : '')
       + luCell('RRG象限', esc(x.rrg || '—'))
-      + luCell('主力资金', x.fund == null ? '—' : (x.fund > 0 ? '+' : '') + x.fund + '亿', x.fund > 0 ? 'red' : x.fund < 0 ? 'green' : '')
+      + luFundCell(x)
       + luCell('板块', esc(x.ind || '—')) + '</div>'
       + '<div class="lu-advice"><b>主站信号</b>：' + esc(sg.join(' · '))
       + (x._hit && x._hit.length ? '<br><b>命中条件</b>：' + esc(x._hit.join('、')) : '')
@@ -529,6 +594,42 @@ function abBoot() {
       stEl.innerHTML = rows.join('');
     }
   }
+  /* 表头工具栏：排序按钮（点击切换降/升序）+ 筛选下拉（值从当前数据动态生成） */
+  var LU_SORT_COLS = [
+    { k: 'score', t: '自进化分' }, { k: 'vote', t: '六派票数' }, { k: 'day', t: '启动日' },
+    { k: 'price', t: '实时价' }, { k: 'chg', t: '今日涨幅' },
+    { k: 'w5', t: '5日涨幅' }, { k: 'w20', t: '20日涨幅' }, { k: 'w60', t: '60日涨幅' },
+    { k: 'fund', t: '主力资金' }
+  ];
+  function renderLUToolbar() {
+    var sb = document.getElementById('luSortBtns');
+    if (sb) sb.innerHTML = LU_SORT_COLS.map(function (c) {
+      var on = luSortKey === c.k;
+      var ar = on ? '<span class="ar">' + (luSortDir < 0 ? '↓' : '↑') + '</span>' : '';
+      return '<button type="button" class="lu-sbtn' + (on ? ' on' : '') + '" data-sort="' + c.k + '">' + c.t + ar + '</button>';
+    }).join('');
+    var uniq = function (fn) {
+      var s = {}; (L.today || []).forEach(function (x) { var v = fn(x); if (v != null && v !== '') s[v] = 1; });
+      return Object.keys(s).sort(function (a, b) { return a.localeCompare(b, 'zh-CN'); });
+    };
+    var defs = [
+      { k: 'action', t: '动作', opts: ['可参与', '观察', '回避'] },
+      { k: 'bucket', t: '阶段', opts: ['新发', '健康期'] },
+      { k: 'vote', t: '六派', opts: uniq(function (x) { return String(x.resonance || 0); }).sort() },
+      { k: 'rrg', t: 'RRG象限', opts: uniq(function (x) { return x.rrg || '—'; }) },
+      { k: 'ind', t: '板块', opts: uniq(function (x) { return x.ind || ''; }) },
+      { k: 'fund', t: '资金', opts: ['净流入', '净流出'] }
+    ];
+    var fb = document.getElementById('luFilterSels');
+    if (fb) fb.innerHTML = defs.map(function (d) {
+      var cur = luFilters[d.k] || '';
+      var opts = d.opts.map(function (o) {
+        var v = d.k === 'fund' ? (o === '净流入' ? 'in' : 'out') : o;
+        return '<option value="' + esc(v) + '"' + (cur === v ? ' selected' : '') + '>' + esc(o) + '</option>';
+      }).join('');
+      return '<select class="lu-fsel" data-filter="' + d.k + '" title="按' + d.t + '筛选"><option value="">' + d.t + '：全部</option>' + opts + '</select>';
+    }).join('');
+  }
   function renderLU() {
     if (!L || !L.today) {
       set('en3', '数据未加载');
@@ -554,7 +655,9 @@ function abBoot() {
       live.innerHTML = '实时行情：<b>' + esc(luQuoteMeta.source || '—') + '</b> '
         + (covered ? ('已取到 ' + covered + '/' + allList.length + ' 只，更新于 ' + esc(luQuoteMeta.at))
           : '未取到（首屏稍后自动重试）')
-        + ' · 盘中每 60 秒刷新；取不到的显示「— 未取到」。';
+        + '<br>实时资金：<b>' + (window.AB_FUNDFLOW ? '东财当日主力净流入' : '未加载') + '</b> '
+        + (luFundMeta.count ? ('已取到 ' + luFundMeta.count + '/' + allList.length + ' 只') : '拉取中/未取到')
+        + ' · 盘中每 60 秒刷新；取不到的显示「— 未取到」，不用快照冒充。';
     }
     renderTop();
     renderEvidence();
@@ -564,24 +667,38 @@ function abBoot() {
     if (tl) tl.innerHTML = pb.length ? pb.map(function (p) {
       return '<div class="step"><b>' + esc(p.when) + '</b> · ' + esc(p.state) + ' → ' + esc(p.action) + '</div>';
     }).join('') : '样本不足，动作表待验证。';
-    // 列表筛选
+    // 列表筛选：tab 快捷筛选 + 表头筛选（可叠加）
     var list = allList.filter(function (x) {
       var a = x._action || '观察';
-      if (luFilter === 'all') return true;
-      if (luFilter === 'can' || luFilter === 'obs' || luFilter === 'avoid') return a === ({ can: '可参与', obs: '观察', avoid: '回避' }[luFilter]);
-      if (luFilter === 'new') return x.dayBucket === '新发';
-      if (luFilter === 'health') return x.dayBucket === '健康期';
+      if (luFilter === 'can' && a !== '可参与') return false;
+      if (luFilter === 'obs' && a !== '观察') return false;
+      if (luFilter === 'avoid' && a !== '回避') return false;
+      if (luFilter === 'new' && x.dayBucket !== '新发') return false;
+      if (luFilter === 'health' && x.dayBucket !== '健康期') return false;
+      if (luFilters.action && a !== luFilters.action) return false;
+      if (luFilters.bucket && (x.dayBucket || '') !== luFilters.bucket) return false;
+      if (luFilters.rrg && (x.rrg || '—') !== luFilters.rrg) return false;
+      if (luFilters.ind && (x.ind || '—') !== luFilters.ind) return false;
+      if (luFilters.vote && String(x.resonance || 0) !== luFilters.vote) return false;
+      if (luFilters.fund) {
+        var fv = luFunds[x.code] ? luFunds[x.code].yi : x.fund;
+        if (typeof fv !== 'number') return false;
+        if (luFilters.fund === 'in' && !(fv > 0)) return false;
+        if (luFilters.fund === 'out' && !(fv < 0)) return false;
+      }
       return true;
     });
-    var sortBy = (document.getElementById('luSort') || {}).value || 'score';
-    var num = function (a) { return a == null ? -1e9 : Number(a); };
+    // 统一排序：数值字段降序/升序，空值恒沉底；启动日默认由早到晚
+    var dir = luSortDir;
+    var num = function (v) { return (v == null || !isFinite(Number(v))) ? null : Number(v); };
     list.sort(function (a, b) {
-      if (sortBy === 'vote') return (b.resonance || 0) - (a.resonance || 0);
-      if (sortBy === 'day') return (a.stateDays || 99) - (b.stateDays || 99);
-      if (sortBy === 'w5') return num(b.w5) - num(a.w5);
-      if (sortBy === 'w20') return num(b.w20) - num(a.w20);
-      return (b._score || 0) - (a._score || 0);
+      var va = num(luVal(a, luSortKey)), vb = num(luVal(b, luSortKey));
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;    // 空值恒沉底，与升降序无关
+      if (vb == null) return -1;
+      return (va - vb) * dir;      // dir=-1 降序（大在前），dir=1 升序
     });
+    renderLUToolbar();
     document.getElementById('luList').innerHTML = list.length ? list.map(luCard).join('')
       : '<div class="card" style="color:#8b93a1">该档今天没有标的。宁可空仓，不要为凑数去追弱票。</div>';
     Array.prototype.forEach.call(document.querySelectorAll('[data-luopen]'), function (el) {
@@ -607,8 +724,13 @@ function abBoot() {
   if (L) {
     renderLU();
     refreshLUQuotes();
+    refreshLUFunds();
     setInterval(function () {
-      if (document.getElementById('p3') && document.getElementById('p3').classList.contains('on')) refreshLUQuotes();
+      if (document.getElementById('p3') && document.getElementById('p3').classList.contains('on')) {
+        refreshLUQuotes();
+        if (window.AB_FUNDFLOW) window.AB_FUNDFLOW.clear();  // 过期缓存清掉，重新拉当日资金
+        refreshLUFunds();
+      }
     }, 60000);
   }
   document.querySelectorAll('[data-lut]').forEach(function (e) {
@@ -620,7 +742,28 @@ function abBoot() {
     });
   });
   var luSortEl = document.getElementById('luSort');
-  if (luSortEl) luSortEl.addEventListener('change', renderLU);
+  if (luSortEl) luSortEl.addEventListener('change', function () {
+    luSortKey = this.value; luSortDir = -1; renderLU();
+  });
+  // 工具栏排序按钮：同字段再点切换升/降序，换字段默认降序（启动日默认升序）
+  var tb = document.getElementById('luToolbar');
+  if (tb) {
+    tb.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-sort]') : null;
+      if (!btn) return;
+      var k = btn.getAttribute('data-sort');
+      if (luSortKey === k) luSortDir = -luSortDir;
+      else { luSortKey = k; luSortDir = (k === 'day') ? 1 : -1; }
+      if (luSortEl) luSortEl.value = LU_SORT_COLS.some(function (c) { return c.k === k; }) ? k : 'score';
+      renderLU();
+    });
+    tb.addEventListener('change', function (e) {
+      var sel = e.target;
+      if (!sel || !sel.getAttribute || !sel.getAttribute('data-filter')) return;
+      luFilters[sel.getAttribute('data-filter')] = sel.value;
+      renderLU();
+    });
+  }
   var curType = 'stock';
   try { if (C && C.params && C.params.model) document.getElementById('fSort').value = 'score'; } catch (e) {}
   var all2 = C ? (C.stocks || []).concat(C.etfs || []) : [];
