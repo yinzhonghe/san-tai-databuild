@@ -1,6 +1,6 @@
 {
   "name": "san-tai-kan-pan",
-  "version": "20261125i",
+  "version": "20261125j",
   "private": true,
   "description": "三态看盘 · 纯静态 A 股看板（便携版）· 六派交叉验证引擎",
   "scripts": {
