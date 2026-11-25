@@ -44,13 +44,16 @@ assert(ov.indexOf('fetchTurnTencent') >= 0, '换手率应走腾讯通道');
 var a38 = ov.indexOf('a[38]'), a44 = ov.indexOf('a[44]');
 assert(a38 > 0 && a44 > 0, '应解析腾讯字段38换手率/44流通市值');
 
-// 4. 2026-11-25 定稿：超跌页启动池/自进化只保留「新发 + 观察」
-assert(live.indexOf("POOL_PHASES = ['新发', '观察']") >= 0, '自进化池应只含新发/观察');
-assert(live.indexOf("if (!inPool(p)) return;") >= 0, '旧台账也要过滤掉健康期/退化');
+// 4. 2026-11-25 15:40 改口径：超跌页启动池/自进化恢复「新发 + 观察 + 健康」三类（退化仍剔除）
+assert(live.indexOf("POOL_PHASES = ['新发', '观察', '健康']") >= 0, '自进化池应含新发/观察/健康');
+assert(live.indexOf("if (!inPool(p)) return;") >= 0, '旧台账也要过滤掉退化');
 assert(live.indexOf('phaseHealth') < 0, '不应再有健康期条件');
-assert(ov.indexOf("var allList = (G['新发'] || []).concat(G['观察'] || []);") >= 0, '页面启动池只取新发+观察');
-assert(ov.indexOf('data-lut="health"') < 0, '页面不应再有健康期筛选');
+assert(ov.indexOf("var allList = (G['新发'] || []).concat(G['观察'] || [], G['健康'] || []);") >= 0, '页面启动池应取新发+观察+健康');
+assert(ov.indexOf('data-lut="health"') >= 0, '页面应恢复启动健康筛选');
 assert(ov.indexOf("data-lut=\"phaseObs\"") >= 0, '页面应有启动观察阶段筛选');
+assert(ov.indexOf("luFilter === 'health'") >= 0, '页面应有健康段筛选逻辑');
+assert(ov.indexOf("opts: ['新发', '观察', '健康']") >= 0, '表头阶段筛选应含健康');
+assert(ov.indexOf("G['健康'] || []") >= 0, '情绪代理/派发清单应含健康段');
 
 // 5. 启动池搜索框（代码/名称/行业/板块，与 tab/表头筛选/排序叠加）
 assert(ov.indexOf('id="luSearch"') >= 0, '页面应有启动池搜索框');
@@ -81,4 +84,4 @@ assert(ov.indexOf("'整页 ' + Object.keys(hit).length") >= 0, '应显示整页�
   assert(ov.indexOf(frag) >= 0, '整页搜索应覆盖：' + frag.split('.')[0]);
 });
 
-console.log('观察组学习+渲染修复测试 通过（切片4项 + 自进化5锚点 + 渲染7锚点 + 只留新发/观察6项 + 搜索14项）');
+console.log('观察组学习+渲染修复测试 通过（切片4项 + 自进化5锚点 + 渲染9锚点 + 三类池9项 + 搜索14项）');
