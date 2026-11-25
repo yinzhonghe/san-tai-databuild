@@ -71,4 +71,14 @@ assert.strictEqual(matchFn(stock, '电子'), false, '不匹配应过滤');
 assert.strictEqual(matchFn(stock, '艾芬达 家居'), true, '空格分词按与匹配');
 assert.strictEqual(matchFn(stock, '艾芬达 电子'), false, '多词有一个不匹配即过滤');
 
+// 6. 搜索范围=整页：首板预警 / 派发清单 / 启动观察 / 今日优选 / 启动池 全部过滤
+assert(ov.indexOf('全页查找') >= 0, '搜索框应标明整页生效');
+assert(ov.indexOf("'整页 ' + Object.keys(hit).length") >= 0, '应显示整页命中数');
+['W.list.filter(function (x) { return luMatchQuery(x, luQuery); })',
+ 'pool.filter(function (x) { return luMatchQuery(x, luQuery); })',
+ 'allObs.filter(function (x) { return luMatchQuery(x, luQuery); })',
+ '(L.today || []).filter(function (x) { return luMatchQuery(x, luQuery); })'].forEach(function (frag) {
+  assert(ov.indexOf(frag) >= 0, '整页搜索应覆盖：' + frag.split('.')[0]);
+});
+
 console.log('观察组学习+渲染修复测试 通过（切片4项 + 自进化5锚点 + 渲染7锚点 + 只留新发/观察6项 + 搜索14项）');
