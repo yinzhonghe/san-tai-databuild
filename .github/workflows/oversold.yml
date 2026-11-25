@@ -26,7 +26,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # 东财统一限流 + 腾讯三入口轮换后，单只请求变慢但覆盖率大幅提升，留足时间
-    timeout-minutes: 100
+    # 6079 只 × hist/ohlc 双通道 + ETF，按闸门限速实测约 200+ 分钟；100 分钟会在抓数中途被取消。
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
 
