@@ -33,7 +33,7 @@ FILES = [
     "oversold.html",    # 超跌反弹观察池（独立页，无导航入口）
     "oversold_data.js", # 由 tools/final_pick.js 生成
     "chan_pick_data.js", # 由 tools/chan_pick.js 生成（缠论一买+K线）
-    "limitup_data.js",  # 由 tools/limitup_watch.js 生成（新发涨停观察，超跌页板块③）
+    "limitup_data.js",  # 由 tools/limitup_live.js 生成（三态主站口径「启动·新发」真实台账，超跌页板块③）
     "styles.css",
     "data.js",          # 全市场快照（含 closes / c250）
     "kline.js",
