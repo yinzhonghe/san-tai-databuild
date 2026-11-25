@@ -41,6 +41,7 @@ FILES = [
     "echarts.min.js",
     "fundflow.js",       # 资金派当日实时净流入（补快照空缺）
     "data-service.js",
+    "state-phase.js",    # 三态阶段判定唯一口径：主站与超跌页新发模块共用
     "six-engine.js",
     "app.js",
     "live-refresh.js",
