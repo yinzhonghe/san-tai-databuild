@@ -70,7 +70,9 @@ jobs:
           # 主档时间 + 合理宽限：过了这个点还没有 oneLine 就算缺
           due = []
           if mins >= 8 * 60:  due.append('morning')   # 主 07:30
+          if mins >= 10 * 60 + 40: due.append('am_flash')  # 盘中 10:30（宽限 10 分钟）
           if mins >= 12 * 60: due.append('noon')      # 主 11:35
+          if mins >= 14 * 60 + 10: due.append('pm_flash')  # 盘中 14:00（宽限 10 分钟）
           if mins >= 15 * 60 + 10: due.append('close')  # 主 15:05
           if manual: due = [manual]                    # 手动指定时只查这一档
 
@@ -85,11 +87,21 @@ jobs:
               print('读取 daily.js 失败，按全部缺失处理：%s' % e)
 
           missing = []
+          intra = obj.get('intraday') or []
           for s in due:
-              v = obj.get(s) or {}
-              if not (obj.get('date') == today and v.get('oneLine')):
+              if s in ('am_flash', 'pm_flash'):
+                  want = '10:30' if s == 'am_flash' else '14:00'
+                  ok = any((it.get('date') == today and it.get('slot') == want and it.get('change'))
+                           for it in intra if isinstance(it, dict))
+              else:
+                  v = obj.get(s) or {}
+                  ok = (obj.get('date') == today and bool(v.get('oneLine')))
+              if not ok:
                   missing.append(s)
-          print('北京 %s → 应生成 %s，缺失 %s' % (now.strftime('%F %H:%M'), ','.join(due) or '无', ','.join(missing) or '无'))
+          # 诊断信息写到 stderr：GitHub Actions 把 stdout 全当 key=value 解析，
+          # 之前这行中文日志导致 "Invalid format" 让整个自检步骤失败、补漏从未执行。
+          import sys
+          sys.stderr.write('北京 %s → 应生成 %s，缺失 %s\n' % (now.strftime('%F %H:%M'), ','.join(due) or '无', ','.join(missing) or '无'))
           print('missing=%s' % ','.join(missing))
           print('has_missing=%s' % ('true' if missing else 'false'))
           PY
@@ -105,8 +117,13 @@ jobs:
           MISSING: ${{ steps.check.outputs.missing }}
         run: |
           for s in $(echo "$MISSING" | tr ',' ' '); do
-            echo "=== 补跑 $s 档（high）==="
-            python gen_report.py --slot "$s" 2>&1 | tee -a watchdog-run.log
+            if [ "$s" = "am_flash" ] || [ "$s" = "pm_flash" ]; then
+              echo "=== 补跑盘中快报 $s ==="
+              python gen_intraday.py --slot "$s" 2>&1 | tee -a watchdog-run.log
+            else
+              echo "=== 补跑 $s 档（high）==="
+              python gen_report.py --slot "$s" 2>&1 | tee -a watchdog-run.log
+            fi
           done
 
       - name: 提交运行记录
