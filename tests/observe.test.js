@@ -49,4 +49,23 @@ assert(ov.indexOf("var allList = (G['新发'] || []).concat(G['观察'] || []);"
 assert(ov.indexOf('data-lut="health"') < 0, '页面不应再有健康期筛选');
 assert(ov.indexOf("data-lut=\"phaseObs\"") >= 0, '页面应有启动观察阶段筛选');
 
-console.log('观察组学习+渲染修复测试 通过（切片4项 + 自进化5锚点 + 渲染7锚点 + 只留新发/观察6项）');
+// 5. 启动池搜索框（代码/名称/行业/板块，与 tab/表头筛选/排序叠加）
+assert(ov.indexOf('id="luSearch"') >= 0, '页面应有启动池搜索框');
+assert(ov.indexOf('id="luSearchInfo"') >= 0, '页面应有命中数提示');
+assert(ov.indexOf('function luMatchQuery(') >= 0, '应定义搜索匹配函数');
+assert(ov.indexOf('if (!luMatchQuery(x, luQuery)) return false;') >= 0, '搜索应参与列表筛选');
+assert(ov.indexOf("getElementById('luSearch')") >= 0, '搜索框应绑定输入事件');
+var mq = ov.match(/function luMatchQuery\(x, q\) \{[\s\S]*?\n  \}/);
+assert(mq, '应能提取搜索匹配函数');
+var matchFn = new Function(mq[0] + '; return luMatchQuery;')();
+var stock = { code: '301575.SZ', name: '艾芬达', ind: '家居用品', rrg: '家居' };
+assert.strictEqual(matchFn(stock, ''), true, '空词不过滤');
+assert.strictEqual(matchFn(stock, '301575'), true, '裸代码可搜');
+assert.strictEqual(matchFn(stock, '301575.SZ'), true, '全代码可搜');
+assert.strictEqual(matchFn(stock, '艾芬达'), true, '名称可搜');
+assert.strictEqual(matchFn(stock, '家居'), true, '行业/板块可搜');
+assert.strictEqual(matchFn(stock, '电子'), false, '不匹配应过滤');
+assert.strictEqual(matchFn(stock, '艾芬达 家居'), true, '空格分词按与匹配');
+assert.strictEqual(matchFn(stock, '艾芬达 电子'), false, '多词有一个不匹配即过滤');
+
+console.log('观察组学习+渲染修复测试 通过（切片4项 + 自进化5锚点 + 渲染7锚点 + 只留新发/观察6项 + 搜索14项）');
