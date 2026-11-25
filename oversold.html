@@ -325,6 +325,9 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
       <div class="tab" data-lut="can">可参与</div>
       <div class="tab" data-lut="actObs">动作·观察</div>
       <div class="tab" data-lut="avoid">回避</div>
+      <label>查找</label>
+      <input id="luSearch" type="search" placeholder="代码 / 名称 / 行业" style="width:190px" autocomplete="off">
+      <span id="luSearchInfo" style="font-size:11.5px;color:var(--muted)"></span>
       <label>排序</label>
       <select id="luSort" class="sel">
         <option value="score">自进化总分↓</option>
@@ -367,16 +370,16 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251501"></script>
+<script src="echarts.min.js?v=202611251508"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251501"></script>
-<script src="fundflow.js?v=202611251501"></script>
-<script src="state-phase.js?v=202611251501"></script>
+<script src="data-service.js?v=202611251508"></script>
+<script src="fundflow.js?v=202611251508"></script>
+<script src="state-phase.js?v=202611251508"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251501';
+var AB_LOCAL_V = '?v=202611251508';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -447,6 +450,7 @@ function abBoot() {
   // ===== 板块③：启动·新发（自进化 v2）=====
   var L = window.AB_LIMITUP;
   var luFilter = 'all';
+  var luQuery = '';        // 启动池搜索词：代码 / 名称 / 行业 / 板块，空格分词按「与」匹配
   var obsFilter = 'all';   // 启动观察 tab：all / board(连板降级) / weak(走弱回落)
   var watchFilter = 'all';   // 首板预警 tab：all / can / high / one
   var luQuotes = {};       // 实时报价 map，取不到的票不写 0
@@ -460,6 +464,13 @@ function abBoot() {
   /* 表头排序/筛选状态：key=字段，dir=-1 降序 / 1 升序；filters=各字段筛选值 */
   var luSortKey = 'score', luSortDir = -1;
   var luFilters = { action: '', bucket: '', rrg: '', ind: '', fund: '', vote: '' };
+  /* 搜索：代码（含裸码）/名称/行业/板块；不拿分数、动作等数字字段匹配，避免误命中 */
+  function luMatchQuery(x, q) {
+    if (!q) return true;
+    var code = String(x.code || '');
+    var hay = [x.name, code, code.split('.')[0], x.ind, x.rrg].join(' ').toLowerCase();
+    return q.toLowerCase().split(/\s+/).filter(Boolean).every(function (t) { return hay.indexOf(t) >= 0; });
+  }
   /* 数值字段排序取值：实时价/涨幅来自报价 map，主力资金来自资金 map，其余来自快照 */
   function luVal(x, key) {
     if (key === 'price') { var q = luQuotes[x.code]; return q && typeof q.price === 'number' ? q.price : null; }
@@ -1091,6 +1102,7 @@ function abBoot() {
     }).join('') : '样本不足，动作表待验证。';
     // 列表筛选：tab 快捷筛选 + 表头筛选（可叠加）
     var list = allList.filter(function (x) {
+      if (!luMatchQuery(x, luQuery)) return false;
       var a = x._action || '观察';
       var phase = (x._phase && x._phase.t) || x.dayBucket || '';
       if (luFilter === 'can' && a !== '可参与') return false;
@@ -1122,8 +1134,12 @@ function abBoot() {
       return (va - vb) * dir;      // dir=-1 降序（大在前），dir=1 升序
     });
     renderLUToolbar();
+    var sInfo = document.getElementById('luSearchInfo');
+    if (sInfo) sInfo.textContent = luQuery ? ('命中 ' + list.length + '/' + allList.length) : '';
     document.getElementById('luList').innerHTML = list.length ? list.map(luCard).join('')
-      : '<div class="card" style="color:#8b93a1">该档今天没有标的。宁可空仓，不要为凑数去追弱票。</div>';
+      : '<div class="card" style="color:#8b93a1">' + (luQuery
+        ? ('没有匹配「' + esc(luQuery) + '」的标的，试试代码或名称的一部分；也可清空查找恢复全部。')
+        : '该档今天没有标的。宁可空仓，不要为凑数去追弱票。') + '</div>';
     Array.prototype.forEach.call(document.querySelectorAll('[data-luopen]'), function (el) {
       el.addEventListener('click', function () {
         window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-luopen')), '_blank');
@@ -1181,6 +1197,11 @@ function abBoot() {
       obsFilter = e.getAttribute('data-ot');
       renderObs();
     });
+  });
+  var luSearchEl = document.getElementById('luSearch');
+  if (luSearchEl) luSearchEl.addEventListener('input', function () {
+    luQuery = this.value.trim();
+    renderLU();   // 与 tab / 表头筛选 / 排序叠加；搜索框在列表外，重绘不会丢焦点
   });
   var luSortEl = document.getElementById('luSort');
   if (luSortEl) luSortEl.addEventListener('change', function () {
