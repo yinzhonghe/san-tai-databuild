@@ -9,12 +9,15 @@
   3) 候选规则必须经过 tools/limitup_live.js 既有的 walk-forward + 三组对照 + 自动回退
      验证后，才可能被采纳为打分条件；本脚本不碰那条链路，也不给它塞结论。
   4) 只用真实字段（见 FEATURES），提示词里明确禁止模型编造数据或字段。
-  5) 模型固定用最新旗舰 glm-5.3，不含 glm-4.7（用户明确要求）。
+  5) 模型用【用户已有额度的当前最新旗舰档】glm-5.3-flash：
+     历史对话已确认 5.3-flash 专属池约 1797 万 tokens（2026-12-20 到期），
+     而 5.3 走通用池仅 195 万，用户明确表示“智谱最新旗舰没额度，跑不起来”。
+     所以这里不再默认 glm-5.3；glm-4.7 也仍然不用。
 
 用法：
   python github_ci/evolve_llm.py --dry-run            # 只检查门槛/事实包，不调 API
   python github_ci/evolve_llm.py                       # 门槛达到才调模型
-  python github_ci/evolve_llm.py --force --model glm-5.3   # 强制跑（调试，仍写候选文件）
+  python github_ci/evolve_llm.py --force --model glm-5.3-flash   # 强制跑（调试，仍写候选文件）
 
 环境变量：LLM_API_KEY（必需）、LLM_API_BASE（可选，默认智谱）、LLM_MODELS（可选，覆盖模型）。
 """
@@ -36,7 +39,7 @@ STATS_LOG = os.path.join(ROOT, 'learn', 'limitup_stats.jsonl')
 OUT_JSON = os.path.join(ROOT, 'learn', 'limitup_evolution.json')
 
 MIN_SETTLED = 200          # 与 limitup_live.js 的 highN 一致：低于此数不调用模型
-DEFAULT_MODEL = 'glm-5.3'  # 智谱当前最新旗舰（官方文档 2026-11 确认），不用 4.7
+DEFAULT_MODEL = 'glm-5.3-flash'  # 用户有 1797 万专属额度的最新旗舰档；glm-5.3 通用池无额度可用
 API_BASE = os.environ.get('LLM_API_BASE') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
 
 CN_TZ = timezone(timedelta(hours=8))
@@ -220,7 +223,7 @@ def main():
     if not key:
         sys.exit('[evolve-llm] 缺 LLM_API_KEY，无法调用模型')
     if '4.7' in model:
-        sys.exit('[evolve-llm] 模型被拒绝：用户要求只用最新旗舰，不用 glm-4.7')
+        sys.exit('[evolve-llm] 模型被拒绝：用户要求用有额度的 glm-5.3-flash，不用 glm-4.7')
 
     messages = [
         {'role': 'system', 'content': system_prompt()},
