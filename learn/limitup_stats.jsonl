@@ -1,0 +1,13 @@
+{"at":"2026-11-25 10:41","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"top":null}
+{"at":"2026-11-25 10:47","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"top":null}
+{"at":"2026-11-25 10:47","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"top":null}
+{"at":"2026-11-25 11:32","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"criteria":{"a":0,"b":0,"c":0,"d":0},"comparison":{"A":0,"B":0,"C":0},"primary":"sumAll","fallback":false,"top":null}
+{"at":"2026-11-25 11:35","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"criteria":{"a":0,"b":0,"c":0,"d":0},"comparison":{"A":0,"B":0,"C":0},"primary":"sumAll","fallback":false,"top":null}
+{"type":"watch","date":"2026-11-25","asOf":"2026-11-24","ruleVersion":2,"total":7,"settled":0,"tradable":6,"untradable":1,"winRate":null,"avgRet5":null}
+{"at":"2026-11-25 13:50","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"criteria":{"a":0,"b":0,"c":0,"d":0},"comparison":{"A":0,"B":0,"C":0},"primary":"sumAll","fallback":false,"top":null}
+{"type":"watch","date":"2026-11-25","asOf":"2026-11-24","ruleVersion":2,"total":7,"settled":0,"tradable":6,"untradable":1,"winRate":null,"avgRet5":null}
+{"type":"observe","date":"2026-11-25","asOf":"2026-11-24","ruleVersion":2,"n":0,"boardN":0,"weakN":0,"boardWin":null,"weakWin":null}
+{"at":"2026-11-25 14:28","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"criteria":{"a":0,"b":0,"c":0,"d":0},"comparison":{"A":0,"B":0,"C":0},"primary":"sumAll","fallback":false,"top":null}
+{"type":"watch","date":"2026-11-25","asOf":"2026-11-24","ruleVersion":2,"total":7,"settled":0,"tradable":6,"untradable":1,"winRate":null,"avgRet5":null}
+{"type":"observe","date":"2026-11-25","asOf":"2026-11-24","ruleVersion":2,"n":0,"boardN":0,"weakN":0,"boardWin":null,"weakWin":null}
+{"at":"2026-11-25 15:01","asOf":"2026-11-24","settled":0,"baseN":0,"baseRate":0,"criteria":{"a":0,"b":0,"c":0,"d":0},"comparison":{"A":0,"B":0,"C":0},"primary":"sumAll","fallback":false,"top":null}
