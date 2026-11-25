@@ -322,6 +322,7 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
       <div class="tab on" data-lut="all">全部</div>
       <div class="tab" data-lut="new">启动新发</div>
       <div class="tab" data-lut="phaseObs">启动观察</div>
+      <div class="tab" data-lut="health">启动健康</div>
       <div class="tab" data-lut="can">可参与</div>
       <div class="tab" data-lut="actObs">动作·观察</div>
       <div class="tab" data-lut="avoid">回避</div>
@@ -370,16 +371,16 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251531"></script>
+<script src="echarts.min.js?v=202611251545"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251531"></script>
-<script src="fundflow.js?v=202611251531"></script>
-<script src="state-phase.js?v=202611251531"></script>
+<script src="data-service.js?v=202611251545"></script>
+<script src="fundflow.js?v=202611251545"></script>
+<script src="state-phase.js?v=202611251545"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251531';
+var AB_LOCAL_V = '?v=202611251545';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -504,12 +505,12 @@ function abBoot() {
   }
   /* 与主站同一份阶段判定：候选 + 实时报价 → 新发 / 观察 / 退化 */
   function luGroups() {
-    if (!L || !L.today) return { '新发': [], '观察': [], '退化': [], '其他': [] };
+    if (!L || !L.today) return { '新发': [], '观察': [], '健康': [], '退化': [], '其他': [] };
     if (window.AB_PHASE && window.AB_PHASE.split) return window.AB_PHASE.split(L.today, luQuotes);
-    var g = { '新发': [], '观察': [], '退化': [], '其他': [] };
+    var g = { '新发': [], '观察': [], '健康': [], '退化': [], '其他': [] };
     L.today.forEach(function (x) {
       var b = x.phase || x.dayBucket || '其他';
-      if (b !== '新发' && b !== '观察') return;   // 健康期/退化不展示
+      if (b !== '新发' && b !== '观察' && b !== '健康') return;   // 退化不展示
       g[b].push(x);
     });
     return g;
@@ -741,7 +742,7 @@ function abBoot() {
     // 超跌池不是全市场，涨停数/上涨占比只能基于收盘快照全市场算；limitup_data 里有全市场快照引用时取其 meta
     // 这里诚实降级：用启动池 quote 覆盖度做「热度代理」，并明确标注全市场涨停数/晋级率/炸板率缺口
     var G = luGroups();
-    var all = G['新发'].concat(G['观察']);   // 只看新发+观察，健康期/退化不计入情绪代理
+    var all = G['新发'].concat(G['观察'], G['健康'] || []);   // 新发+观察+健康三类计入情绪代理，退化不计
     var upN = 0, known = 0;
     all.forEach(function (x) { var q = luQuotes[x.code]; if (q && typeof q.chg === 'number') { known++; if (q.chg > 0) upN++; } });
     var ratio = known ? Math.round(upN / known * 100) : null;
@@ -754,7 +755,9 @@ function abBoot() {
   function actionCls(a) { return a === '可参与' ? 'hot' : a === '回避' ? 'cold' : 'mid'; }
   function luCard(x) {
     var v = x.resonance || 0, act = x._action || '观察', cls = actionCls(act);
-    var sg = ['启动第' + (x.stateDays || '—') + '日', ((x._phase && x._phase.t === '观察') || x.dayBucket === '观察' ? '观察段' : '新发段'), '六派' + v + '/6'];
+    var ptag = (x._phase && x._phase.t) || x.dayBucket || '';
+    var seg = ptag === '观察' ? '观察段' : (ptag === '健康' ? '健康段' : '新发段');
+    var sg = ['启动第' + (x.stateDays || '—') + '日', seg, '六派' + v + '/6'];
     if (x.strong) sg.push('强势确认');
     var w5 = x.w5, w20 = x.w20, w60 = x.w60;
     var score = x._score != null ? x._score : '—';
@@ -912,7 +915,7 @@ function abBoot() {
     };
     var defs = [
       { k: 'action', t: '动作', opts: ['可参与', '观察', '回避'] },
-      { k: 'bucket', t: '阶段', opts: ['新发', '观察'] },
+      { k: 'bucket', t: '阶段', opts: ['新发', '观察', '健康'] },
       { k: 'vote', t: '六派', opts: uniq(function (x) { return String(x.resonance || 0); }).sort() },
       { k: 'rrg', t: 'RRG象限', opts: uniq(function (x) { return x.rrg || '—'; }) },
       { k: 'ind', t: '板块', opts: uniq(function (x) { return x.ind || ''; }) },
@@ -948,7 +951,7 @@ function abBoot() {
     setHTML('luMood', moodHtml);
     // 逐票派发判定，按高危/留意排序
     var G2 = luGroups();
-    var pool = G2['新发'].concat(G2['观察']);   // 派发清单也只覆盖新发+观察
+    var pool = G2['新发'].concat(G2['观察'], G2['健康'] || []);   // 派发清单覆盖新发+观察+健康
     var ds = pool.filter(function (x) { return luMatchQuery(x, luQuery); })
       .map(function (x) { return { x: x, d: dispositionOf(x) }; });
     var order = { '高危': 0, '留意': 1, '未知': 2, '未见': 3 };
@@ -1080,15 +1083,15 @@ function abBoot() {
       return;
     }
     var G = luGroups();
-    // 用户定稿：超跌页启动池只要「新发 + 观察」两类，健康期/退化不再展示、不再进自进化统计。
-    var allList = (G['新发'] || []).concat(G['观察'] || []);
-    set('en3', allList.length + ' 只（新发+观察）· 基准 ' + (L.asOf || ''));
+    // 2026-11-25 15:40 用户改口径：启动池=新发+观察+健康三类全量，退化仍不展示/不进统计。
+    var allList = (G['新发'] || []).concat(G['观察'] || [], G['健康'] || []);
+    set('en3', allList.length + ' 只（新发+观察+健康）· 基准 ' + (L.asOf || ''));
     set('luCount', allList.length + '只');
     set('luAsOf', '数据基准 ' + (L.asOf || '') + ' · 生成 ' + (L.generatedAt || ''));
     var stale = L.staleDays;
-    var newN = (G['新发'] || []).length, obsN = (G['观察'] || []).length;
+    var newN = (G['新发'] || []).length, obsN = (G['观察'] || []).length, healthN = (G['健康'] || []).length;
     var canN = allList.filter(function (x) { return x._action === '可参与'; }).length;
-    set('luFunnel', '启动池 ' + allList.length + ' 只（启动新发 ' + newN + ' / 启动观察 ' + obsN + '；健康期/退化不展示、不进统计）'
+    set('luFunnel', '启动池 ' + allList.length + ' 只（启动新发 ' + newN + ' / 启动观察 ' + obsN + ' / 启动健康 ' + healthN + '；退化不展示、不进统计）'
       + ' · 自进化可参与 ' + canN + ' 只。'
       + (stale != null && stale > 1 ? (' ⚠ 数据基准距今 ' + stale + ' 天，快照尚未更新，数量会跟着变。') : ''));
     var live = document.getElementById('luLive');
@@ -1121,6 +1124,7 @@ function abBoot() {
       if (luFilter === 'avoid' && a !== '回避') return false;
       if (luFilter === 'new' && phase !== '新发') return false;
       if (luFilter === 'phaseObs' && phase !== '观察') return false;
+      if (luFilter === 'health' && phase !== '健康') return false;
       if (luFilters.action && a !== luFilters.action) return false;
       if (luFilters.bucket && (x.dayBucket || '') !== luFilters.bucket) return false;
       if (luFilters.rrg && (x.rrg || '—') !== luFilters.rrg) return false;
@@ -1172,7 +1176,9 @@ function abBoot() {
     if (lgEl) lgEl.innerHTML = LG.map(function (r) {
       return '<div class="ledger-row"><span class="d">' + esc(r.date) + '</span>'
         + '<span class="n">基准 ' + esc(r.asOf) + '</span>'
-        + '<span class="n">共' + (r.n || 0) + ' · 新发' + (r.newPhase != null ? r.newPhase : (r.realNew != null ? r.realNew : '—')) + ' · 观察' + (r.observe != null ? r.observe : (r.health != null ? r.health : '—')) + '</span></div>';
+        + '<span class="n">共' + (r.n || 0) + ' · 新发' + (r.newPhase != null ? r.newPhase : (r.realNew != null ? r.realNew : '—'))
+        + ' · 观察' + (r.observe != null ? r.observe : '—')
+        + ' · 健康' + (r.health != null ? r.health : '—') + '</span></div>';
     }).join('');
     // 口径
     var MT = L.method || {}, mEl = document.getElementById('luMethod');
