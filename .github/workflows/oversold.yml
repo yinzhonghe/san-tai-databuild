@@ -77,6 +77,8 @@ jobs:
           # 失败不阻塞主链路（超跌页会提示「数据未加载」而不是静默用旧稿）
           # 主站口径「启动·新发」真实台账：先拉主站最新 data.js，再生成 limitup_data.js
           curl -sfL --retry 3 --retry-delay 5 "https://yinzhonghe.github.io/san-tai-databuild/data.js?t=$(date +%s)" -o data.js || echo "主站 data.js 拉取失败，沿用上一版"
+          echo "主站基准: $(grep -o '"asOf":"[^"]*"' data.js | head -1)"
+          # 2026-11-25：新发口径与三态主站共用 state-phase.js；同时挖真实规律并回写样本留痕
           node tools/limitup_live.js || echo "主站口径新发台账失败，沿用上轮 limitup_data.js"
           ls -lh chan_pick_data.js oversold_data.js
           [ -f limitup_data.js ] && ls -lh limitup_data.js || true
@@ -104,7 +106,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FILES=""
-          for f in learn/limitup_live.jsonl learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
+          for f in learn/limitup_live.jsonl learn/limitup_rules.json learn/limitup_stats.jsonl learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
                    learn/index_hist.json learn/commentary_rules.md learn/report.json \
                    learn/state_calib.json learn/verdict_stats.json \
                    learn/chan_signals.json.gz learn/brief_log.jsonl learn/brief_scored.jsonl; do
