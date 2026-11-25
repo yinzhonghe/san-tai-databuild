@@ -370,16 +370,16 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251508"></script>
+<script src="echarts.min.js?v=202611251523"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251508"></script>
-<script src="fundflow.js?v=202611251508"></script>
-<script src="state-phase.js?v=202611251508"></script>
+<script src="data-service.js?v=202611251523"></script>
+<script src="fundflow.js?v=202611251523"></script>
+<script src="state-phase.js?v=202611251523"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251508';
+var AB_LOCAL_V = '?v=202611251523';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -1053,7 +1053,7 @@ function abBoot() {
         + '<span class="g">' + px + '</span>' + tags
         + '<span class="op" data-watchopen="' + esc(x.code) + '">详情 ›</span></div>';
     }).join('') : '<div class="wm-empty">' + (watchFilter === 'all' ? '今日没有符合首板预警的标的。' : '该档今天没有标的。') + '</div>';
-    set('luWatchList', html);
+    setHTML('luWatchList', html);
     Array.prototype.forEach.call(document.querySelectorAll('[data-watchopen]'), function (el) {
       el.addEventListener('click', function () {
         window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-watchopen')), '_blank');
