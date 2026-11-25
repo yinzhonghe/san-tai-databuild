@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[FAIL] 东财 clist 全市场       21630ms  URLError: <urlopen error _ssl.c:1001: The handshake operation timed out>
-[FAIL] 东财 kline(前复权)        991ms  RemoteDisconnected: Remote end closed connection without response
-[ OK ] 腾讯实时                1394ms  字段数=175 现价=1460.00
-[ OK ] 同花顺热榜               1889ms  stock_list=100
-[ OK ] 新浪(带Referer)         947ms  var hq_str_sh000001="ָ֤,3567.8405,3538.9480,3548.3694,3585.2
+[FAIL] 东财 clist 全市场        1124ms  HTTPError: HTTP Error 502: Bad Gateway
+[ OK ] 东财 kline(前复权)        840ms  klines=458 末根=2026-11-24,1460.00
+[ OK ] 腾讯实时                1272ms  字段数=175 现价=1460.00
+[ OK ] 同花顺热榜               1663ms  stock_list=100
+[ OK ] 新浪(带Referer)        1006ms  var hq_str_sh000001="ָ֤,3567.8405,3538.9480,3548.3694,3585.2
 
-通过 3 / 5
+通过 4 / 5
