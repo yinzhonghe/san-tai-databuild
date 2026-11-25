@@ -24,6 +24,7 @@ var fs = require('fs');
 var path = require('path');
 var zlib = require('zlib');
 var lib = require('./bt_lib.js');
+var evo = require('./limitup_evolve_lib.js');
 
 var ROOT = path.dirname(__dirname);
 var OHLC = path.join(ROOT, 'ohlc.json.gz');
@@ -46,10 +47,19 @@ function avgN(n, s) { return n ? +(s / n).toFixed(2) : 0; }
 
 // 代码 → 名称/行业（从 data.js 取；取不到留空，不编造）
 var nameMap = {};
+var liveAsOf = '';
 try {
   var s = fs.readFileSync(DATAJS, 'utf8');
   var D = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
-  (D.rows || []).forEach(function (r) { if (r && r.code) nameMap[r.code] = { name: r.name, ind: r.ind }; });
+  // 名称去掉数据自带的空格（如「生 意 宝」→「生意宝」），否则页面搜索/对照会漏
+  (D.rows || []).forEach(function (r) {
+    if (r && r.code) nameMap[r.code] = {
+      name: String(r.name || '').replace(/\s+/g, ''),
+      ind: r.ind, state: r.state || '', stateDays: r.stateDays
+    };
+  });
+  var r0 = (D.rows || []).find(function (x) { return x && x.asOf; });
+  if (r0) liveAsOf = r0.asOf;
 } catch (e) { console.log('  [提示] data.js 读取失败，名称留空：' + e.message); }
 
 var O = JSON.parse(zlib.gunzipSync(fs.readFileSync(OHLC)).toString());
@@ -74,10 +84,11 @@ function scoreOf(f) {
   Object.keys(parts).forEach(function (k) { sc += parts[k]; });
   return { score: sc, parts: parts };
 }
-function tierOf(sc) {
-  if (sc >= 9) return { t: '可小仓试探', cls: 'hot', note: '历史该档 T+5 涨停率最高；次日冲高可先减，别恋战' };
-  if (sc >= 7) return { t: '重点观察', cls: 'warm', note: '条件较齐，等放量确认再动，跌破启动日最低价离场' };
-  if (sc >= 5) return { t: '观察', cls: 'mid', note: '条件一般，先放自选看 1~2 天，不必急着买' };
+function tierOf(sc, cut) {
+  cut = cut || evo.cutoffs(evo.DEFAULT);
+  if (sc >= cut.t3) return { t: '可小仓试探', cls: 'hot', note: '历史该档 T+5 涨停率最高；次日冲高可先减，别恋战' };
+  if (sc >= cut.t2) return { t: '重点观察', cls: 'warm', note: '条件较齐，等放量确认再动，跌破启动日最低价离场' };
+  if (sc >= cut.t1) return { t: '观察', cls: 'mid', note: '条件一般，先放自选看 1~2 天，不必急着买' };
   return { t: '回避', cls: 'cold', note: '接近全市场随机水平（4.5%），不值得单独下手' };
 }
 
@@ -119,6 +130,7 @@ for (var ci = 0; ci < codes.length; ci++) {
 
     var f = {
       code: code, name: (nameMap[code] || {}).name || '', ind: (nameMap[code] || {}).ind || '',
+      liveState: (nameMap[code] || {}).state || '', liveDays: (nameMap[code] || {}).stateDays || null,
       kind: kind, lim: lim, date: ds.dates[k2],
       chg1: +chg[k2].toFixed(2),
       chg5: k2 >= 5 ? +((close[k2] / close[k2 - 5] - 1) * 100).toFixed(2) : null,
@@ -158,13 +170,25 @@ for (var ci = 0; ci < codes.length; ci++) {
   }
 }
 
+// ===== 自进化：每天用最新成熟数据检查打分权重（时间外验证，达标才改）=====
+// 交易日历取 K 线最长的标的，避免「某天没有新发信号」被误判成非交易日
+var calCode = codes.reduce(function (m, c) {
+  return (O.bars[c] && O.bars[c].length > ((O.bars[m] || []).length)) ? c : m;
+}, codes[0] || '');
+var calDates = ((O.bars[calCode] || []).map(function (b) { return b[0]; })).filter(Boolean).sort();
+var evoRun = evo.run(signals, calDates, O.asOf || calDates[calDates.length - 1] || '');
+var P = evoRun.params, ELOG = evoRun.log;
+var ECUT = evo.cutoffs(P.weights);   // 分档切点随权重走，默认 9/7/5
+// 用进化后的权重重算得分。parts（基础档位）不变，保证训练与展示同一口径
+signals.forEach(function (x) { x.score = evo.scoreParts(x, P.weights).score; });
+
 // ===== 汇总 =====
 // 最新交易日 = 全局最大日期（signals 按代码顺序 push，末条日期不一定是最新）
 var lastDate = signals.reduce(function (m, x) { return x.date > m ? x.date : m; }, '');
 // 最新交易日可能有多条，取最后日期那一批
 var today = signals.filter(function (x) { return x.date === lastDate; });
 today.forEach(function (x) {
-  var t = tierOf(x.score);
+  var t = tierOf(x.score, ECUT);
   x.tier = t.t; x.tierCls = t.cls; x.tierNote = t.note;
   // 连板概率：当日涨停才有连板概念
   if (x.hit0) {
@@ -177,16 +201,19 @@ today.forEach(function (x) {
 });
 today.sort(function (a, b) { return b.score - a.score || b.chg1 - a.chg1; });
 
-// 打分分档实测（验证打分有效性）
-var sb = {};
+// 打分分档实测（分档切点跟随自进化后的权重，默认仍是 9/7/5）
+var sbl = [
+  '<' + ECUT.t1 + '分',
+  ECUT.t1 + '-' + (ECUT.t2 - 1) + '分',
+  ECUT.t2 + '-' + (ECUT.t3 - 1) + '分',
+  '≥' + ECUT.t3 + '分'
+];
+var sb = [{ n: 0, lu: 0 }, { n: 0, lu: 0 }, { n: 0, lu: 0 }, { n: 0, lu: 0 }];
 signals.forEach(function (x) {
-  var kk = x.score >= 9 ? '9-11分' : x.score >= 7 ? '7-8分' : x.score >= 5 ? '5-6分' : '0-4分';
-  if (!sb[kk]) sb[kk] = { n: 0, lu: 0 };
-  sb[kk].n++; if (x.hit5) sb[kk].lu++;
+  var bi = evo.tierIndex(x.score, ECUT);
+  sb[bi].n++; if (x.hit5) sb[bi].lu++;
 });
-var scoreboard = Object.keys(sb).map(function (k) { return { label: k, n: sb[k].n, rate: pct(sb[k].n, sb[k].lu) }; });
-var order = { '9-11分': 0, '7-8分': 1, '5-6分': 2, '0-4分': 3 };
-scoreboard.sort(function (a, b) { return order[a.label] - order[b.label]; });
+var scoreboard = sb.map(function (o, i) { return { label: sbl[i], n: o.n, rate: pct(o.n, o.lu) }; }).reverse();
 
 // 多维度共性
 function bucketOf(items, field, bins) {
@@ -262,13 +289,34 @@ var verdict = {
   recentRate: recentRate, baseRate: mainRate, allRate: allRate,
   buySell: '首板后次日平均 +' + sell.t1.avg + '%、胜率 ' + sell.t1.win + '%，但到第5日中位 ' + sell.t5.med + '%、胜率 ' + sell.t5.win + '% —— 结论：可试探但不恋战，次日冲高分批减，最多拿3天',
   consec: '首板后次日连板 ' + pct(consec.n, consec.c2) + '%、连3板 ' + pct(consec.n, consec.c3) + '%；封死涨停板的连板率 ' + (seal['封死'] ? pct(seal['封死'].n, seal['封死'].c2) : '-') + '%',
-  topPick: today.length ? ('今日新发 ' + today.length + ' 只，评分最高：' + today[0].name + '（' + today[0].score + '分 · ' + today[0].tier + '）') : '今日无新发信号'
+  topPick: today.length ? ('今日新发 ' + today.length + ' 只，评分最高：' + today[0].name + '（' + today[0].score + '分 · ' + today[0].tier + '）') : '今日无新发信号',
+  basisNote: '本池是 ' + (O.asOf || '') + ' 收盘K线回放快照；主站实盘基准 ' + (liveAsOf || '未知')
+    + '。两者不是同一天，卡片上的「主站当前状态」是后来走出来的结果，不是当时信号',
+  evolve: '打分卡 ' + P.version + '（累计检查 ' + P.checks + ' 次 / 调参 ' + P.adoptions + ' 次）· '
+    + (P.lastAction === 'adopt' ? '今日采纳调参' : P.lastAction === 'init' ? '初始参数' : '今日检查未改')
+    + '：' + (P.lastReason || '')
+};
+
+// 自进化明细：版本、权重、每日检查留痕、验证集前后对比
+var evolveOut = {
+  version: P.version, trainedAt: P.trainedAt, asOf: P.asOf,
+  cut: ECUT,
+  checks: P.checks, adoptions: P.adoptions,
+  lastCheck: P.lastCheck, lastAction: P.lastAction, lastReason: P.lastReason,
+  weights: P.weights, desc: evo.FDESC, maxScore: evo.maxScoreOf(P.weights),
+  trainN: ELOG.trainN || 0, validN: ELOG.validN || 0,
+  trainOld: ELOG.trainOld, trainNew: ELOG.trainNew,
+  validOld: ELOG.validOld, validNew: ELOG.validNew,
+  validTopOld: ELOG.validTopOld, validTopNew: ELOG.validTopNew,
+  lifts: ELOG.lifts || null, changed: ELOG.changed || [],
+  history: (P.history || []).slice(-12)
 };
 
 var out = {
-  asOf: O.asOf, generatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+  asOf: O.asOf, liveAsOf: liveAsOf, generatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
   universe: { codes: codes.length, used: Object.keys(O.bars).filter(function (c) { return kindOf(c) !== 'etf' && O.bars[c] && O.bars[c].length >= 280; }).length, signals: signals.length },
   verdict: verdict,
+  evolve: evolveOut,
   today: today,
   scoreboard: scoreboard,
   commonality: commonality,
@@ -288,5 +336,7 @@ var out = {
 fs.writeFileSync(OUT, 'window.AB_LIMITUP = ' + JSON.stringify(out) + ';\n');
 console.log('新发涨停观察：' + out.universe.signals + ' 条历史信号 · ' + (lastDate || '') + ' 新发 ' + today.length + ' 只');
 console.log('打分档实测：' + scoreboard.map(function (x) { return x.label + ' ' + x.rate + '%'; }).join(' / '));
+console.log('自进化：' + P.version + ' · ' + P.lastAction + ' · ' + (P.lastReason || '')
+  + '（训练' + (ELOG.trainN || 0) + ' / 验证' + (ELOG.validN || 0) + '）');
 console.log('当下判断：' + verdict.regime + '（' + verdict.why + '）');
 console.log('已写出 ' + path.relative(ROOT, OUT));
