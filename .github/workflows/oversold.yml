@@ -75,7 +75,9 @@ jobs:
           node --max-old-space-size=8192 tools/final_pick.js
           # 新发涨停观察：从当日 ohlc 回放最新新发池 + 打分 + 台账
           # 失败不阻塞主链路（超跌页会提示「数据未加载」而不是静默用旧稿）
-          node --max-old-space-size=8192 tools/limitup_watch.js || echo "新发涨停观察失败，沿用上轮 limitup_data.js"
+          # 主站口径「启动·新发」真实台账：先拉主站最新 data.js，再生成 limitup_data.js
+          curl -sfL --retry 3 --retry-delay 5 "https://yinzhonghe.github.io/san-tai-databuild/data.js?t=$(date +%s)" -o data.js || echo "主站 data.js 拉取失败，沿用上一版"
+          node tools/limitup_live.js || echo "主站口径新发台账失败，沿用上轮 limitup_data.js"
           ls -lh chan_pick_data.js oversold_data.js
           [ -f limitup_data.js ] && ls -lh limitup_data.js || true
 
@@ -102,7 +104,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FILES=""
-          for f in learn/limitup_params.json learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
+          for f in learn/limitup_live.jsonl learn/chan_params.json learn/chan_ledger.jsonl learn/chan_history.jsonl \
                    learn/index_hist.json learn/commentary_rules.md learn/report.json \
                    learn/state_calib.json learn/verdict_stats.json \
                    learn/chan_signals.json.gz learn/brief_log.jsonl learn/brief_scored.jsonl; do
@@ -119,5 +121,5 @@ jobs:
           echo "=== 缠论参数 ==="
           head -c 300 learn/chan_params.json 2>/dev/null || true
           echo ""
-          echo "=== 新发涨停自进化参数 ==="
-          head -c 500 learn/limitup_params.json 2>/dev/null || true
+          echo "=== 主站口径新发台账（末行）==="
+          tail -c 300 learn/limitup_live.jsonl 2>/dev/null || true
