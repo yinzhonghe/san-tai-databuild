@@ -1,0 +1,134 @@
+{
+  "asOf": "2026-11-24",
+  "generatedAt": "2026-11-25 15:01",
+  "rules": {
+    "updatedAt": "2026-11-25 15:01",
+    "sampleN": 0,
+    "minN": 15,
+    "highN": 200,
+    "baseRate": 0,
+    "baseN": 0,
+    "ready": false,
+    "confidence": "none",
+    "note": "规律积累中：已结算 0/15 条，尚不足以确认任何条件优势",
+    "items": [],
+    "playbook": [
+      {
+        "when": "信号当日（收盘后）",
+        "state": "启动池（仅新发 / 观察两类）",
+        "action": "待验证框架：先入观察名单，不预设涨停率"
+      },
+      {
+        "when": "T+1 开盘",
+        "state": "能否成交",
+        "action": "待验证框架：一字板买不进单列，可成交组才统计"
+      },
+      {
+        "when": "T+1 / T+3 / T+5",
+        "state": "阶段与涨停",
+        "action": "待验证框架：按真实日 K 回填后再给结论；现在样本不足，不编概率"
+      }
+    ],
+    "criteria": {
+      "n": 0,
+      "rates": {
+        "a": 0,
+        "b": 0,
+        "c": 0,
+        "d": 0
+      },
+      "untradable": {
+        "n": 0,
+        "rates": {
+          "a": 0,
+          "b": 0,
+          "c": 0,
+          "d": 0
+        },
+        "note": "次日一字板买不进，单列不参与主口径"
+      },
+      "note": "样本不足，四口径数字仅供观察，不作结论"
+    },
+    "byBucket": {
+      "新发": {
+        "n": 0,
+        "rate": 0
+      },
+      "观察": {
+        "n": 0,
+        "rate": 0
+      }
+    },
+    "byDay": {},
+    "continuity": {
+      "n": 65,
+      "kept": 15,
+      "rate": 23.1
+    },
+    "nextDay": {
+      "n": 0,
+      "rate": 0,
+      "note": "次日追入独立样本，不混入主统计"
+    },
+    "scoring": {
+      "primary": "sumAll",
+      "fallback": false,
+      "formulas": [
+        {
+          "k": "sumAll",
+          "label": "② 全条件累加·负向扣分",
+          "desc": "所有显著条件累加，正向加分、负向扣分，按净分排序"
+        },
+        {
+          "k": "grpBest",
+          "label": "① 互斥组取高·负向否决",
+          "desc": "同一维度只取最强条件加分；明确负向条件一票否决"
+        },
+        {
+          "k": "posOnly",
+          "label": "③ 只加正向·负向提示",
+          "desc": "负向条件只提示不影响排序，最宽松"
+        },
+        {
+          "k": "rateMult",
+          "label": "④ 胜率倍数打分",
+          "desc": "分数=命中条件胜率×置信度，直观但小样本易失真"
+        }
+      ],
+      "points": {
+        "sumAll": 0,
+        "grpBest": 0,
+        "posOnly": 0,
+        "rateMult": 0
+      },
+      "rounds": 0,
+      "canSwitch": false,
+      "note": "前瞻验证需 ≥3 轮，当前 0 轮，暂用 sumAll"
+    },
+    "comparison": {
+      "A_random": {
+        "n": 0,
+        "rate": 0,
+        "label": "随机基线（全池均值）"
+      },
+      "B_vote4": {
+        "n": 0,
+        "rate": 0,
+        "label": "现行规则 六派≥4"
+      },
+      "C_evo": {
+        "n": 0,
+        "rate": 0,
+        "label": "自进化前20%"
+      },
+      "betterThanB": false,
+      "note": "仅在 C 持续高于 B 时才认为自进化有效"
+    },
+    "tree": {
+      "enabled": false,
+      "need": 1000,
+      "rules": [],
+      "note": "规则树需 1000 条真实样本，当前 0 条，未启用"
+    }
+  }
+}
