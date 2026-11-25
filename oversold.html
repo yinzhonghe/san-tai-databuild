@@ -74,6 +74,14 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
 .lu-tag.warm{background:#fff2e2;color:#b5650b}
 .lu-tag.cold{background:#e8f5ee;color:var(--down)}
 .lu-advice{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);font-size:11.5px;line-height:1.75;color:#4a5361}
+.lu-evo{background:#f7f9fc;border:1px solid #d8e2ef;border-left:4px solid #3b6ea8;border-radius:10px;padding:11px 14px;margin:12px 0;font-size:11.5px;line-height:1.8;color:#3d4a5c}
+.lu-evo .eh{font-size:13px;font-weight:700;color:#24456e;margin-bottom:4px}
+.lu-evo .ew{color:#5b6b80}
+.lu-evo .elog{margin-top:6px;padding-top:6px;border-top:1px dashed #ccd8e6;color:#6b7788}
+.lu-evo .elog div{margin:1px 0}
+.lu-evo .act-adopt{color:#b3342f;font-weight:600}
+.lu-evo .act-reject{color:#7b8493}
+.lu-live{margin-top:5px;font-size:11px;color:#9a6a1e;background:#fff8e8;border-radius:5px;padding:3px 7px;display:inline-block}
 .bartable{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 2px}
 .bartable th,.bartable td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
 .bartable th{color:var(--muted);font-weight:500;font-size:11px}
@@ -161,11 +169,12 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="page" id="p3">
     <div class="back" data-back>‹ 返回板块选择</div>
     <div class="lu-verdict" id="luVerdict">正在载入统计…</div>
+    <div class="lu-evo" id="luEvo">正在载入自进化状态…</div>
     <div class="ctrl">
       <div class="tab on" data-lut="all">全部</div>
-      <div class="tab" data-lut="hot">可试探(≥7分)</div>
-      <div class="tab" data-lut="watch">观察(5-6分)</div>
-      <div class="tab" data-lut="cold">回避(&lt;5分)</div>
+      <div class="tab" data-lut="hot">可试探(高档)</div>
+      <div class="tab" data-lut="watch">观察(中档)</div>
+      <div class="tab" data-lut="cold">回避(低档)</div>
       <label>排序</label>
       <select id="luSort" class="sel">
         <option value="score">评分高→低</option>
@@ -203,12 +212,12 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611250823"></script>
+<script src="echarts.min.js?v=202611251005"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611250823';
+var AB_LOCAL_V = '?v=202611251005';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 function abLoad(url) {
   return new Promise(function (res, rej) {
@@ -304,7 +313,10 @@ function abBoot() {
       + '</div>'
       + '<div class="lu-advice"><b>信号</b>：' + (reasons.length ? reasons.join('、') : '各项条件偏弱') + '<br>'
       + '<b>连板</b>：' + esc(x.consecNote || '') + '<br>'
-      + '<b>建议</b>：' + esc(x.tierNote || '') + '</div></div>';
+      + '<b>建议</b>：' + esc(x.tierNote || '')
+      + (x.liveState && x.liveState !== '启动' ? '<br><span class="lu-live">主站当前：' + esc(x.liveState)
+        + '（' + (x.liveDays == null ? '—' : x.liveDays + '日') + '）· 该信号是回放快照，不是主站此刻的新发</span>' : '')
+      + '</div></div>';
   }
   function renderLU() {
     if (!L || !L.today) {
@@ -324,14 +336,37 @@ function abBoot() {
     vEl.innerHTML = '<b>当下：' + esc(vd.regime || '—') + '</b>　<span style="color:#7a6a4a">' + esc(vd.why || '') + '</span><br>'
       + '<b style="font-size:12.5px">买入</b>：' + esc(vd.topPick || '') + '<br>'
       + '<b style="font-size:12.5px">卖出</b>：' + esc(vd.buySell || '') + '<br>'
-      + '<b style="font-size:12.5px">连板</b>：' + esc(vd.consec || '');
+      + '<b style="font-size:12.5px">连板</b>：' + esc(vd.consec || '')
+      + '<br><span style="font-size:11px;color:#9a6a1e">' + esc(vd.basisNote || '') + '</span>';
 
-    // 列表（筛选 + 排序）
+    // 自进化状态：版本 / 权重 / 验证结果 / 每日留痕
+    var EV = L.evolve || {}, eEl = document.getElementById('luEvo');
+    if (eEl) {
+      var ecut = EV.cut || { max: 11, t3: 9, t2: 7, t1: 5 };
+      var ws = EV.weights || {}, wparts = Object.keys(ws).map(function (k) {
+        return esc((EV.desc && EV.desc[k]) || k) + ' <b>' + ws[k] + '</b>';
+      });
+      var hl = (EV.history || []).slice(-6).reverse().map(function (h) {
+        return '<div><span class="act-' + esc(h.action) + '">' + esc(h.date) + ' ' + esc(h.action)
+          + '</span> · ' + esc(h.reason || '') + '</div>';
+      }).join('');
+      eEl.innerHTML = '<div class="eh">自进化打分卡 ' + esc(EV.version || '—')
+        + ' <span style="font-weight:400;font-size:11px;color:#7b8493">累计检查 ' + (EV.checks || 0)
+        + ' 次 / 调参 ' + (EV.adoptions || 0) + ' 次 · 上次检查 ' + esc(EV.lastCheck || '—') + '</span></div>'
+        + '<div class="ew"><b>今日动作</b>：' + esc(EV.lastAction || '—') + ' — ' + esc(EV.lastReason || '') + '</div>'
+        + '<div class="ew"><b>当前权重</b>（满分 ' + ecut.max + '，高档≥' + ecut.t3 + ' / 中档≥' + ecut.t2 + ' / 观察≥' + ecut.t1 + '）：' + wparts.join(' · ') + '</div>'
+        + ((EV.validN || 0) > 0 ? '<div class="ew"><b>时间外验证</b>：训练 ' + (EV.trainN || 0) + ' 条 / 验证 ' + EV.validN
+          + ' 条 · 目标分 ' + EV.validOld + '→' + EV.validNew + ' · 顶部档涨停率 ' + EV.validTopOld + '%→' + EV.validTopNew + '%</div>' : '')
+        + (hl ? '<div class="elog"><b>最近检查留痕</b>' + hl + '</div>' : '');
+    }
+
+    // 列表（筛选 + 排序；档位随自进化权重走，不再写死 7/5）
+    var cut = (L.evolve && L.evolve.cut) || { t3: 9, t2: 7, t1: 5 };
     var list = L.today.filter(function (x) {
       return luFilter === 'all' ? true
-        : luFilter === 'hot' ? x.score >= 7
-        : luFilter === 'watch' ? (x.score >= 5 && x.score < 7)
-        : x.score < 5;
+        : luFilter === 'hot' ? x.score >= cut.t2
+        : luFilter === 'watch' ? (x.score >= cut.t1 && x.score < cut.t2)
+        : x.score < cut.t1;
     });
     var sortBy = (document.getElementById('luSort') || {}).value || 'score';
     list.sort(function (a, b) {
