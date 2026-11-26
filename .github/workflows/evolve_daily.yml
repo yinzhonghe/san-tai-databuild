@@ -1,0 +1,97 @@
+name: 自进化 v2 · 每日灾备（心跳判活）
+
+# 定稿 L1/L3：本地15:50主跑；GitHub 23:30 查心跳，本地没跑才云端补跑；
+# 腾讯云函数次日08:00 最终兜底（仅当前两层都漏时）。
+# 数据互通：大文件(panel/ohlc)各端从 kline 确定性重建；小状态(registry/constitution/heartbeat)走 data 分支同步。
+
+on:
+  schedule:
+    # 北京时间 23:30 = UTC 15:30，周一到周五
+    - cron: '30 15 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '触发原因（scf_fallback=腾讯云兜底 / manual=手动）'
+        required: false
+        default: 'manual'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evolve-v2-daily
+  cancel-in-progress: false
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 同步 data 分支的小状态文件
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # data 分支存 registry/constitution/heartbeat/trial_counter 等小状态
+          mkdir -p /tmp/state_sync
+          git clone --depth 1 --branch data "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" /tmp/state_sync 2>/dev/null || echo "data 分支不存在或为空，用 main 初始状态"
+          if [ -d /tmp/state_sync/learn/evolve ]; then
+            mkdir -p learn/evolve
+            for f in registry.json population.json live_pool.json constitution.json constitution.seal.json trial_counter.json heartbeat.json judge_log.jsonl; do
+              [ -f "/tmp/state_sync/learn/evolve/$f" ] && cp "/tmp/state_sync/learn/evolve/$f" "learn/evolve/$f" && echo "已同步 $f"
+            done
+          fi
+
+      - name: 检查心跳（本地今天已跑完则跳过）
+        id: hb
+        run: |
+          DONE=$(node -e "const H=require('./tools/evolve/heartbeat.js');process.stdout.write(String(H.check().done))" 2>/dev/null || echo false)
+          echo "done=$DONE"
+          echo "done=$DONE" >> $GITHUB_OUTPUT
+
+      - name: 重建面板（各端确定性重建，不同步551MB大文件）
+        if: steps.hb.outputs.done != 'true'
+        run: |
+          if [ ! -f learn/evolve/panel.jsonl ]; then
+            python tools/build_kline.py 2>/dev/null || echo "kline已存在，跳过"
+            node tools/evolve/panel.js
+          else
+            echo "面板已存在"
+          fi
+
+      - name: 跑一代演化（kernel+settle+Elo）
+        if: steps.hb.outputs.done != 'true'
+        run: node tools/evolve/daily.js --force
+
+      - name: 云端补跑状态推回 data 分支
+        if: steps.hb.outputs.done != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/state_sync
+          git config user.name "evolve-bot"
+          git config user.email "evolve-bot@users.noreply.github.com"
+          mkdir -p learn/evolve
+          cp "$GITHUB_WORKSPACE"/learn/evolve/{registry.json,population.json,live_pool.json,heartbeat.json,trial_counter.json,daily_log.jsonl} learn/evolve/ 2>/dev/null || true
+          git add -A
+          git diff --quiet && echo "无变更" || { git commit -m "evolve-v2 云端补跑 $(date -u +%Y-%m-%dT%H:%MZ)"; git push; }
+
+      - name: 运行留痕
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolve-v2-log
+          path: learn/evolve/daily_log.jsonl
+          if-no-files-found: ignore
+          retention-days: 7
