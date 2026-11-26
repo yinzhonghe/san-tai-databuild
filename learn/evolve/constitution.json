@@ -1,0 +1,85 @@
+{
+  "_doc": "三态自进化 v2 · 冻结锚点（L2/T2 定稿）。此文件是优化器够不到的宪法：所有 kernel、目标函数、baseline、验证段切分都在这里。hash 由 tools/evolve/kernel.js 校验，不一致则拒绝运行。模型只能提修改建议（写入 proposals），无权直接改本文件；改本文件必须人工确认并重新生成 hash。",
+  "version": "2.0.0",
+  "frozenAt": "2026-11-26",
+  "goal": "挣钱：在盘整→启动前1~3天发出可交易信号，使信号级净期望收益>0且统计稳健",
+  "target": {
+    "metric": "signalNetRet3",
+    "definition": "每个信号T日收盘买入→T+3收盘卖出；一字板/涨跌停不可成交的信号剔除；扣佣金+印花税+滑点",
+    "hardGate": {
+      "minNetRet3Pct": 0,
+      "minWilsonLowerWinRate": 0.5,
+      "minCoveragePct": 2.0,
+      "minSharpeLike": 0,
+      "maxConsecutiveLossDays": 3
+    },
+    "opportunityCost": {
+      "benchmark": "CSI300",
+      "requireExcessOverHold": true,
+      "note": "净收益必须跑赢同期持有沪深300；否则不如躺平"
+    }
+  },
+  "costModel": {
+    "commissionPctPerSide": 0.03,
+    "stampTaxPctSell": 0.05,
+    "slippagePctPerSide": 0.1,
+    "totalRoundTripPct": 0.31,
+    "note": "A股短线双边佣金0.03%×2(0.06)+卖出印花税0.05+滑点0.1%×2(0.2) = 0.31%/次；保守估计。2026-11-26 修正：原写0.21漏算了一半滑点"
+  },
+  "baseline": {
+    "frozen": true,
+    "hitRate": 5.41,
+    "signalRet3": -0.5671,
+    "note": "来自 v2 panel.jsonl 全样本信号级口径：每个信号扣成本0.31%后平均净收益-0.567%，胜率41.8%；固定标尺不漂移，仅作参照",
+    "frozenAt": "2026-11-26",
+    "winRate": 41.81
+  },
+  "validation": {
+    "split": "chronological",
+    "trainEndDaysAgo": 80,
+    "holdoutDays": 20,
+    "minNonOverlapSegments": 3,
+    "holdoutQuota": {
+      "initialChecks": 12,
+      "note": "样本外验证段是有限资源；每次优化消耗一次额度，额度耗尽强制冻结等待新数据",
+      "freezeMessage": "验证额度耗尽，等待新数据再优化"
+    }
+  },
+  "multipleTesting": {
+    "method": "bonferroni+deflated",
+    "globalTrialCounter": true,
+    "minTStat": 3.0,
+    "note": " Harvey/Liu/Zhu：金融因子新发现 t 值应≥3.0；试验次数越多门槛越高，按全局累计试验数校正"
+  },
+  "elo": {
+    "use": "breeding_weight_only",
+    "neverAsAdoptionGate": true,
+    "k": 32,
+    "initialRating": 1500,
+    "note": "Elo 只决定谁当变异父母；能否进 active 永远只看绝对净收益门槛"
+  },
+  "budget": {
+    "llmCallsPerDayMax": 1,
+    "testTimeRoundsMax": 3,
+    "maxTokensPerCall": 8000,
+    "model": "glm-5.3-flash",
+    "note": "constitution 额度闸：超限脚本直接拒绝调用，防止三层定时重复触发烧钱"
+  },
+  "evidence": {
+    "requiredForActive": [
+      "ruleDsl",
+      "ablation",
+      "netRet3",
+      "coverage",
+      "opportunityCost",
+      "lineage",
+      "reproducibility"
+    ],
+    "note": "证据包准入：缺任一项不准进 active、不准写汇报；模型自然语言解释不算证据"
+  },
+  "rollback": {
+    "consecutiveLosingDays": 3,
+    "maxChangesPerDay": 2,
+    "note": "连续3天跑输自动退役；每天最多写回2条"
+  }
+}
