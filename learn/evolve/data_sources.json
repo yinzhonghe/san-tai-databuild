@@ -1,0 +1,63 @@
+{
+  "industry": {
+    "label": "行业分类",
+    "script": "tools/fetch_industry.py",
+    "output": "_ind_map.json",
+    "cmd": "python tools/fetch_industry.py",
+    "status": "verified",
+    "note": "新浪行业分类，免费零依赖；build_data.py 已接入"
+  },
+  "fundflow": {
+    "label": "主力资金流",
+    "script": "tools/limitup_live.js",
+    "status": "verified",
+    "endpoint": "push2.eastmoney.com/api/qt/ulist.np/get",
+    "note": "东财实时资金，项目已有；历史逐日资金流仍缺（见 fundflow_hist）"
+  },
+  "quote": {
+    "label": "实时行情",
+    "script": "data-service.js",
+    "status": "verified",
+    "endpoint": "qt.gtimg.cn / sina",
+    "note": "腾讯+新浪双源，项目已有"
+  },
+  "sentiment": {
+    "label": "舆情新闻",
+    "script": "github_ci/gen_news.py",
+    "status": "verified",
+    "note": "17+ 源多源采集，项目已有"
+  },
+  "fundflow_hist": {
+    "label": "历史逐日资金流(东财)",
+    "status": "found_throttled",
+    "endpoint": "push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    "params": "lmt=0&klt=101&fields1=f1,f2,f3,f7&fields2=f51..f65&secid={market}.{code}",
+    "fields": "f51日期 f52主力净流入 f53小单 f54中单 f55大单 f56超大单(单位:元)",
+    "source": "全网搜索 akfamily/akshare#6121 + HKUDS/Vibe-Trading 文档",
+    "foundAt": "2026-11-26",
+    "note": "接口确认免费免鉴权、可按个股查历史每日五档净流入；但当前网络 push2his 子域名被限流(schannel closed)，push2 同接口仅分钟线可用。需换网络/降频重试后再 verify。未取到数据前规则标缺口，绝不编造。",
+    "retryHint": "非高峰时段重试，或走代理；降到每分钟<10次"
+  },
+  "oneword_intraday": {
+    "label": "一字板封单/开板时间",
+    "status": "searching",
+    "searchSpec": {
+      "cn": [
+        "A股 涨停 封板时间 开板次数 免费数据源",
+        "龙虎榜 一字板 封单量 历史接口"
+      ],
+      "en": [
+        "China A-share limit up seal time historical data API"
+      ],
+      "hints": [
+        "此类分钟级数据多需付费",
+        "免费源可能只有当日快照，历史不可回溯"
+      ],
+      "acceptCriteria": [
+        "含封板/开板时间或封单量",
+        "历史可回溯",
+        "免费或已有额度"
+      ]
+    }
+  }
+}
