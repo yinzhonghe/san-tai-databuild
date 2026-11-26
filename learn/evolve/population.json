@@ -1,0 +1,2176 @@
+{
+  "version": "2.0",
+  "bornAt": "2026-11-26",
+  "generation": 2,
+  "rules": [
+    {
+      "id": "mut_g20261126_6_l4m4",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_5_e79v",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_7_kb8e",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_9_mp1u",
+      "desc": "[变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_volSqueeze"
+      ],
+      "lineage": [
+        "seed_volSqueeze"
+      ],
+      "lastMetrics": {
+        "n": 37568,
+        "tradable": 37568,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.1394808879897784,
+        "costPct": 0.31,
+        "netRet3": -0.4495,
+        "winRate": 0.4212,
+        "wilsonLower": 0.4162,
+        "tStat": -14.466,
+        "worstSegmentNet": -1.6904,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -14.466,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_4_vnua",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_0_uncd",
+      "desc": "[变异] [人类种子] 站在60日线上方+短期回踩",
+      "when": [
+        {
+          "f": "maGap60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "maGap20",
+          "op": "between",
+          "lo": -2,
+          "hi": 1
+        },
+        {
+          "f": "volRamp",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_ma"
+      ],
+      "lineage": [
+        "seed_ma"
+      ],
+      "lastMetrics": {
+        "n": 7681,
+        "tradable": 7681,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.3543560734279408,
+        "costPct": 0.31,
+        "netRet3": -0.6644,
+        "winRate": 0.3872,
+        "wilsonLower": 0.3764,
+        "tStat": -11.431,
+        "worstSegmentNet": -3.1485,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -11.431,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_8_ggjw",
+      "desc": "[变异] [人类种子] 逼近20日高点+量能温和",
+      "when": [
+        {
+          "f": "volRamp",
+          "op": ">",
+          "v": 1.05
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_breakout"
+      ],
+      "lineage": [
+        "seed_breakout"
+      ],
+      "lastMetrics": {
+        "n": 36289,
+        "tradable": 36289,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.31124023808868106,
+        "costPct": 0.31,
+        "netRet3": -0.6212,
+        "winRate": 0.4094,
+        "wilsonLower": 0.4044,
+        "tStat": -19.036,
+        "worstSegmentNet": -1.865,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -19.036,
+      "status": "shadow"
+    },
+    {
+      "id": "seed_pullback",
+      "desc": "[人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "human_seed",
+      "status": "shadow",
+      "elo": 1500,
+      "bornGen": 0,
+      "parentIds": [],
+      "lineage": [],
+      "hash": null,
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.131
+    },
+    {
+      "id": "mut_g20261126_10_4pwg",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "consecDown",
+          "op": "<",
+          "v": 0
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 0,
+        "tradable": 0,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": null,
+        "costPct": 0.31,
+        "netRet3": null,
+        "winRate": null,
+        "wilsonLower": null,
+        "tStat": null,
+        "worstSegmentNet": null,
+        "segments": 0,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": null,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_11_ep17",
+      "desc": "[变异] [人类种子] 逼近20日高点+量能温和",
+      "when": [
+        {
+          "f": "breakout20",
+          "op": "between",
+          "lo": -3,
+          "hi": 0
+        },
+        {
+          "f": "volRamp",
+          "op": ">",
+          "v": 1.05
+        },
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_breakout"
+      ],
+      "lineage": [
+        "seed_breakout"
+      ],
+      "lastMetrics": {
+        "n": 5743,
+        "tradable": 5743,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.2908862963607836,
+        "costPct": 0.31,
+        "netRet3": -0.6009,
+        "winRate": 0.3799,
+        "wilsonLower": 0.3675,
+        "tStat": -8.898,
+        "worstSegmentNet": -2.6639,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -8.898,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_14_9nf6",
+      "desc": "[变异] [人类种子] 站在60日线上方+短期回踩",
+      "when": [
+        {
+          "f": "maGap60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "maGap20",
+          "op": "between",
+          "lo": -2,
+          "hi": 1
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_ma"
+      ],
+      "lineage": [
+        "seed_ma"
+      ],
+      "lastMetrics": {
+        "n": 7681,
+        "tradable": 7681,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.3543560734279408,
+        "costPct": 0.31,
+        "netRet3": -0.6644,
+        "winRate": 0.3872,
+        "wilsonLower": 0.3764,
+        "tStat": -11.431,
+        "worstSegmentNet": -3.1485,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -11.431,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_2_qevu",
+      "desc": "[变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_volSqueeze"
+      ],
+      "lineage": [
+        "seed_volSqueeze"
+      ],
+      "lastMetrics": {
+        "n": 37592,
+        "tradable": 37592,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.13938928495424527,
+        "costPct": 0.31,
+        "netRet3": -0.4494,
+        "winRate": 0.4209,
+        "wilsonLower": 0.4159,
+        "tStat": -14.472,
+        "worstSegmentNet": -1.6904,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -14.472,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_13_tm3j",
+      "desc": "[变异] [人类种子] 站在60日线上方+短期回踩",
+      "when": [
+        {
+          "f": "maGap60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "maGap20",
+          "op": "between",
+          "lo": -2,
+          "hi": 1
+        },
+        {
+          "f": "streakLimit",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_ma"
+      ],
+      "lineage": [
+        "seed_ma"
+      ],
+      "lastMetrics": {
+        "n": 23,
+        "tradable": 23,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": 0.916565217391304,
+        "costPct": 0.31,
+        "netRet3": 0.6066,
+        "winRate": 0.5217,
+        "wilsonLower": 0.3296,
+        "tStat": 0.22,
+        "worstSegmentNet": null,
+        "segments": 6,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": 0.22,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_18_70xu",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        },
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19229,
+        "tradable": 19229,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745332570596814,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4377,
+        "wilsonLower": 0.4307,
+        "tStat": -10.13,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.13,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_17_6gmv",
+      "desc": "[变异] [人类种子] 逼近20日高点+量能温和",
+      "when": [
+        {
+          "f": "ret60",
+          "op": "between",
+          "lo": -5,
+          "hi": 5
+        },
+        {
+          "f": "volRamp",
+          "op": ">",
+          "v": 1.05
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_breakout"
+      ],
+      "lineage": [
+        "seed_breakout"
+      ],
+      "lastMetrics": {
+        "n": 8124,
+        "tradable": 8124,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.288435007385526,
+        "costPct": 0.31,
+        "netRet3": -0.5984,
+        "winRate": 0.3975,
+        "wilsonLower": 0.3869,
+        "tStat": -10.898,
+        "worstSegmentNet": -2.1654,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.898,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_12_cdnw",
+      "desc": "[变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.9
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        },
+        {
+          "f": "volSqueeze20",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_volSqueeze"
+      ],
+      "lineage": [
+        "seed_volSqueeze"
+      ],
+      "lastMetrics": {
+        "n": 12470,
+        "tradable": 12470,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": 0.11677674418604729,
+        "costPct": 0.31,
+        "netRet3": -0.1932,
+        "winRate": 0.4341,
+        "wilsonLower": 0.4254,
+        "tStat": -3.894,
+        "worstSegmentNet": -2.0452,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -3.894,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_19_f25u",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 46009,
+        "tradable": 46009,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.2521447325523395,
+        "costPct": 0.31,
+        "netRet3": -0.5621,
+        "winRate": 0.4223,
+        "wilsonLower": 0.4178,
+        "tStat": -21.879,
+        "worstSegmentNet": -1.6617,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -21.879,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_16_y7zy",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "volRamp",
+          "op": "between",
+          "lo": -5,
+          "hi": 5
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 45825,
+        "tradable": 45825,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.24605702127660753,
+        "costPct": 0.31,
+        "netRet3": -0.5561,
+        "winRate": 0.4227,
+        "wilsonLower": 0.4182,
+        "tStat": -21.633,
+        "worstSegmentNet": -1.6535,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -21.633,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_3_re4e",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 45395,
+        "tradable": 45395,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.055216763960790526,
+        "costPct": 0.31,
+        "netRet3": -0.3652,
+        "winRate": 0.4295,
+        "wilsonLower": 0.425,
+        "tStat": -14.531,
+        "worstSegmentNet": -2.0273,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -14.531,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_15_xbho",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_2_pdco",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        },
+        {
+          "f": "gapPct",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 7373,
+        "tradable": 7373,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.0041405126814038655,
+        "costPct": 0.31,
+        "netRet3": -0.3141,
+        "winRate": 0.4337,
+        "wilsonLower": 0.4225,
+        "tStat": -5.358,
+        "worstSegmentNet": -2.9535,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -5.358,
+      "status": "shadow"
+    },
+    {
+      "id": "seed_breakout",
+      "desc": "[人类种子] 逼近20日高点+量能温和",
+      "when": [
+        {
+          "f": "breakout20",
+          "op": "between",
+          "lo": -3,
+          "hi": 0
+        },
+        {
+          "f": "volRamp",
+          "op": ">",
+          "v": 1.05
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close",
+        "volume"
+      ],
+      "origin": "human_seed",
+      "status": "shadow",
+      "elo": 1500,
+      "bornGen": 0,
+      "parentIds": [],
+      "lineage": [],
+      "hash": null,
+      "lastMetrics": {
+        "n": 5762,
+        "tradable": 5762,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.2899104477611904,
+        "costPct": 0.31,
+        "netRet3": -0.5999,
+        "winRate": 0.3787,
+        "wilsonLower": 0.3662,
+        "tStat": -8.913,
+        "worstSegmentNet": -2.6368,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -8.913
+    },
+    {
+      "id": "mut_g20261126_4_nixi",
+      "desc": "[变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.898
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_volSqueeze"
+      ],
+      "lineage": [
+        "seed_volSqueeze"
+      ],
+      "lastMetrics": {
+        "n": 12352,
+        "tradable": 12352,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": 0.1220470369170997,
+        "costPct": 0.31,
+        "netRet3": -0.188,
+        "winRate": 0.434,
+        "wilsonLower": 0.4253,
+        "tStat": -3.767,
+        "worstSegmentNet": -2.063,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -3.767,
+      "status": "shadow"
+    },
+    {
+      "id": "seed_ma",
+      "desc": "[人类种子] 站在60日线上方+短期回踩",
+      "when": [
+        {
+          "f": "maGap60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "maGap20",
+          "op": "between",
+          "lo": -2,
+          "hi": 1
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "close"
+      ],
+      "origin": "human_seed",
+      "status": "shadow",
+      "elo": 1500,
+      "bornGen": 0,
+      "parentIds": [],
+      "lineage": [],
+      "hash": null,
+      "lastMetrics": {
+        "n": 7681,
+        "tradable": 7681,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.3543560734279408,
+        "costPct": 0.31,
+        "netRet3": -0.6644,
+        "winRate": 0.3872,
+        "wilsonLower": 0.3764,
+        "tStat": -11.431,
+        "worstSegmentNet": -3.1485,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -11.431
+    },
+    {
+      "id": "mut_g20261126_0_wvap",
+      "desc": "[变异] [变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        },
+        {
+          "f": "volRatio5",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_9_mp1u"
+      ],
+      "lineage": [
+        "seed_volSqueeze",
+        "mut_g20261126_9_mp1u"
+      ],
+      "lastMetrics": {
+        "n": 37568,
+        "tradable": 37568,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.1394808879897784,
+        "costPct": 0.31,
+        "netRet3": -0.4495,
+        "winRate": 0.4212,
+        "wilsonLower": 0.4162,
+        "tStat": -14.466,
+        "worstSegmentNet": -1.6904,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -14.466,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_3_wwfz",
+      "desc": "[变异] [变异] [人类种子] 逼近20日高点+量能温和",
+      "when": [
+        {
+          "f": "ret60",
+          "op": "between",
+          "lo": -5,
+          "hi": 5
+        },
+        {
+          "f": "volRamp",
+          "op": ">",
+          "v": 1.05
+        },
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_17_6gmv"
+      ],
+      "lineage": [
+        "seed_breakout",
+        "mut_g20261126_17_6gmv"
+      ],
+      "lastMetrics": {
+        "n": 8104,
+        "tradable": 8104,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.28915868706811637,
+        "costPct": 0.31,
+        "netRet3": -0.5992,
+        "winRate": 0.3984,
+        "wilsonLower": 0.3878,
+        "tStat": -10.885,
+        "worstSegmentNet": -2.1754,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -10.885,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_1_gg23",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.892
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_3_re4e"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_3_re4e"
+      ],
+      "lastMetrics": {
+        "n": 35457,
+        "tradable": 35457,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.005170601009673916,
+        "costPct": 0.31,
+        "netRet3": -0.3152,
+        "winRate": 0.4307,
+        "wilsonLower": 0.4255,
+        "tStat": -11.153,
+        "worstSegmentNet": -2.11,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -11.153,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_7_sb5d",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_6_l4m4"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_6_l4m4"
+      ],
+      "lastMetrics": {
+        "n": 46009,
+        "tradable": 46009,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.2521447325523395,
+        "costPct": 0.31,
+        "netRet3": -0.5621,
+        "winRate": 0.4223,
+        "wilsonLower": 0.4178,
+        "tStat": -21.879,
+        "worstSegmentNet": -1.6617,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -21.879,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_5_ipew",
+      "desc": "[变异] [变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.781
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        },
+        {
+          "f": "volSqueeze20",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_12_cdnw"
+      ],
+      "lineage": [
+        "seed_volSqueeze",
+        "mut_g20261126_12_cdnw"
+      ],
+      "lastMetrics": {
+        "n": 5929,
+        "tradable": 5929,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": 0.3395947039973015,
+        "costPct": 0.31,
+        "netRet3": 0.0296,
+        "winRate": 0.447,
+        "wilsonLower": 0.4343,
+        "tStat": 0.411,
+        "worstSegmentNet": -2.4074,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": 0.411,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_6_qtbd",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": -0.083
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_6_l4m4"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_6_l4m4"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_8_qwtc",
+      "desc": "[变异] [变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "rsSlope20",
+          "op": "<",
+          "v": 0
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_9_mp1u"
+      ],
+      "lineage": [
+        "seed_volSqueeze",
+        "mut_g20261126_9_mp1u"
+      ],
+      "lastMetrics": {
+        "n": 16477,
+        "tradable": 16477,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.1284292043454531,
+        "costPct": 0.31,
+        "netRet3": -0.4384,
+        "winRate": 0.4205,
+        "wilsonLower": 0.4129,
+        "tStat": -9.825,
+        "worstSegmentNet": -1.9491,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -9.825,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_10_ga76",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_15_xbho"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_15_xbho"
+      ],
+      "lastMetrics": {
+        "n": 45395,
+        "tradable": 45395,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.055216763960790526,
+        "costPct": 0.31,
+        "netRet3": -0.3652,
+        "winRate": 0.4295,
+        "wilsonLower": 0.425,
+        "tStat": -14.531,
+        "worstSegmentNet": -2.0273,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -14.531,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_14_tqfs",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "rsSlope",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_16_y7zy"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_16_y7zy"
+      ],
+      "lastMetrics": {
+        "n": 20290,
+        "tradable": 20290,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.31365677673730946,
+        "costPct": 0.31,
+        "netRet3": -0.6237,
+        "winRate": 0.4142,
+        "wilsonLower": 0.4074,
+        "tStat": -14.741,
+        "worstSegmentNet": -1.7962,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -14.741,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_9_zuxo",
+      "desc": "[变异] [人类种子] 逼近20日高点+量能温和",
+      "when": [
+        {
+          "f": "breakout20",
+          "op": "between",
+          "lo": -3,
+          "hi": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_breakout"
+      ],
+      "lineage": [
+        "seed_breakout"
+      ],
+      "lastMetrics": {
+        "n": 11648,
+        "tradable": 11648,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.23464217032967885,
+        "costPct": 0.31,
+        "netRet3": -0.5446,
+        "winRate": 0.3783,
+        "wilsonLower": 0.3695,
+        "tStat": -12.499,
+        "worstSegmentNet": -1.9292,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -12.499,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_17_x0gi",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 19230,
+        "tradable": 19230,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04745085803432457,
+        "costPct": 0.31,
+        "netRet3": -0.3575,
+        "winRate": 0.4376,
+        "wilsonLower": 0.4307,
+        "tStat": -10.131,
+        "worstSegmentNet": -2.5882,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -10.131,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_13_g4v3",
+      "desc": "[变异] [变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        },
+        {
+          "f": "rsSlope20",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_9_mp1u"
+      ],
+      "lineage": [
+        "seed_volSqueeze",
+        "mut_g20261126_9_mp1u"
+      ],
+      "lastMetrics": {
+        "n": 16426,
+        "tradable": 16426,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.12747917934981237,
+        "costPct": 0.31,
+        "netRet3": -0.4375,
+        "winRate": 0.4334,
+        "wilsonLower": 0.4258,
+        "tStat": -8.314,
+        "worstSegmentNet": -1.566,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -8.314,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_11_960p",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        },
+        {
+          "f": "volSqueeze60",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_18_70xu"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_18_70xu"
+      ],
+      "lastMetrics": {
+        "n": 45380,
+        "tradable": 45380,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.0552371308946691,
+        "costPct": 0.31,
+        "netRet3": -0.3652,
+        "winRate": 0.4297,
+        "wilsonLower": 0.4251,
+        "tStat": -14.527,
+        "worstSegmentNet": -2.0286,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -14.527,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_15_ubi2",
+      "desc": "[变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        },
+        {
+          "f": "amtTrend",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_pullback"
+      ],
+      "lineage": [
+        "seed_pullback"
+      ],
+      "lastMetrics": {
+        "n": 18843,
+        "tradable": 18843,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04386472430080419,
+        "costPct": 0.31,
+        "netRet3": -0.3539,
+        "winRate": 0.4389,
+        "wilsonLower": 0.4318,
+        "tStat": -9.88,
+        "worstSegmentNet": -2.5939,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -9.88,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_12_dm1b",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "consecDown",
+          "op": "<",
+          "v": 0
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_10_4pwg"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_10_4pwg"
+      ],
+      "lastMetrics": {
+        "n": 0,
+        "tradable": 0,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": null,
+        "costPct": 0.31,
+        "netRet3": null,
+        "winRate": null,
+        "wilsonLower": null,
+        "tStat": null,
+        "worstSegmentNet": null,
+        "segments": 0,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": null,
+      "status": "shadow"
+    },
+    {
+      "id": "seed_volSqueeze",
+      "desc": "[人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.9
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2.2
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "human_seed",
+      "status": "shadow",
+      "elo": 1500,
+      "bornGen": 0,
+      "parentIds": [],
+      "lineage": [],
+      "hash": null,
+      "lastMetrics": {
+        "n": 12479,
+        "tradable": 12479,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": 0.11686713678980773,
+        "costPct": 0.31,
+        "netRet3": -0.1931,
+        "winRate": 0.4338,
+        "wilsonLower": 0.4252,
+        "tStat": -3.895,
+        "worstSegmentNet": -2.0452,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -3.895
+    },
+    {
+      "id": "mut_g20261126_19_ebfg",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_7_kb8e"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_7_kb8e"
+      ],
+      "lastMetrics": {
+        "n": 46009,
+        "tradable": 46009,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.2521447325523395,
+        "costPct": 0.31,
+        "netRet3": -0.5621,
+        "winRate": 0.4223,
+        "wilsonLower": 0.4178,
+        "tStat": -21.879,
+        "worstSegmentNet": -1.6617,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -21.879,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_18_n1tw",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "ret60",
+          "op": "<",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_19_f25u"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_19_f25u"
+      ],
+      "lastMetrics": {
+        "n": 62600,
+        "tradable": 62600,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.06624980830671591,
+        "costPct": 0.31,
+        "netRet3": -0.3762,
+        "winRate": 0.4347,
+        "wilsonLower": 0.4308,
+        "tStat": -18.316,
+        "worstSegmentNet": -1.7965,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -18.316,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_16_nuc8",
+      "desc": "[变异] [变异] [人类种子] 20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5,
+          "v": null
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.95
+        },
+        {
+          "f": "amtTrend",
+          "op": ">",
+          "v": 0
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "mut_g20261126_4_vnua"
+      ],
+      "lineage": [
+        "seed_pullback",
+        "mut_g20261126_4_vnua"
+      ],
+      "lastMetrics": {
+        "n": 18843,
+        "tradable": 18843,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.04386472430080419,
+        "costPct": 0.31,
+        "netRet3": -0.3539,
+        "winRate": 0.4389,
+        "wilsonLower": 0.4318,
+        "tStat": -9.88,
+        "worstSegmentNet": -2.5939,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_PASS",
+      "softJudge": "REFUTED",
+      "tStat": -9.88,
+      "status": "shadow"
+    },
+    {
+      "id": "mut_g20261126_1_ua5c",
+      "desc": "[变异] [人类种子] 波动收缩+温和放量",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.9
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "mutation",
+      "parentIds": [
+        "seed_volSqueeze"
+      ],
+      "lineage": [
+        "seed_volSqueeze"
+      ],
+      "lastMetrics": {
+        "n": 36753,
+        "tradable": 36753,
+        "skippedOneWord": 73,
+        "skippedNoData": 0,
+        "grossAvg": -0.013096100998558681,
+        "costPct": 0.31,
+        "netRet3": -0.3231,
+        "winRate": 0.4307,
+        "wilsonLower": 0.4256,
+        "tStat": -11.655,
+        "worstSegmentNet": -2.0934,
+        "segments": 11,
+        "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
+      },
+      "hardGate": "HARD_REJECT",
+      "softJudge": "REFUTED",
+      "tStat": -11.655,
+      "status": "shadow"
+    }
+  ],
+  "history": [
+    {
+      "at": "2026-11-26",
+      "gen": 1,
+      "evaluated": 24,
+      "active": 0,
+      "trialTotal": 20
+    },
+    {
+      "at": "2026-11-26",
+      "gen": 2,
+      "evaluated": 44,
+      "active": 0,
+      "trialTotal": 40
+    }
+  ],
+  "trialTotal": 40
+}
