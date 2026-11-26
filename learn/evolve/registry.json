@@ -1,0 +1,318 @@
+{
+  "version": 1,
+  "asOf": "2026-11-26",
+  "baseline": {
+    "n": 1082278,
+    "hits": 58580,
+    "hitRate": 5.41,
+    "avgRet3": -0.412,
+    "note": "全样本固定标尺：命中率与3日收益；命中样本3日平均收益为负说明「命中≠赚钱」",
+    "frozenAt": "2026-11-26"
+  },
+  "rules": [
+    {
+      "id": "hypo_volSqueeze",
+      "desc": "波动收缩+温和放量（波动<0.85+量比1~2）",
+      "when": [
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.85
+        },
+        {
+          "f": "volRatio5",
+          "op": "between",
+          "lo": 1,
+          "hi": 2
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "origin": "manual",
+      "status": "shadow",
+      "shadowDays": 0,
+      "bornAt": "2026-11-26",
+      "failStreak": 0,
+      "lastMetrics": {
+        "n": 102242,
+        "hits": 5384,
+        "hitRate": 5.27,
+        "avgRet3": -0.146,
+        "skip": 437
+      },
+      "lastJudge": {
+        "verdict": "fail",
+        "metrics": {
+          "n": 102242,
+          "hits": 5384,
+          "hitRate": 5.27,
+          "avgRet3": -0.146,
+          "skip": 437
+        },
+        "reasons": [
+          "命中率 5.27% (Wilson下界 5.13%) vs baseline 5.41% → 不达标",
+          "3日收益 -0.146% vs baseline -0.412% → 达标"
+        ],
+        "wilsonLower": 5.13
+      },
+      "holdoutMetrics": {
+        "n": 5504,
+        "hits": 386,
+        "hitRate": 7.01,
+        "avgRet3": -0.146,
+        "skip": 41
+      },
+      "holdoutJudge": {
+        "verdict": "pass",
+        "metrics": {
+          "n": 5504,
+          "hits": 386,
+          "hitRate": 7.01,
+          "avgRet3": -0.146,
+          "skip": 41
+        },
+        "reasons": [
+          "命中率 7.01% (Wilson下界 6.37%) vs baseline 5.41% → 达标",
+          "3日收益 -0.146% vs baseline -0.412% → 达标"
+        ],
+        "wilsonLower": 6.37
+      }
+    },
+    {
+      "id": "hypo_pullback",
+      "desc": "20日高点回撤5~15%+缩量",
+      "when": [
+        {
+          "f": "pullback20",
+          "op": "between",
+          "lo": -15,
+          "hi": -5
+        },
+        {
+          "f": "volSqueeze20",
+          "op": "<",
+          "v": 0.9
+        }
+      ],
+      "expect": "up",
+      "deps": [
+        "high",
+        "close"
+      ],
+      "origin": "manual",
+      "status": "shadow",
+      "shadowDays": 0,
+      "bornAt": "2026-11-26",
+      "failStreak": 0,
+      "lastMetrics": {
+        "n": 165992,
+        "hits": 6255,
+        "hitRate": 3.77,
+        "avgRet3": -0.379,
+        "skip": 0
+      },
+      "lastJudge": {
+        "verdict": "fail",
+        "metrics": {
+          "n": 165992,
+          "hits": 6255,
+          "hitRate": 3.77,
+          "avgRet3": -0.379,
+          "skip": 0
+        },
+        "reasons": [
+          "命中率 3.77% (Wilson下界 3.68%) vs baseline 5.41% → 不达标",
+          "3日收益 -0.379% vs baseline -0.412% → 不达标"
+        ],
+        "wilsonLower": 3.68
+      },
+      "holdoutMetrics": {
+        "n": 8480,
+        "hits": 255,
+        "hitRate": 3.01,
+        "avgRet3": -0.742,
+        "skip": 0
+      },
+      "holdoutJudge": {
+        "verdict": "fail",
+        "metrics": {
+          "n": 8480,
+          "hits": 255,
+          "hitRate": 3.01,
+          "avgRet3": -0.742,
+          "skip": 0
+        },
+        "reasons": [
+          "命中率 3.01% (Wilson下界 2.66%) vs baseline 5.41% → 不达标",
+          "3日收益 -0.742% vs baseline -0.412% → 不达标"
+        ],
+        "wilsonLower": 2.66
+      }
+    },
+    {
+      "id": "hypo_highrun",
+      "desc": "60日涨幅>40%追高（回避型）",
+      "when": [
+        {
+          "f": "ret60",
+          "op": ">",
+          "v": 40
+        }
+      ],
+      "expect": "down",
+      "deps": [
+        "close"
+      ],
+      "origin": "manual",
+      "status": "shadow",
+      "shadowDays": 0,
+      "bornAt": "2026-11-26",
+      "failStreak": 0,
+      "lastMetrics": {
+        "n": 55624,
+        "hits": 8376,
+        "hitRate": 15.06,
+        "avgRet3": -0.338,
+        "skip": 0
+      },
+      "lastJudge": {
+        "verdict": "fail",
+        "metrics": {
+          "n": 55624,
+          "hits": 8376,
+          "hitRate": 15.06,
+          "avgRet3": -0.338,
+          "skip": 0
+        },
+        "reasons": [
+          "命中率 15.06% (Wilson下界 14.76%) vs baseline 5.41% → 达标",
+          "3日收益 -0.338% vs baseline -0.412% → 不达标"
+        ],
+        "wilsonLower": 14.76
+      },
+      "holdoutMetrics": {
+        "n": 2515,
+        "hits": 469,
+        "hitRate": 18.65,
+        "avgRet3": 0.183,
+        "skip": 0
+      },
+      "holdoutJudge": {
+        "verdict": "fail",
+        "metrics": {
+          "n": 2515,
+          "hits": 469,
+          "hitRate": 18.65,
+          "avgRet3": 0.183,
+          "skip": 0
+        },
+        "reasons": [
+          "命中率 18.65% (Wilson下界 17.17%) vs baseline 5.41% → 达标",
+          "3日收益 0.183% vs baseline -0.412% → 达标"
+        ],
+        "wilsonLower": 17.17
+      }
+    }
+  ],
+  "history": [
+    {
+      "at": "2026-11-26",
+      "baseline": {
+        "n": 1082278,
+        "hits": 58580,
+        "hitRate": 5.41,
+        "avgRet3": -0.412,
+        "note": "全样本固定标尺：命中率与3日收益；命中样本3日平均收益为负说明「命中≠赚钱」",
+        "frozenAt": "2026-11-26"
+      },
+      "changes": [],
+      "rollbacks": [],
+      "evaluated": []
+    },
+    {
+      "at": "2026-11-26",
+      "baseline": {
+        "n": 1082278,
+        "hits": 58580,
+        "hitRate": 5.41,
+        "avgRet3": -0.412,
+        "note": "全样本固定标尺：命中率与3日收益；命中样本3日平均收益为负说明「命中≠赚钱」",
+        "frozenAt": "2026-11-26"
+      },
+      "changes": [],
+      "rollbacks": [],
+      "holdout": {
+        "start": "2026-10-14",
+        "days": 20
+      },
+      "evaluated": [
+        {
+          "id": "hypo_volSqueeze",
+          "status": "shadow",
+          "verdict": "fail",
+          "metrics": {
+            "n": 102242,
+            "hits": 5384,
+            "hitRate": 5.27,
+            "avgRet3": -0.146,
+            "skip": 437
+          },
+          "holdout": {
+            "n": 5504,
+            "hits": 386,
+            "hitRate": 7.01,
+            "avgRet3": -0.146,
+            "skip": 41
+          }
+        },
+        {
+          "id": "hypo_pullback",
+          "status": "shadow",
+          "verdict": "fail",
+          "metrics": {
+            "n": 165992,
+            "hits": 6255,
+            "hitRate": 3.77,
+            "avgRet3": -0.379,
+            "skip": 0
+          },
+          "holdout": {
+            "n": 8480,
+            "hits": 255,
+            "hitRate": 3.01,
+            "avgRet3": -0.742,
+            "skip": 0
+          }
+        },
+        {
+          "id": "hypo_highrun",
+          "status": "shadow",
+          "verdict": "fail",
+          "metrics": {
+            "n": 55624,
+            "hits": 8376,
+            "hitRate": 15.06,
+            "avgRet3": -0.338,
+            "skip": 0
+          },
+          "holdout": {
+            "n": 2515,
+            "hits": 469,
+            "hitRate": 18.65,
+            "avgRet3": 0.183,
+            "skip": 0
+          }
+        }
+      ]
+    }
+  ],
+  "holdout": {
+    "start": "2026-10-14",
+    "days": 20
+  }
+}
