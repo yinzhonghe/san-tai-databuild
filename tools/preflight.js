@@ -30,8 +30,8 @@ var cp = require('child_process');
 var ROOT = path.dirname(__dirname);
 var CI = process.argv.indexOf('--ci') >= 0;
 // CI 源码模式：只跑不依赖运行时数据的检查（这些测试只读源码/内联 HTML，不读 kline/panel/data.js）
-var CI_SAFE_TESTS = ['engine.test.js', 'resolve.test.js', 'sharecode_links.test.js',
-  'loading_fallback.test.js', 'inline_scripts.test.js'];
+// engine/resolve 依赖 data.js（生成数据在 data 分支），CI 只跑纯源码测试
+var CI_SAFE_TESTS = ['sharecode_links.test.js', 'loading_fallback.test.js', 'inline_scripts.test.js'];
 var results = [];
 function record(name, ok, detail) {
   results.push({ name: name, ok: !!ok, detail: detail || '' });
