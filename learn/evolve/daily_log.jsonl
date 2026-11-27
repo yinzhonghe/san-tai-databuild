@@ -1,1 +1,4 @@
 {"ok":true,"at":"2026-11-26T10:48:24.984Z","generation":2,"evaluated":44,"active":0,"shadow":44,"trialTotal":40,"livePool":0,"needTestTime":false,"top":[]}
+{"ok":true,"at":"2026-11-27T11:32:22.515Z","generation":3,"evaluated":64,"active":0,"shadow":64,"trialTotal":60,"livePool":0,"needTestTime":true,"top":[]}
+{"ok":true,"at":"2026-11-27T13:21:04.354Z","generation":4,"evaluated":84,"active":0,"shadow":84,"trialTotal":80,"livePool":0,"needTestTime":true,"top":[]}
+{"ok":true,"at":"2026-11-27T17:15:50.877Z","generation":5,"evaluated":104,"active":0,"shadow":104,"trialTotal":100,"livePool":0,"needTestTime":true,"top":[]}
