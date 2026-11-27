@@ -20,5 +20,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: 全局体检（语法+封印+全套回归+数据地基+发布清单）
-        run: node tools/preflight.js
+      - name: 全局体检 · CI 源码模式（语法+不依赖运行时数据的测试）
+        # main 分支不含运行时数据（宪法/kline/面板/生成js 在 data 分支或本地），
+        # 用 --ci 只跑源码级检查；完整 6 项门禁在本地 node tools/preflight.js 跑。
+        run: node tools/preflight.js --ci
