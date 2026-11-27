@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-11-27T09:17:25.457Z",
+  "fundflowCodes": 5854,
+  "features": [
+    "main5",
+    "superRatio5",
+    "accel",
+    "mainPctT"
+  ],
+  "jobs": [
+    {
+      "rows": 108338,
+      "joined": 106218,
+      "out": "C:\\Users\\36352\\Desktop\\三态看板\\三态看盘-便携版-含对话-20261113f\\三态看盘-便携版-含对话\\learn\\evolve\\panel_sample100k_ff.jsonl"
+    }
+  ],
+  "note": "join 不到不写字段（fail-closed），不填0不估算。样本切换由 tools/evolve/settle.js panelPath() 控制。"
+}
