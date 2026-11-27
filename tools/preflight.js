@@ -4,7 +4,12 @@
  * 解决痛点：以前每改一处要靠人肉发现问题再告诉 Agent，耽误时间、难以真正自进化。
  * 本脚本把项目所有【被动守护检查】串成一个主动门禁，改完任何代码一条命令跑完：
  *
- *   node tools/preflight.js
+ *   node tools/preflight.js           # 本地完整工作区：跑全部 6 项
+ *   node tools/preflight.js --ci      # CI 源码检查：只跑语法+不依赖运行时数据的测试
+ *
+ * --ci 模式说明：GitHub main 分支不含运行时数据（宪法/kline/面板/生成 js 都在 data 分支
+ * 或本地），所以封印校验/数据地基/发布清单/依赖数据的测试套件在 CI 必然失败。
+ * --ci 只跑纯源码级检查（JS/Python 语法 + 不依赖数据的测试），保证源码质量门禁生效。
  *
  * 检查项（逐项独立，失败不中断其余项，最后汇总）：
  *   1) JS 语法编译：tools 与 tests 目录下所有 .js 逐个做语法编译检查
@@ -23,6 +28,10 @@ var path = require('path');
 var cp = require('child_process');
 
 var ROOT = path.dirname(__dirname);
+var CI = process.argv.indexOf('--ci') >= 0;
+// CI 源码模式：只跑不依赖运行时数据的检查（这些测试只读源码/内联 HTML，不读 kline/panel/data.js）
+var CI_SAFE_TESTS = ['engine.test.js', 'resolve.test.js', 'sharecode_links.test.js',
+  'loading_fallback.test.js', 'inline_scripts.test.js'];
 var results = [];
 function record(name, ok, detail) {
   results.push({ name: name, ok: !!ok, detail: detail || '' });
@@ -59,8 +68,9 @@ console.log('=== 三态看盘 · 全局体检 preflight ===\n');
   record('JS 语法编译（' + files.length + ' 个文件）', bad.length === 0, bad.slice(0, 3).join(' | '));
 })();
 
-// 2) 宪法封印
+// 2) 宪法封印（CI 源码模式跳过：constitution.json 在 data 分支，main 不含）
 (function () {
+  if (CI) { record('宪法封印 SHA256 一致（CI 跳过：数据在 data 分支）', true, 'skipped'); return; }
   try {
     var crypto = require('crypto');
     var cpath = path.join(ROOT, 'learn', 'evolve', 'constitution.json');
@@ -78,6 +88,7 @@ console.log('=== 三态看盘 · 全局体检 preflight ===\n');
     var pkg = readJson(path.join(ROOT, 'package.json'), {});
     var cmd = String((pkg.scripts || {}).test || '').replace(/\bnode\s+/g, '');
     var tests = cmd.split('&&').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (CI) tests = tests.filter(function (t) { return CI_SAFE_TESTS.indexOf(path.basename(t)) >= 0; });
     var badTests = [], totalPass = 0;
     tests.forEach(function (t) {
       var r = cp.spawnSync(process.execPath, [t], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
@@ -100,16 +111,18 @@ console.log('=== 三态看盘 · 全局体检 preflight ===\n');
     r.status === 0 ? '' : (r.stderr || '').slice(-200));
 })();
 
-// 5) 数据地基：kline/index.json asOf == panel_gaps.asOf
+// 5) 数据地基：kline/index.json asOf == panel_gaps.asOf（CI 跳过：kline 分片在 data 分支/本地）
 (function () {
+  if (CI) { record('K线 asOf 与面板 asOf 一致（CI 跳过：数据在 data 分支）', true, 'skipped'); return; }
   var idx = readJson(path.join(ROOT, 'kline', 'index.json'), {});
   var gaps = readJson(path.join(ROOT, 'learn', 'evolve', 'panel_gaps.json'), {});
   var a = String(idx.asOf || ''), b = String(gaps.asOf || '');
   record('K线 asOf 与面板 asOf 一致', !!a && a === b, a + ' vs ' + b);
 })();
 
-// 6) 发布清单文件存在
+// 6) 发布清单文件存在（CI 跳过：清单含生成的数据文件，main 不含）
 (function () {
+  if (CI) { record('发布清单文件存在（CI 跳过：含生成数据文件）', true, 'skipped'); return; }
   var src = fs.readFileSync(path.join(ROOT, 'tools', 'build_site.py'), 'utf8');
   var m = src.match(/FILES\s*=\s*\[([\s\S]*?)\]/);
   if (!m) { record('发布清单文件存在', false, '解析 FILES 失败'); return; }
