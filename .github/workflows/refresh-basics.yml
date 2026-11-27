@@ -21,9 +21,6 @@ on:
         options:
           - 'rebuild'
           - 'skip'
-  schedule:
-    - cron: '0 8 10 5,9,11 *'   # 每年 5/9/11 月 10 日 16:00（北京）
-
 jobs:
   refresh:
     runs-on: ubuntu-latest
