@@ -1,0 +1,17 @@
+{
+  "rows": 108338,
+  "written": 98393,
+  "noBar": 0,
+  "shortHist": 9945,
+  "oneWord": 60,
+  "d1": 98393,
+  "d5": 98393,
+  "d20": 98393,
+  "intra": 98393,
+  "t0Eligible": 918,
+  "firstDate": "2026-01-13",
+  "lastDate": "2026-10-29",
+  "asOf": "20261126",
+  "generatedOn": "2026-11-27",
+  "source": "panel_sample100k.jsonl"
+}
