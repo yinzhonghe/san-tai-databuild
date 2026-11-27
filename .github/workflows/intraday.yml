@@ -29,13 +29,6 @@ on:
         default: 'false'
         type: choice
         options: ['false', 'true']
-  schedule:
-    - cron: '30 2 * * 1-5'   # 北京 10:30 开盘一小时回顾
-    - cron: '0 3 * * 1-5'    # 北京 11:00 事件检查
-    - cron: '0 5 * * 1-5'    # 北京 13:00 事件检查
-    - cron: '0 6 * * 1-5'    # 北京 14:00 下午一小时回顾
-    - cron: '30 6 * * 1-5'   # 北京 14:30 事件检查
-
 permissions:
   contents: write
 
