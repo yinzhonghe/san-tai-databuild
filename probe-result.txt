@@ -1,8 +1,8 @@
 runner: Linux / py3.11.18
-[FAIL] 东财 clist 全市场        1076ms  HTTPError: HTTP Error 502: Bad Gateway
-[ OK ] 东财 kline(前复权)        854ms  klines=460 末根=2026-11-26,1469.00
-[ OK ] 腾讯实时                1041ms  字段数=175 现价=1469.00
-[ OK ] 同花顺热榜               1606ms  stock_list=100
-[ OK ] 新浪(带Referer)        1769ms  var hq_str_sh000001="ָ֤,3490.1446,3476.4697,3476.8816,3497.8
+[ OK ] 东财 clist 全市场        2401ms  total=3488 diff=20
+[ OK ] 东财 kline(前复权)       1026ms  klines=461 末根=2026-11-27,1467.51
+[ OK ] 腾讯实时                1088ms  字段数=175 现价=1467.51
+[ OK ] 同花顺热榜               1710ms  stock_list=100
+[ OK ] 新浪(带Referer)         651ms  var hq_str_sh000001="ָ֤,3482.3752,3476.8816,3469.8093,3482.3
 
-通过 4 / 5
+通过 5 / 5
