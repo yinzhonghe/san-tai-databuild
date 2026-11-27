@@ -69,6 +69,16 @@ jobs:
             cp /tmp/fl_state/learn/evolve/fundflow_batch_shards/*.json learn/evolve/fundflow_batch_shards/ 2>/dev/null || true
             echo "已同步批量资金流分片"
           fi
+          # ETF 批量（FTShare 东财ETF资金流按交易日全市场出数）+ 分片续传基础
+          if [ -f /tmp/fl_state/learn/evolve/fundflow_etf.jsonl ]; then
+            cp /tmp/fl_state/learn/evolve/fundflow_etf.jsonl /tmp/fl_state/learn/evolve/fundflow_etf_status.json learn/evolve/ 2>/dev/null || true
+            echo "已同步ETF批量资金流"
+          fi
+          if [ -d /tmp/fl_state/learn/evolve/fundflow_etf_shards ]; then
+            mkdir -p learn/evolve/fundflow_etf_shards
+            cp /tmp/fl_state/learn/evolve/fundflow_etf_shards/*.json learn/evolve/fundflow_etf_shards/ 2>/dev/null || true
+            echo "已同步ETF批量分片"
+          fi
 
       - name: 重建面板（缺则建，失败不阻塞画像用采样）
         run: |
@@ -88,7 +98,10 @@ jobs:
           # --skip-if-complete：gz 已覆盖当前 panel 全窗时直接复用（个股覆盖100%），
           #   避免每天重复20分钟全量抓取；panel 换新日期窗后自动重抓。
           python tools/fetch_fundflow_batch.py --interval 1.0 --skip-if-complete 2>&1 | tail -12 || echo "批量资金流本轮失败，保留已有数据"
-          # ETF 不在批量报表内，继续用 push2his 云端逐票补抓（GitHub runner 独立IP）
+          # ETF 不在批量报表内：FTShare 东财ETF资金流按交易日批量出数（2026-03-16起，约250页/几分钟），
+          #   分片断点续传；2026-03-16 前无公开历史，标缺口不编造。
+          python tools/fetch_etf_ftshare.py --interval 0.3 2>&1 | tail -10 || echo "ETF批量资金流本轮失败，保留已有数据"
+          # push2his 逐票仅补 FTShare 未覆盖的少量尾部（GitHub runner 独立IP）
           python tools/fetch_fundflow_hist.py --only-etf --limit 20 --interval 6 2>&1 | tail -8 || echo "ETF资金流补抓跳过"
           node tools/evolve/freelab/fundflow_portrait.js 2>&1 || echo "资金流画像跳过"
 
@@ -140,6 +153,10 @@ jobs:
           cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_batch.jsonl.gz "$GITHUB_WORKSPACE"/learn/evolve/fundflow_batch_status.json learn/evolve/ 2>/dev/null || true
           mkdir -p learn/evolve/fundflow_batch_shards
           cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_batch_shards/*.json learn/evolve/fundflow_batch_shards/ 2>/dev/null || true
+          # ETF 批量资金流 + 分片推 data（续传基础）
+          cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_etf.jsonl "$GITHUB_WORKSPACE"/learn/evolve/fundflow_etf_status.json learn/evolve/ 2>/dev/null || true
+          mkdir -p learn/evolve/fundflow_etf_shards
+          cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_etf_shards/*.json learn/evolve/fundflow_etf_shards/ 2>/dev/null || true
           git add -A
           git diff --cached --quiet || { git commit -m "freelab state $(date -u +%F)"; git push; }
 
