@@ -5,9 +5,6 @@ name: 自进化 v2 · 每日灾备（心跳判活）
 # 数据互通：大文件(panel/ohlc)各端从 kline 确定性重建；小状态(registry/constitution/heartbeat)走 data 分支同步。
 
 on:
-  schedule:
-    # 北京时间 23:30 = UTC 15:30，周一到周五
-    - cron: '30 15 * * 1-5'
   workflow_dispatch:
     inputs:
       reason:
