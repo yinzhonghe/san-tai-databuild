@@ -55,21 +55,29 @@ function findBenchmarkRet(rows) {
 }
 
 /* 核心：对过滤后的样本做信号级结算。
-   rule 可为 null（全样本 baseline）。filterFn 可选（时间段/子空间）。 */
-function settleStream(rule, filterFn) {
+   rule 可为 null（全样本 baseline）。filterFn 可选（时间段/子空间）。
+   enrichFn 可选：在 evalRule 之前给 s.f 注入【已编译且可复现】的新特征
+   （自由推演实验室造新特征用；不传则生产链路行为完全不变）。 */
+function settleStream(rule, filterFn, enrichFn) {
   var cost = roundTripCostPct();
   return new Promise(function (resolve, reject) {
     var rl = require('readline').createInterface({ input: fs.createReadStream(panelPath(), { encoding: 'utf8' }), crlfDelay: Infinity });
-    var st = { n: 0, tradable: 0, skippedOneWord: 0, skippedNoData: 0,
-      sumNet: 0, netN: 0, wins: 0, rets: [], bySegment: {}, byDate: {} };
+    var st = { n: 0, tradable: 0, eligible: 0, skippedOneWord: 0, skippedNoData: 0,
+      sumNet: 0, netN: 0, wins: 0, rets: [], bySegment: {}, byDate: {},
+      benchRet: null, universeRets: [] };
     rl.on('line', function (line) {
       if (!line.trim()) return;
       var s; try { s = JSON.parse(line); } catch (e) { return; }
       if (filterFn && !filterFn(s)) return;
+      if (enrichFn) { s.f = s.f || {}; enrichFn(s.f); }
       // 一字板信号不可成交：剔除
       if (s.y && s.y.sigOneWord) { st.skippedOneWord++; return; }
       // 信号级收益：每个信号都必须有 sigRet3（无论命中与否）
       if (!s.y || !isNum(s.y.sigRet3)) { st.skippedNoData++; return; }
+      // 覆盖率分母：同一过滤口径下的全部可交易信号（一字板/无数据已剔除）
+      st.eligible++;
+      st.universeRets.push(s.y.sigRet3);
+      if (/510300|510310/.test(s.code) && st.benchRet == null) st.benchRet = s.y.sigRet3;
       if (rule) {
         var v = R.evalRule(rule, s);
         if (v !== 'match') return;
@@ -100,15 +108,25 @@ function settleStream(rule, filterFn) {
         sd = Math.sqrt(ss / (st.rets.length - 1));
       }
       var tStat = (sd > 0 && st.netN > 1) ? avgNet / (sd / Math.sqrt(st.netN)) : null;
-      // 覆盖率：信号数 / 全样本数（用 n 与总样本比；由调用方补 totalSamples）
-      var bench = findBenchmarkRet([]);  // 占位，实际机会成本在 compare 里算
+      // 覆盖率：命中信号数 / 同口径可交易信号总数（此前从未计算，导致软裁判永远 REFUTED）
+      var coverage = st.eligible ? +(st.n / st.eligible * 100).toFixed(2) : 0;
+      // 机会成本：沪深300 ETF 同期收益；面板无该代码时用全市场中位数代理并标注
+      var bench = st.benchRet != null ? { ret: st.benchRet, source: 'CSI300_ETF' }
+        : (st.universeRets.length
+          ? (function () { var a = st.universeRets.slice().sort(function (x, y) { return x - y; });
+              return { ret: a[Math.floor(a.length / 2)], source: 'market_median_proxy' }; })()
+          : { ret: null, source: 'none' });
+      var excess = (isNum(bench.ret) && isNum(avgNet)) ? +(avgNet - bench.ret).toFixed(4) : null;
       // 最短板稳健分：各月净收益的最小值
       var segNets = Object.keys(st.bySegment).map(function (k) {
         var g = st.bySegment[k]; return g.n >= 20 ? g.sum / g.n : null;
       }).filter(isNum);
       var worstSeg = segNets.length ? Math.min.apply(null, segNets) : null;
       resolve({
-        n: st.n, tradable: st.tradable, skippedOneWord: st.skippedOneWord, skippedNoData: st.skippedNoData,
+        n: st.n, tradable: st.tradable, eligible: st.eligible,
+        skippedOneWord: st.skippedOneWord, skippedNoData: st.skippedNoData,
+        coverage: coverage, benchmarkRet: bench.ret, benchmarkSource: bench.source,
+        excessOverHold: excess,
         grossAvg: st.netN ? (st.sumNet + cost * st.netN) / st.netN : null,
         costPct: cost, netRet3: avgNet == null ? null : +avgNet.toFixed(4),
         winRate: winRate == null ? null : +winRate.toFixed(4),
