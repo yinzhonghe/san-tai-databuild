@@ -133,6 +133,7 @@ function build() {
       fetchedCodes: fund.fetchedCodes, joinRate: fund.joinRate,
       joinedRows: fund.joinedRows, baseline: fund.baseline,
       status: fund.fundStatus,
+      batchStatus: fund.batchStatus || null,
       highlights: Object.keys(fund.features || {}).map(function (k) {
         var f = fund.features[k];
         return { key: k, label: f.label, coverage: f.coverage, spread: f.spread,
