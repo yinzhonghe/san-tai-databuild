@@ -24,7 +24,7 @@
 <meta property="og:site_name" content="三态看盘" />
 <meta property="og:title" content="三态看盘" />
 <meta property="og:description" content="用三态看懂 A 股处在启动·盘整·走完 —— 每日信号 + 我的看板" />
-<link rel="stylesheet" href="styles.css?v=202611271447&sharecode=EPDR6ET2KO" />
+<link rel="stylesheet" href="styles.css?v=202611271529&sharecode=EPDR6ET2KO" />
 <!-- 纯 CSS 探针：完全不依赖 JS。若 8 秒后脚本仍没接管页面（说明 JS 被扩展/浏览器设置拦截），
      这段红色警告会自动显示，给出明确解决步骤。JS 正常时 app.js 会替换 #view，此探针自动消失。 -->
 <style>
@@ -78,7 +78,7 @@
       <div>三态看盘 · <b>免费体验 5 个交易日</b> · 到期后加微信开通，可继续免费使用。</div>
       <div>观察工具，<b>非投资建议，不预示未来收益</b>。三态为阶段判断，与涨跌无必然关系。</div>
       <div>实时行情：东财（主）/ 腾讯 / 新浪 三源降级；基础数据由腾讯 / 新浪免费行情全市场重算（截至页面标注时点）。</div>
-      <div class="cat">构建版本 20261127f · 若加载卡住，点页面中央的「重新加载数据」（会自动破缓存）；<b>不要</b>在网址后加 ?v=（那是设备码参数，会覆盖你的设备码）</div>
+      <div class="cat">构建版本 20261127g · 若加载卡住，点页面中央的「重新加载数据」（会自动破缓存）；<b>不要</b>在网址后加 ?v=（那是设备码参数，会覆盖你的设备码）</div>
     </footer>
   </main>
 
@@ -124,7 +124,7 @@
   (function () {
     /* 分享链接要求所有静态资源（含 fetch 的 gz）都带 sharecode，否则服务器回「链接不完整」403。
        把 sharecode 并进 V，下面 data.js / data.json.gz 两处动态请求就自动带上。 */
-    var V = '?v=202611271447&sharecode=EPDR6ET2KO';
+    var V = '?v=202611271529&sharecode=EPDR6ET2KO';
     /* 破缓存尾缀：普通浏览器可能对 gz 存了半截/损坏响应，无痕是干净的所以能开。
        每次打开加一个随机 _r，强制绕过 HTTP 缓存拿一份完整新数据。 */
     var BUST = '&_r=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -279,28 +279,28 @@
   </script>
   <!-- 离线日K / 行业成分股：由 tools/regen_offline.py 生成；未生成时为空骨架，
        页面自动跳过并走实时多源，不影响使用。 -->
-  <script src="kline.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script src="industry.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+  <script src="kline.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script src="industry.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
   <!-- 便携版：ECharts 已本地化，断网也能画 RRG / 走势图 -->
-  <script defer src="echarts.min.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+  <script defer src="echarts.min.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
   <!-- 试用 / 邀请 / 风险提示门（guard.js）。必须在 app.js 之前执行：
        它可能直接锁屏，避免先渲染出内容再被盖住。
        依赖云端记账（invite_events / consent_events），断网时自动降级为「仅本地计时」。 -->
-  <script defer src="daily.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+  <script defer src="daily.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
   <!-- 多源舆情快照：云端每日采集公开源（快讯/检索/公告/RSS/个股专属，真实行业口径），带真实来源与时间。
        必须在 six-engine.js / app.js 之前加载，引擎据此计算舆情票。读不到时自动退回静态历史缓存。 -->
-  <script defer src="news_data.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="poster_daily.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="guard.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="fundflow.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="data-service.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+  <script defer src="news_data.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="poster_daily.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="guard.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="fundflow.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="data-service.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
   <!-- 三态阶段判定唯一口径：主站与超跌页「新发涨停观察」共用，避免同一票两页显示的阶段不一致 -->
-  <script defer src="state-phase.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="six-engine.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="app.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="live-refresh.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="state-path.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
-  <script defer src="selfcheck.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+  <script defer src="state-phase.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="six-engine.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="app.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="live-refresh.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="state-path.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+  <script defer src="selfcheck.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
   <!-- 三报远端刷新：本地 daily.js 是发布那一刻的快照；GitHub Actions 每个交易日
        07:30 / 11:35 / 15:35 把新一版 daily.js 推到 Pages。这里在首屏渲染完成后取一次远端，
        比本地新就替换 window.AB_DAILY 并重绘一次（保持滚动位置）。
