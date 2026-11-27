@@ -60,9 +60,11 @@ jobs:
       - name: 重建面板（各端确定性重建，不同步551MB大文件）
         if: steps.hb.outputs.done != 'true'
         run: |
+          # 面板重建失败绝不能阻塞「跑一代演化」——它只是展示产物，不是演化前置依赖。
+          # 2026-11-27 修复：云端缺 kline/index.json 时曾导致 4 次灾备全部失败、演化被跳过。
           if [ ! -f learn/evolve/panel.jsonl ]; then
-            python tools/build_kline.py 2>/dev/null || echo "kline已存在，跳过"
-            node tools/evolve/panel.js
+            python tools/build_kline.py 2>/dev/null || echo "kline重建失败或无网络，继续"
+            node tools/evolve/panel.js || echo "面板重建失败（缺kline数据），不阻塞演化"
           else
             echo "面板已存在"
           fi
