@@ -139,7 +139,11 @@ test('资金流抓取器存在且诚实（退避/续传/缺口，不用0顶替�
   var src = readText(path.join(ROOT, 'tools', 'fetch_fundflow_hist.py'));
   assert.ok(src.indexOf('UT_POOL') >= 0, '缺多ut轮换（限流防护）');
   assert.ok(src.indexOf('断点续传') >= 0 || src.indexOf('load_done') >= 0, '缺断点续传');
-  assert.ok(src.indexOf('unsupported_bj_secid') >= 0, '北交所缺口未标注');
+  // 2026-11-27 修正：BJ 旧标 unsupported 是本地IP被限流的假象，0.920xxx 服务端实测可用。
+  // 现在守护「缺口诚实标注」而非「必须标 unsupported」——ETF/抓不到的票仍标缺口，不填0。
+  assert.ok(src.indexOf('标缺口') >= 0 && src.indexOf('不填 0') >= 0,
+    '资金流缺口标注缺失（应标缺口不填0）');
+  assert.ok(src.indexOf('--only-etf') >= 0, 'ETF 逐票补抓模式缺失（个股走批量报表）');
 });
 test('facts.json 含资金流维度（或明确为null待抓）', function () {
   assert.ok('fundflow' in facts, 'facts 缺 fundflow 字段');
