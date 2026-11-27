@@ -29,14 +29,19 @@
   },
   "fundflow_hist": {
     "label": "历史逐日资金流(东财)",
-    "status": "found_throttled",
+    "status": "verified",
+    "script": "tools/fetch_fundflow_hist.py",
+    "cmd": "python tools/fetch_fundflow_hist.py --limit 0",
+    "adapter": "curl + UA/Referer + 多ut轮换 + 退避冷却 + 断点续传",
     "endpoint": "push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    "probeUrl": "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?lmt=3&klt=101&secid=1.600519&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65&ut=b2884a393a59ad64002292a3e90d46a5",
     "params": "lmt=0&klt=101&fields1=f1,f2,f3,f7&fields2=f51..f65&secid={market}.{code}",
     "fields": "f51日期 f52主力净流入 f53小单 f54中单 f55大单 f56超大单(单位:元)",
     "source": "全网搜索 akfamily/akshare#6121 + HKUDS/Vibe-Trading 文档",
     "foundAt": "2026-11-26",
-    "note": "接口确认免费免鉴权、可按个股查历史每日五档净流入；但当前网络 push2his 子域名被限流(schannel closed)，push2 同接口仅分钟线可用。需换网络/降频重试后再 verify。未取到数据前规则标缺口，绝不编造。",
-    "retryHint": "非高峰时段重试，或走代理；降到每分钟<10次"
+    "verifiedAt": "2026-11-27",
+    "note": "已接入（2026-11-27）：抓取器 tools/fetch_fundflow_hist.py 用 curl+UA/Referer+多ut轮换+3.2s间隔+退避冷却+断点续传，实测稳定（8/8成功）。数据落 fundflow_hist.jsonl，经 fundflow_portrait.js join 进自由推演实验室资金流画像。北交所 secid 映射暂不通，标缺口不编造。覆盖状态见 fundflow_status.json。旧判定「被限流不可用」是把裸 curl 无请求头的失败误当接口坏了，已修。",
+    "retryHint": "多ut轮换 + 3.2s间隔 + 连续失败3次冷却90s + 断点续传；必须带 UA/Referer"
   },
   "oneword_intraday": {
     "label": "一字板封单/开板时间",
