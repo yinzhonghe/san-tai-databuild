@@ -4,10 +4,10 @@ window.AB_FREELAB_REPORT = {
     "state": "自由推演实验室已就位：市场画像来自 108,271 条真实信号（扣0.31%成本、一字板剔除）；大模型已提 6 个模型，验证跑出 0 个 / 未证明 5 个。",
     "did": "把 108,338 条样本整理成「市场画像」——每个特征按真实取值分 5 档，逐档算信号级净收益/胜率/超额，再按月份、行业切片。让大模型读这份画像【自由推演】，不受六派种子/白名单草图约束，自己提出模型（可执行规则 / 新特征表达式 / 纯叙事假设皆可），然后用同一套真实结算器逐条验钱。",
     "result": "大模型提了 6 个模型，但真实结算后【0 个跑出可交易模型】——5 个栽在净收益/t值/覆盖率/跑赢基准上，1 个还是无法回测的叙事假设。这是诚实结论，不是没跑。",
-    "direction": "自由度放在「假设」——鼓励大模型跨特征组合、造新表达式、提市场状态机/分域模型；严格度放在「验证」——任何模型都要过净收益>0、t≥3、覆盖率≥2%、Wilson下界、跑赢持有基准五关。现已按【按月 / 按周 / 按日 / T0ETF·日内】四维度分类推演：每维度用真实 kline 算自己的基准（月T+20、周T+5、日T+1、日内开盘→收盘），模型只在自己声明的维度上结算，不拿T+3的旧尺子量所有持有期。资金流维度已接入：真实抓取 5343 只票的逐日五档资金流，join 98,720 条样本（覆盖率 91.1%），派生主力净流入/超大单结构/资金加速度，供大模型推演；未覆盖样本一律标缺口。下一步继续补覆盖率、等资金流样本够厚后让它进模型验证链。"
+    "direction": "自由度放在「假设」——鼓励大模型跨特征组合、造新表达式、提市场状态机/分域模型；严格度放在「验证」——任何模型都要过净收益>0、t≥3、覆盖率≥2%、Wilson下界、跑赢持有基准五关。现已按【按月 / 按周 / 按日 / T0ETF·日内】四维度分类推演：每维度用真实 kline 算自己的基准（月T+20、周T+5、日T+1、日内开盘→收盘），模型只在自己声明的维度上结算，不拿T+3的旧尺子量所有持有期。资金流维度已接入：真实抓取 5854 只票的逐日五档资金流，join 106,151 条样本（覆盖率 98.0%），派生主力净流入/超大单结构/资金加速度，供大模型推演；未覆盖样本一律标缺口。下一步继续补覆盖率、等资金流样本够厚后让它进模型验证链。"
   },
   "at": "2026-11-27",
-  "generatedAt": "2026-11-27T07:26:36.717Z",
+  "generatedAt": "2026-11-27T08:17:46.578Z",
   "version": "freelab-v2-horizons",
   "model": "glm-5.3-flash",
   "dataAsOf": "20261126",
@@ -220,21 +220,21 @@ window.AB_FREELAB_REPORT = {
     }
   ],
   "fundflow": {
-    "fetchedCodes": 5343,
-    "joinRate": 0.9112,
-    "joinedRows": 98720,
+    "fetchedCodes": 5854,
+    "joinRate": 0.9798,
+    "joinedRows": 106151,
     "baseline": {
-      "measuredNet": -0.7716,
-      "measuredWinRate": 0.4086,
-      "samples": 98720,
+      "measuredNet": -0.7648,
+      "measuredWinRate": 0.4042,
+      "samples": 106151,
       "costPct": 0.31
     },
     "status": {
-      "fetchedCodes": 23,
-      "coveragePct": 0.4,
+      "fetchedCodes": 452,
+      "coveragePct": 84.58,
       "unsupportedCodes": 0,
-      "unsupportedReason": "北交所 secid 映射暂不通（0./1. 实测 HTTP000），标缺口不编造",
-      "failedCodes": 0
+      "unsupportedReason": "北交所 secid 误判已修（0.920xxx 服务端实测可用）；个股/北交所已由 datacenter 批量报表覆盖，ETF 走本脚本逐票补抓",
+      "failedCodes": 6
     },
     "batchStatus": {
       "source": "eastmoney datacenter-web RPT_DMSK_TS_FUNDFLOW (batch)",
@@ -250,46 +250,58 @@ window.AB_FREELAB_REPORT = {
         "lookbackDays": 30
       }
     },
+    "etfStatus": {
+      "source": "FTShare eastmoney-etf-flow (ETF 日资金流批量, 与 push2his 逐位一致)",
+      "fetchedEtfCodes": 495,
+      "etfCoveragePct": 71.66,
+      "earlyGapRows": 873,
+      "earlyGapNote": "2026-03-16 前 FTShare/push2his 均无 ETF 资金流数据，标缺口不填0",
+      "window": {
+        "from": "2026-03-16",
+        "to": "2026-11-23",
+        "dataStart": "2026-03-16"
+      }
+    },
     "highlights": [
       {
         "key": "accel",
         "label": "主力资金加速度(万元)",
-        "coverage": 0.9118,
-        "spread": 0.28,
-        "bestBucket": "3/5",
-        "bestNet": -0.6589,
+        "coverage": 0.9804,
+        "spread": 0.2594,
+        "bestBucket": "2/5",
+        "bestNet": -0.6571,
         "worstBucket": "5/5",
-        "worstNet": -0.9389
+        "worstNet": -0.9165
       },
       {
         "key": "main5",
         "label": "近5日主力净流入(万元)",
-        "coverage": 0.9118,
-        "spread": 0.267,
+        "coverage": 0.9804,
+        "spread": 0.2488,
         "bestBucket": "4/5",
-        "bestNet": -0.6559,
+        "bestNet": -0.6595,
         "worstBucket": "1/5",
-        "worstNet": -0.9229
-      },
-      {
-        "key": "mainPctT",
-        "label": "当日主力净占比(%)",
-        "coverage": 0.9118,
-        "spread": 0.1519,
-        "bestBucket": "5/5",
-        "bestNet": -0.691,
-        "worstBucket": "4/5",
-        "worstNet": -0.8429
+        "worstNet": -0.9083
       },
       {
         "key": "superRatio5",
         "label": "超大单占主力比",
-        "coverage": 0.9116,
-        "spread": 0.1368,
+        "coverage": 0.9799,
+        "spread": 0.1687,
         "bestBucket": "5/5",
-        "bestNet": -0.6954,
+        "bestNet": -0.6669,
         "worstBucket": "2/5",
-        "worstNet": -0.8322
+        "worstNet": -0.8356
+      },
+      {
+        "key": "mainPctT",
+        "label": "当日主力净占比(%)",
+        "coverage": 0.9804,
+        "spread": 0.1549,
+        "bestBucket": "5/5",
+        "bestNet": -0.6817,
+        "worstBucket": "4/5",
+        "worstNet": -0.8366
       }
     ]
   },
