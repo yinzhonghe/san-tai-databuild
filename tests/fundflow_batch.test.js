@@ -95,5 +95,50 @@ test('已生成的批量状态（若存在）覆盖率真实且北交所缺口�
   assert.ok(typeof st.etfGapRows === 'number', '缺 ETF 缺口行数');
 });
 
+// ⑥ ETF 批量源（FTShare，2026-11-27）
+var etfPy = text('tools/fetch_etf_ftshare.py');
+test('ETF 批量抓取器存在且用 FTShare 东财ETF资金流接口', function () {
+  assert.ok(etfPy.length > 2000, 'ETF 批量抓取器缺失');
+  assert.ok(etfPy.indexOf('eastmoney-etf-flow') >= 0, '未用 ETF 资金流接口');
+  assert.ok(etfPy.indexOf('page_size') >= 0 && etfPy.indexOf('1000') >= 0, '未按大分页批量出数');
+  assert.ok(etfPy.indexOf('start_date') >= 0 && etfPy.indexOf('end_date') >= 0, '未按日期区间批量');
+});
+test('ETF 批量器字段与东财逐位对齐（元→万元，9列）', function () {
+  ['main_net', 'xl_net', 'l_net', 'm_net', 's_net', 'main_pct', 'close', 'change_pct'].forEach(function (f) {
+    assert.ok(etfPy.indexOf(f) >= 0, '缺字段 ' + f);
+  });
+  assert.ok(etfPy.indexOf('10000.0') >= 0, '未做元→万元换算');
+  assert.ok(etfPy.indexOf('逐位') >= 0 || etfPy.indexOf('完全一致') >= 0, '未声明逐位验证');
+});
+test('ETF 批量器断点续传 + 诚实早期缺口', function () {
+  assert.ok(etfPy.indexOf('fundflow_etf_shards') >= 0, '缺分片续传');
+  assert.ok(etfPy.indexOf('os.replace') >= 0, '缺原子写');
+  assert.ok(etfPy.indexOf('2026-03-16') >= 0, '未标注数据起点');
+  assert.ok(etfPy.indexOf('earlyGapRows') >= 0, '未标注早期缺口');
+  assert.ok(etfPy.indexOf('不填0') >= 0 || etfPy.indexOf('不填 0') >= 0, '未写明诚实原则');
+});
+test('画像脚本三源合并（批量+ETF批量+逐票兜底）并暴露 etfStatus', function () {
+  assert.ok(portraitJs.indexOf('fundflow_etf.jsonl') >= 0, '未读 ETF 批量 jsonl');
+  assert.ok(portraitJs.indexOf('etfStatus') >= 0, '未暴露 etfStatus');
+  assert.ok(portraitJs.indexOf('etfCoveragePct') >= 0, '未暴露 ETF 覆盖率');
+  assert.ok(portraitJs.indexOf('earlyGapRows') >= 0, '未暴露早期缺口');
+});
+test('云端 workflow 接入 ETF 批量抓取与分片同步', function () {
+  assert.ok(yml.indexOf('fetch_etf_ftshare.py') >= 0, 'workflow 未跑 ETF 批量抓取');
+  assert.ok(yml.indexOf('fundflow_etf_shards') >= 0, 'workflow 未同步 ETF 分片');
+  assert.ok(yml.indexOf('fundflow_etf.jsonl') >= 0, 'workflow 未推 ETF 产物到 data');
+});
+test('已生成的 ETF 状态（若存在）覆盖率真实且早期缺口标注', function () {
+  var st = json('learn/evolve/fundflow_etf_status.json', null);
+  if (!st) return; // 尚未回补，跳过（不阻塞）
+  assert.ok(typeof st.etfCoveragePct === 'number' && st.etfCoveragePct >= 0 && st.etfCoveragePct <= 100,
+    'ETF 覆盖率异常');
+  // 抓取中的中间状态（--max-pages 调试）覆盖率为 0，跳过代码数校验
+  if (st.etfCoveragePct > 0) {
+    assert.ok(st.fetchedEtfCodes > 0, 'ETF 抓取代码数应为正');
+  }
+  assert.ok(typeof st.earlyGapRows === 'number', '缺早期缺口行数');
+});
+
 console.log('\n[fundflow-batch] 通过 %d / 失败 %d', passed, failed);
 process.exit(failed ? 1 : 0);
