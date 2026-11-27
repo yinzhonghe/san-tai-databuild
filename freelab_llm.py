@@ -92,20 +92,33 @@ def system_prompt():
         '不要假设它有值，更不要编造数值。\n'
         '6. 纯叙事、暂时无法回测的模型也要保留，但 modelType 写 "narrative"，rule 留空——'
         '验证器会明确标注「自由假设·未工程化」，不会当成跑出的模型。\n\n'
-        '【诚实原则】基线信号级净收益为负（追启动整体亏钱）。你要找能把净收益转正且跑赢基准的条件。'
+        '【四时间维度分类——强制】每条模型必须声明 horizon，四个维度都要推演：\n'
+        '- horizon="month"：按月操作，T收盘买→T+20收盘卖（约1个月），抓中期结构。\n'
+        '- horizon="week"：按周操作，T收盘买→T+5收盘卖。\n'
+        '- horizon="day"：按日操作，T收盘买→T+1收盘卖（次日）。\n'
+        '- horizon="intradayT0"：T0ETF/日内，T开盘买→T收盘卖，只对支持T+0的ETF放行；'
+        '若你的假设用不到ETF或没有日内逻辑，不要硬填这个维度。\n'
+        '画像里 horizons 字段给了四个维度各自的真实基准净收益/胜率/t值，'
+        '你的规则要在对应维度上跑赢该维度基准，不是跑赢T+3基准。\n'
+        '四个维度各至少提 1 条（至多 8 条），每条 thesis 要说清「为什么这个持有期适合这条假设」——'
+        '月线看结构延续、周线看资金节奏、日线看情绪修复、日内看ETF折溢价与T+0规则。\n\n'
+        '【诚实原则】四个维度的基线净收益都是负的（追启动整体亏钱，持有越久亏越多）。'
+        '你要找能把净收益转正且跑赢【对应维度】基准的条件。'
         '不要把少数样本碰巧的高收益当成规律；样本量、覆盖率、稳健性都会被独立验证器严格检查。\n'
         '每条模型写清：thesis（假设）、mechanism（为什么）、falsifier（什么情况证明你错）、'
         'confidence（low/mid/high）、dataUsed（用了画像里的哪些数据）。\n'
-        '至多 6 条模型；严格输出 JSON，无 Markdown 代码块、无前后缀。\n'
+        '至多 8 条模型；严格输出 JSON，无 Markdown 代码块、无前后缀。\n'
         '输出格式：\n'
         '{"models":[{"name":"模型名","modelType":"rule|expression|narrative",'
+        '"horizon":"month|week|day|intradayT0",'
         '"thesis":"一句话假设","mechanism":"推演逻辑","falsifier":"证伪条件",'
         '"confidence":"low|mid|high","dataUsed":["特征名"],'
         '"rule":{"desc":"","when":[{"f":"volSqueeze20","op":"<","v":0.85}],"unless":[],'
         '"expect":"up","deps":["high","low","close"]},'
         '"newFeatures":[{"name":"xxx","expr":"abs(ret5)","reproducible":true}],'
         '"dataNeeds":[]}],'
-        '"oneLine":"当前最值得验证的方向一句话","frontier":"下一步该往哪推演"}'
+        '"oneLine":"当前最值得验证的方向一句话","frontier":"下一步该往哪推演",'
+        '"horizonNotes":{"month":"...","week":"...","day":"...","intradayT0":"..."}}'
     )
 
 
@@ -138,6 +151,8 @@ def build_user_prompt(facts):
         'featurePortrait': feat_pack,
         'byMonth': facts.get('byMonth'),
         'byIndustry': (facts.get('byIndustry') or [])[:15],
+        # 四时间维度真实基准（月/周/日/日内T0），让模型按维度推演并对齐各自基准
+        'horizons': facts.get('horizons'),
         'gaps': facts.get('gaps'),
         'availableFeatures': list(feat.keys()),
         'whitelistFuncs': ['abs', 'min', 'max', 'sqrt', 'sign', 'log1p', 'clamp', 'rank']
@@ -233,6 +248,7 @@ def main():
             'at': stamp, 'origin': 'llm_free', 'model': args.model,
             'status': 'candidate',
             'modelType': m.get('modelType') or 'narrative',
+            'horizon': m.get('horizon') or 'day',   # 四时间维度分类：month/week/day/intradayT0
             'name': m.get('name') or ('自由模型%d' % (i + 1)),
             'thesis': m.get('thesis') or '', 'mechanism': m.get('mechanism') or '',
             'falsifier': m.get('falsifier') or '', 'confidence': m.get('confidence') or 'low',
@@ -252,6 +268,9 @@ def main():
         json.dump(counter, f, ensure_ascii=False, indent=2)
 
     print('[freelab] 已追加 %d 个自由模型候选（status=candidate，待 verify.js 真实验证）' % appended)
+    print('[freelab] 四维度分布：%s' % json.dumps(
+        {h: sum(1 for m in models if (m.get('horizon') or 'day') == h)
+         for h in ('month', 'week', 'day', 'intradayT0')}, ensure_ascii=False))
     print('[freelab] 模型前沿：%s' % (obj.get('frontier') or '（模型未给）'))
     return 0
 
