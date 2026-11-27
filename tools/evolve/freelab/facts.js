@@ -26,6 +26,7 @@ var FULL = path.join(EVO, 'panel.jsonl');
 var CONST = path.join(EVO, 'constitution.json');
 var GAPS = path.join(EVO, 'panel_gaps.json');
 var FUND_PORTRAIT = path.join(LAB, 'fundflow_portrait.json');
+var HORIZON_SAMPLE = path.join(LAB, 'horizon_sample.jsonl');
 var OUT = path.join(LAB, 'facts.json');
 
 function isNum(v) { return typeof v === 'number' && isFinite(v); }
@@ -64,6 +65,54 @@ function bucketize(pairs, nBuckets, baseNet) {
     });
   }
   return out;
+}
+
+/* 四时间维度真实基准：月(d20)/周(d5)/日(d1)/日内T0(intra)，从 horizon_sample 算。
+   与 verify_horizons.js 的口径一致（已扣成本、一字板剔除、T0只放行ETF）。
+   fail-closed：样本不存在返回 null，标缺口不编造。 */
+function computeHorizonBaselines(cost) {
+  var DIMS = [
+    { key: 'month', retKey: 'd20', name: '按月', desc: 'T收盘→T+20收盘' },
+    { key: 'week', retKey: 'd5', name: '按周', desc: 'T收盘→T+5收盘' },
+    { key: 'day', retKey: 'd1', name: '按日', desc: 'T收盘→T+1收盘' },
+    { key: 'intradayT0', retKey: 'intra', name: 'T0ETF·日内', desc: 'T开盘→T收盘（仅T0 ETF）', t0Only: true }
+  ];
+  if (!fs.existsSync(HORIZON_SAMPLE)) {
+    return DIMS.map(function (d) {
+      return { key: d.key, name: d.name, desc: d.desc, note: '缺 horizon_sample.jsonl，请先运行 node tools/evolve/freelab/horizon_sample.js' };
+    });
+  }
+  var st = {};
+  DIMS.forEach(function (d) { st[d.key] = { n: 0, sum: 0, wins: 0, rets: [] }; });
+  fs.readFileSync(HORIZON_SAMPLE, 'utf8').split('\n').forEach(function (line) {
+    if (!line.trim()) return;
+    var s; try { s = JSON.parse(line); } catch (e) { return; }
+    if (s.oneWord) return;
+    DIMS.forEach(function (d) {
+      if (d.t0Only && !s.t0ok) return;
+      var g = s.y && s.y[d.retKey];
+      if (!isNum(g)) return;
+      var net = g - cost, a = st[d.key];
+      a.n++; a.sum += net; if (net > 0) a.wins++; a.rets.push(net);
+    });
+  });
+  return DIMS.map(function (d) {
+    var a = st[d.key];
+    var sd = 0, avg = a.n ? a.sum / a.n : null;
+    if (a.n > 1 && avg != null) {
+      var ss = 0;
+      a.rets.forEach(function (x) { ss += (x - avg) * (x - avg); });
+      sd = Math.sqrt(ss / (a.n - 1));
+    }
+    return {
+      key: d.key, name: d.name, desc: d.desc,
+      samples: a.n,
+      netRet: avg == null ? null : r(avg, 4),
+      winRate: a.n ? r(a.wins / a.n, 4) : null,
+      tStat: (sd > 0 && a.n > 1) ? r(avg / (sd / Math.sqrt(a.n)), 3) : null,
+      note: d.t0Only ? '仅放行名称命中跨境/黄金/债券/货币的T+0 ETF，其余标缺口不编造' : ''
+    };
+  });
 }
 
 function build(useFull) {
@@ -158,6 +207,8 @@ function build(useFull) {
     features: features,
     byMonth: monthList,
     byIndustry: industryList,
+    // 四时间维度真实基准（月/周/日/日内T0），来自 horizon_sample 真实 kline 收益
+    horizons: computeHorizonBaselines(cost),
     // 资金流维度：真实抓取的历史逐日资金流 join panel 样本派生（独立产物，资金猎手补数）
     fundflow: loadJSON(FUND_PORTRAIT, null),
     gaps: {
@@ -178,8 +229,8 @@ function main() {
   var f = build(useFull);
   console.log('[freelab-facts] 源=%s 样本=%d 可交易=%d 真实净收益=%s%% 胜率=%s%%',
     f.source, f.baseline.samples, f.baseline.tradable, f.baseline.measuredNet, f.baseline.measuredWinRate);
-  console.log('[freelab-facts] 特征 %d 个，月份切片 %d，行业切片 %d',
-    Object.keys(f.features).length, f.byMonth.length, f.byIndustry.length);
+  console.log('[freelab-facts] 特征 %d 个，月份切片 %d，行业切片 %d，时间维度 %d',
+    Object.keys(f.features).length, f.byMonth.length, f.byIndustry.length, (f.horizons || []).length);
   console.log('[freelab-facts] 已写入 %s', OUT);
 }
 if (require.main === module) main();
