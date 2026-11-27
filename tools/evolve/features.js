@@ -69,7 +69,14 @@
     ret5:         { label: '5日涨幅', formula: 'close[t]/close[t-5]-1', deps: ['close'], unit: 'pct' },
     ret20:        { label: '20日涨幅', formula: 'close[t]/close[t-20]-1', deps: ['close'], unit: 'pct' },
     ret60:        { label: '60日涨幅', formula: 'close[t]/close[t-60]-1', deps: ['close'], unit: 'pct' },
-    amtTrend:     { label: '额能趋势', formula: 'ret5 的绝对值 × volRamp（放量下跌/放量上涨区分）', deps: ['close', 'volume'], unit: 'pct' }
+    amtTrend:     { label: '额能趋势', formula: 'ret5 的绝对值 × volRamp（放量下跌/放量上涨区分）', deps: ['close', 'volume'], unit: 'pct' },
+    /* 资金流特征（2026-11-27 接入验证闭环）：由 build_fundflow_samples.js 按
+       (code,date) join 真实历史资金流注入样本 f，非 OHLCV 派生。缺数据不写字段，
+       evalRule 判 skip（fail-closed），不填0。仅当用 ff 样本时才有值。 */
+    main5:        { label: '近5日主力净流入(万元)', formula: '资金流源近5日主力净流入求和', deps: ['fundflow'], unit: 'wan' },
+    superRatio5:  { label: '超大单占主力比', formula: '近5日超大单/|近5日主力|, 主力≈0留空', deps: ['fundflow'], unit: 'ratio' },
+    accel:        { label: '资金加速度(万元)', formula: '近5日主力 - 前5日主力', deps: ['fundflow'], unit: 'wan' },
+    mainPctT:     { label: '当日主力净占比(%)', formula: 'T日主力净流入/成交额', deps: ['fundflow'], unit: 'pct' }
   };
 
   /* bars: [{d,o,h,l,c,v}]，按时间升序，末尾为 T 日。
