@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>超跌反弹观察池 · 三态看盘</title>
+<!-- 破缓存自愈：与 index.html 同口径。不能用 ?v=（guard.js 设备码参数）。 -->
+<script>
+(function () {
+  try {
+    var u = new URL(window.location.href);
+    if (!u.searchParams.has('_f')) {
+      u.searchParams.set('_f', '__BUILD_VER__');
+      window.location.replace(u.toString());
+    }
+  } catch (e) {}
+})();
+</script>
 <style>
 :root{--up:#c62828;--down:#0f7b4f;--bg:#f5f7fa;--card:#fff;--line:#e8ecf3;--muted:#8b93a1;--dark:#15181f;--warn:#b42318;--blue:#2f6bff}
 *{box-sizing:border-box}
@@ -17,6 +29,8 @@ body{margin:0;background:var(--bg);color:var(--dark);font:14px/1.6 -apple-system
 .entry:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-2px)}
 .entry.b2{border-top-color:#c62828}
 .entry.b3{border-top-color:#b8860b}
+.entry.b4{border-top-color:#6a1b9a}
+.entry.b5{border-top-color:#00838f}
 .entry .et{font-size:17px;font-weight:700;margin-bottom:6px}
 .entry .ed{font-size:12px;color:#6b7484;line-height:1.7}
 .entry .en{font-size:11px;color:var(--muted);margin-top:10px}
@@ -203,7 +217,7 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
 <div class="wrap">
   <div class="hd">
     <h1>超跌反弹观察池</h1>
-    <div class="sub">三个独立板块 · 数据与三态看盘主站分离 · 仅供研究参考</div>
+    <div class="sub">四个独立板块 · 数据与三态看盘主站分离 · 仅供研究参考</div>
   </div>
 
   <div class="entries" id="entries">
@@ -219,8 +233,18 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     </div>
     <div class="entry b3" data-page="p3">
       <div class="et">③ 新发涨停观察</div>
-      <div class="ed">与主站同源的「启动·新发」：实时股价 + 每日真实台账。统计规律只从主站信号累积，样本不够就明确写积累中。</div>
+      <div class="ed">与主站同口径的「启动·新发」判定：阶段按实时涨跌分档，但启动天数/六派票数来自启动池快照基准日，主站则每次打开按当日行情重算，两页数值可能不同。统计规律只从主站信号累积，样本不够就明确写积累中。</div>
       <div class="en" id="en3">— 只新发</div>
+    </div>
+    <div class="entry b4" data-page="p4">
+      <div class="et">④ 提前预警 · 自进化</div>
+      <div class="ed">目标：盘整→启动前 1~3 天识别。派生新特征 + 新规则，双门槛裁判（命中率 Wilson 下界 + 3日收益），每天汇总改进与缺口。三态主站不动。</div>
+      <div class="en" id="en4">— 规则</div>
+    </div>
+    <div class="entry b5" data-page="p5">
+      <div class="et">⑤ 自由推演 · 实验室</div>
+      <div class="ed">与④平行独立：把真实样本整理成市场画像，让大模型【不受六派/白名单约束】自由提任意模型，再用同一套真实结算器逐条验钱。自由度在假设，严格度在验证。</div>
+      <div class="en" id="en5">— 模型</div>
     </div>
   </div>
 
@@ -368,20 +392,98 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     </details>
   </div>
 
+  <!-- 板块④：提前预警 · 自进化（三态主站完全不动，独立数据与裁判） -->
+  <div class="page" id="p4">
+    <div class="back" data-back>‹ 返回板块选择</div>
+    <div class="warnbox"><b>⚠ 这是研究性自进化，不是荐股。</b>所有数字来自历史回测 + 影子裁判，非实盘前瞻收益。样本不足只写「积累中」，缺数据如实标注缺口、绝不编造。不构成投资建议。</div>
+
+    <div id="evSummary" style="font-size:12.5px;line-height:1.85;background:#fffdf5;border:1px solid #e8dfae;border-left:4px solid #c9a227;border-radius:8px;padding:12px 14px;margin-bottom:14px;color:#4a4231"></div>
+
+    <div class="sec-t">目标与标尺 <span class="tag" id="evDate">—</span></div>
+    <div id="evGoal" style="font-size:12px;color:#4a5361;line-height:1.7;background:#f6f8fb;border:1px solid #e3e9f2;border-radius:8px;padding:10px 12px;margin-bottom:12px"></div>
+
+    <div class="sec-t">① 今天改进了哪些 <span class="tag" id="evChangeTag">—</span></div>
+    <div id="evImprovements"></div>
+
+    <div class="sec-t" style="margin-top:14px">② 胜率提升（实际 vs 固定 baseline）</div>
+    <div id="evWinRate"></div>
+
+    <div class="sec-t" style="margin-top:14px">③ 数据缺口（缺什么就不猜什么）</div>
+    <div id="evGaps"></div>
+
+    <div class="sec-t" style="margin-top:14px">④ 下一步从哪入手</div>
+    <div id="evNext"></div>
+
+    <details style="margin-top:16px"><summary>口径与红线（展开）</summary>
+      <p><b>标签</b>：T+1~T+3 出现放量突破（涨幅≥6%/12%/18% 且量≥前5日均量1.3倍）或非一字涨停；一字板（开=高=低=收=涨停价）剔除，买不进就不算。</p>
+      <p><b>双裁判</b>：命中率 Wilson 95% 下界 &gt; baseline，且 3 日收益 &gt; baseline+0.1%。两个都要过，只看命中率会自欺。</p>
+      <p><b>防过拟合</b>：最近 20 个交易日作独立验证段，全样本与验证段都达标才准写回；影子期≥10日、每日最多改2条、连续3日跑输自动回滚、全程版本留痕。</p>
+      <p><b>数据边界</b>：历史用 250 日 K 线含量截面 + 长历史 OHLC 形态；行业相对强度用同日行业中位数。资金流/一字板历史等缺源由数据猎手找，取不到就标缺口。</p>
+      <p>候选规则 status=candidate，经裁判才可能进打分；本模块不改三态主站任何逻辑。</p>
+    </details>
+  </div>
+
+  <!-- 板块⑤：自由推演实验室（与④平行独立，大模型自由提模型 + 真实结算验钱） -->
+  <div class="page" id="p5">
+    <div class="back" data-back>‹ 返回板块选择</div>
+    <div class="warnbox"><b>⚠ 这是研究性自由推演，不是荐股，与板块④的证据包自进化相互独立。</b>大模型可自由提出任意模型假设，但能否算「跑出模型」一律由真实历史回测说了算——含幸存者偏差与过拟合风险，非实盘前瞻收益，不构成投资建议。</div>
+
+    <div id="flSummary" style="font-size:12.5px;line-height:1.85;background:#f2fbfc;border:1px solid #bfe3e6;border-left:4px solid #00838f;border-radius:8px;padding:12px 14px;margin-bottom:14px;color:#224b50"></div>
+
+    <div class="sec-t">① 大模型自由推演了什么 <span class="tag" id="flDate">—</span></div>
+    <div id="flPortrait" style="font-size:12px;color:#3a4a52;line-height:1.75;background:#f7fafc;border:1px solid #e3e9ee;border-radius:8px;padding:10px 12px;margin-bottom:12px"></div>
+
+    <div class="sec-t" style="margin-top:14px">② 跑出了什么（真实结算逐条验钱）</div>
+    <div id="flModels"></div>
+
+    <div class="sec-t" style="margin-top:14px">③ 市场画像 · 特征分档真实净收益</div>
+    <div id="flFeatures"></div>
+
+    <div class="sec-t" style="margin-top:14px">④ 数据切片 · 月度 / 行业</div>
+    <div id="flSlices"></div>
+
+    <div class="sec-t" style="margin-top:14px">⑤ 资金流维度 · 主力资金在做什么（真实抓取）</div>
+    <div id="flFundflow"></div>
+
+    <div class="sec-t" style="margin-top:14px">⑥ 往哪努力</div>
+    <div id="flNext"></div>
+
+    <details style="margin-top:16px"><summary>口径与红线（展开）</summary>
+      <p><b>自由度</b>：大模型读市场画像（每个特征分 5 档的真实净收益/胜率/超额 + 月度/行业切片），可不受六派理论与白名单草图约束，自由提单条件、多条件组合、市场状态机、新特征表达式或纯叙事假设，可声明所需新数据。</p>
+      <p><b>严格度</b>：任何模型能否算「跑出」由独立验证器用真实样本判定——规则合法性 → 新特征可复现(覆盖率≥95%) → 宪法封印 → 信号级逐条算钱(T买T+3卖、一字板剔除、扣0.31%成本) → 五关(净收益>0、t≥3、Wilson下界≥50%、覆盖率≥2%、跑赢持有基准)。</p>
+      <p><b>诚实</b>：没跑出就写没跑出；叙事假设标「待工程化」不计入；缺数据标缺口、不拿0顶替。全部历史回测含幸存者偏差与过拟合，非前瞻收益。</p>
+      <p><b>独立</b>：本模块状态全在 learn/evolve/freelab/，不改宪法封印、不改 population/heartbeat、不改三态主站，与板块④互不影响。</p>
+    </details>
+  </div>
+
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611251545"></script>
+<script src="echarts.min.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611251545"></script>
-<script src="fundflow.js?v=202611251545"></script>
-<script src="state-phase.js?v=202611251545"></script>
+<script src="data-service.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+<script src="fundflow.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+<script src="state-phase.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+<script src="evolve_report.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+<script src="freelab_report.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
-var AB_LOCAL_V = '?v=202611251545';
+/* 本地快照回退路径同样要带 sharecode，否则分享站点回「链接不完整」403 */
+var AB_LOCAL_V = '?v=202611271408&sharecode=EPDR6ET2KO';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
+/* 深链统一入口：分享站点对每个顶层导航都校验 ?sharecode=，
+   少了就回 403「链接不完整」。从当前地址取（更通用），取不到再用固定兜底。
+   所有 window.open('index.html#/lens...') 必须走这里，别再手写 URL。 */
+var AB_SHARECODE = (function () {
+  try { return new URLSearchParams(location.search).get('sharecode') || ''; } catch (e) { return ''; }
+})() || 'EPDR6ET2KO';
+function abLensUrl(code) {
+  return 'index.html?sharecode=' + encodeURIComponent(AB_SHARECODE)
+    + '#/lens?code=' + encodeURIComponent(code || '');
+}
+function abOpenLens(code) { window.open(abLensUrl(code), '_blank'); }
 function abLoad(url) {
   return new Promise(function (res, rej) {
     var s = document.createElement('script');
@@ -443,7 +545,7 @@ function abBoot() {
     document.getElementById('waitList').innerHTML = w1.map(card1).join('');
     document.querySelectorAll('[data-open]').forEach(function (el) {
       el.addEventListener('click', function () {
-        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-open')), '_blank');
+        abOpenLens(el.getAttribute('data-open'));
       });
     });
   }
@@ -502,6 +604,17 @@ function abBoot() {
     var c = f.yi > 0 ? 'red' : f.yi < 0 ? 'green' : '';
     return '<div title="' + esc(f.label || '') + '"><span class="k">主力资金</span>'
       + '<span class="v ' + c + '">' + (f.yi > 0 ? '+' : '') + Number(f.yi).toFixed(2) + '亿</span></div>';
+  }
+  /* 快照陈旧度按「当前日期 - 数据基准日」实时计算，不用生成时冻结的 L.staleDays，
+     否则 11-25 生成后到了 11-27 仍显示 staleDays=1，过期告警永远不触发。 */
+  function snapshotStaleDays(asOf) {
+    if (!asOf) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(asOf).slice(0, 10));
+    if (!m) return null;
+    var base = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+    var now = new Date();
+    var today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    return Math.max(0, Math.round((today - base) / 86400000));
   }
   /* 与主站同一份阶段判定：候选 + 实时报价 → 新发 / 观察 / 退化 */
   function luGroups() {
@@ -776,7 +889,8 @@ function abBoot() {
       + luCell('RRG象限', esc(x.rrg || '—'))
       + luFundCell(x)
       + luCell('板块', esc(x.ind || '—')) + '</div>'
-      + '<div class="lu-advice"><b>主站信号</b>：' + esc(sg.join(' · '))
+      + '<div class="lu-advice"><b>启动池信号</b>（快照基准 ' + esc((window.AB_LIMITUP && window.AB_LIMITUP.asOf) || '—')
+      + '；天数/六派为当时快照，阶段按当前实时涨跌分档，与主站逐日重算值可能不同）：' + esc(sg.join(' · '))
       + (x._hit && x._hit.length ? '<br><b>命中条件</b>：' + esc(x._hit.join('、')) : '')
       + (x._negHit && x._negHit.length ? '<br><b>负向条件</b>：' + esc(x._negHit.join('、')) : '')
       + (x._phase && x._phase.t !== '新发' ? '<br><b>阶段降级</b>：' + esc(x._phase.why) : '')
@@ -801,7 +915,7 @@ function abBoot() {
     }).join('') : '<div style="color:#8b93a1">当前没有候选被降级。</div>';
     Array.prototype.forEach.call(el.querySelectorAll('[data-luopen]'), function (node) {
       node.addEventListener('click', function () {
-        window.open('index.html#/lens?code=' + encodeURIComponent(node.getAttribute('data-luopen')), '_blank');
+        abOpenLens(node.getAttribute('data-luopen'));
       });
     });
   }
@@ -978,7 +1092,7 @@ function abBoot() {
     setHTML('luDispList', html);
     Array.prototype.forEach.call(document.querySelectorAll('[data-dispopen]'), function (el) {
       el.addEventListener('click', function () {
-        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-dispopen')), '_blank');
+        abOpenLens(el.getAttribute('data-dispopen'));
       });
     });
   }
@@ -1024,7 +1138,7 @@ function abBoot() {
       ? ('启动观察里没有匹配「' + esc(luQuery) + '」的标的。') : '该档今天没有标的。') + '</div>');
     Array.prototype.forEach.call(document.querySelectorAll('[data-obsopen]'), function (el) {
       el.addEventListener('click', function () {
-        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-obsopen')), '_blank');
+        abOpenLens(el.getAttribute('data-obsopen'));
       });
     });
   }
@@ -1070,7 +1184,7 @@ function abBoot() {
     setHTML('luWatchList', html);
     Array.prototype.forEach.call(document.querySelectorAll('[data-watchopen]'), function (el) {
       el.addEventListener('click', function () {
-        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-watchopen')), '_blank');
+        abOpenLens(el.getAttribute('data-watchopen'));
       });
     });
   }
@@ -1088,7 +1202,7 @@ function abBoot() {
     set('en3', allList.length + ' 只（新发+观察+健康）· 基准 ' + (L.asOf || ''));
     set('luCount', allList.length + '只');
     set('luAsOf', '数据基准 ' + (L.asOf || '') + ' · 生成 ' + (L.generatedAt || ''));
-    var stale = L.staleDays;
+    var stale = snapshotStaleDays(L.asOf);
     var newN = (G['新发'] || []).length, obsN = (G['观察'] || []).length, healthN = (G['健康'] || []).length;
     var canN = allList.filter(function (x) { return x._action === '可参与'; }).length;
     set('luFunnel', '启动池 ' + allList.length + ' 只（启动新发 ' + newN + ' / 启动观察 ' + obsN + ' / 启动健康 ' + healthN + '；退化不展示、不进统计）'
@@ -1167,7 +1281,7 @@ function abBoot() {
         : '该档今天没有标的。宁可空仓，不要为凑数去追弱票。') + '</div>';
     Array.prototype.forEach.call(document.querySelectorAll('[data-luopen]'), function (el) {
       el.addEventListener('click', function () {
-        window.open('index.html#/lens?code=' + encodeURIComponent(el.getAttribute('data-luopen')), '_blank');
+        abOpenLens(el.getAttribute('data-luopen'));
       });
     });
     // 每日台账
@@ -1423,6 +1537,280 @@ function abBoot() {
   });
   renderP2();
 }
+
+/* ===== 板块④：提前预警·自进化 汇报渲染（独立，不依赖云端数据） ===== */
+(function renderEvolve() {
+  var R = window.AB_EVOLVE_REPORT;
+  var box = function (id, html) { var e = document.getElementById(id); if (e) e.innerHTML = html; };
+  var fmt = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d == null ? 2 : d) : '—'; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+
+  if (!R) {
+    box('evSummary', '<span style="color:#a08b00">自进化汇报数据（evolve_report.js）未加载。请先运行 tools/evolve/report.js 生成，再重建发布。</span>');
+    box('evGoal', '<span style="color:#a08b00">自进化汇报数据（evolve_report.js）未加载。请先运行 tools/evolve/report.js 生成，再重建发布。</span>');
+    box('evImprovements', '<div class="card" style="color:#8b93a1">无数据</div>');
+    box('evWinRate', '<div class="card" style="color:#8b93a1">无数据</div>');
+    box('evGaps', '<div class="card" style="color:#8b93a1">无数据</div>');
+    box('evNext', '<div class="card" style="color:#8b93a1">无数据</div>');
+    return;
+  }
+
+  // 报告生成日 ≠ 数据基准日：数据根基必须标注真实 asOf，避免「看着新、其实旧」。
+  var dataAsOf = R.dataAsOf || '';
+  var dataLabel = dataAsOf
+    ? '数据基准 ' + esc(dataAsOf.slice(0, 4) + '-' + dataAsOf.slice(4, 6) + '-' + dataAsOf.slice(6, 8))
+    : '数据基准未知';
+  var staleDays = dataAsOf ? Math.max(0, Math.round((Date.now() - Date.parse(dataAsOf.slice(0, 4) + '-' + dataAsOf.slice(4, 6) + '-' + dataAsOf.slice(6, 8) + 'T00:00:00+08:00')) / 86400000)) : null;
+  box('evDate', '报告 ' + esc(R.at) + ' · ' + dataLabel
+    + (staleDays != null && staleDays > 1 ? ' <span style="color:#c62828">（滞后 ' + staleDays + ' 天）</span>' : '')
+    + (R.version === 'v2' ? ' · v2 证据包' : ''));
+  var b = R.baseline || {};
+  var v2 = R.version === 'v2';
+  // 「一眼看懂」摘要：状态 / 干了什么 / 什么结果 / 往哪努力（数据来自 report.summary）
+  if (R.summary) {
+    var S2 = R.summary;
+    box('evSummary', '<div style="font-weight:700;color:#7a6313;margin-bottom:6px;letter-spacing:.3px">一眼看懂：自进化现在到底怎么样了</div>'
+      + '<div style="margin-bottom:5px"><b>① 什么状态</b>　' + esc(S2.state) + '</div>'
+      + '<div style="margin-bottom:5px"><b>② 干了什么</b>　' + esc(S2.did) + '</div>'
+      + '<div style="margin-bottom:5px"><b>③ 什么结果</b>　' + esc(S2.result) + '</div>'
+      + '<div><b>④ 往哪努力</b>　' + esc(S2.direction) + '</div>');
+  }
+  box('evGoal', v2
+    ? '<div>目标：<b>' + esc(R.goal || '信号级净收益>0，统计稳健') + '</b></div>'
+      + '<div style="margin-top:5px">信号级标尺（' + (b.n || 0).toLocaleString() + ' 条' + (b.nFrozen === false ? ' 全样本冻结口径' : '') + '，每个信号都算钱、扣 0.31% 成本）：'
+      + '平均净收益 <b style="color:' + ((b.signalRet3 || 0) < 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(b.signalRet3, 3) + '%</b>，'
+      + '胜率 <b>' + fmt((b.winRate || 0)) + '%</b>。追启动整体亏钱，所以必须净收益转正才准启用。</div>'
+      + '<div style="margin-top:5px;font-size:11px;color:#8b93a1">宪法封印 ' + (R.sealOk ? '<span style="color:#0f7b4f">✓ 有效</span>' : '<span style="color:#c62828">✗ 失效·拒绝运行</span>')
+      + ' · 第 ' + ((R.population || {}).generation || 0) + ' 代 · 累计试验 ' + ((R.population || {}).trialTotal || 0) + ' 次'
+      + (R.validation && R.validation.holdoutDays ? ' · 验证段 ' + R.validation.holdoutDays + ' 日 × ≥' + (R.validation.minSegments || 3) + ' 段不重叠' : '') + '</div>'
+      + (R.llmOneLine ? '<div style="margin-top:5px;color:#6a1b9a">模型一句话：' + esc(R.llmOneLine) + '</div>' : '')
+    : '<div>目标：<b>盘整→启动前 1~3 天识别可交易启动</b>；引擎 state 切换仅作提前量参照。</div>'
+      + '<div style="margin-top:5px">固定标尺：命中率 <b>' + fmt(b.hitRate) + '%</b>，3 日平均收益 <b>' + fmt(b.avgRet3, 3) + '%</b>。</div>');
+
+  var cnt = v2 ? (R.population || {}) : (R.ruleCount || {});
+  box('evChangeTag', '启用 ' + (cnt.active || 0) + ' · 影子 ' + (cnt.shadow || 0) + (cnt.trialTotal != null ? ' · 试验 ' + cnt.trialTotal : ''));
+  var imps = (R.improvements || []).slice(0, 12);
+  if (!imps.length) {
+    box('evImprovements', '<div class="card" style="color:#8b93a1">还没有规则候选。当前样本 ' + (b.n || 0).toLocaleString() + ' 条。</div>');
+  } else {
+    box('evImprovements', imps.map(function (x) {
+      var active = x.status === 'active';
+      var badge = active ? '<span class="tag tag-ready">已启用</span>' : '<span class="tag">影子·未证伪</span>';
+      if (v2) {
+        var netOk = (x.netRet3 || 0) > 0;
+        return '<div class="card" style="margin-bottom:8px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12.5px">' + esc(x.id) + '</b>' + badge + '</div>'
+          + '<div style="font-size:12px;color:#6b7484;margin:4px 0">' + esc(x.desc) + (x.origin ? ' · ' + esc(x.origin) : '') + '</div>'
+          + '<div style="font-size:12px;line-height:1.8">净收益 <b style="color:' + (netOk ? '#0f7b4f' : '#c62828') + '">' + fmt(x.netRet3, 3) + '%</b>'
+          + ' · Wilson胜率下界 <b>' + fmt(x.wilson) + '%</b> · t <b>' + fmt(x.tStat) + '</b>'
+          + ' · 覆盖率 ' + fmt(x.coverage) + '% · 最差段 ' + fmt(x.worstSeg, 3) + '%</div>'
+          + '<div style="font-size:11px;color:#8b93a1;margin-top:3px">样本 ' + (x.n || 0).toLocaleString()
+          + ' · 第 ' + (x.generation || 0) + ' 代 · 父本 ' + ((x.parentIds || []).length ? esc((x.parentIds || []).join(', ')) : '人类种子')
+          + ' · 硬验证 ' + esc(x.hardGate || '—') + ' · 软裁判 ' + esc(x.softJudge || '—')
+          + (x.ablation && x.ablation.noise && x.ablation.noise.length ? ' · 噪声条件 ' + x.ablation.noise.length + ' 个（待删）' : '') + '</div>'
+          + '</div>';
+      }
+      var dHit = x.hitDelta, dRet = x.retDelta;
+      var gain = (dHit != null && dHit > 0) ? '#0f7b4f' : '#c62828';
+      return '<div class="card" style="margin-bottom:8px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center"><b>' + esc(x.id) + '</b>' + badge + '</div>'
+        + '<div style="font-size:12px;color:#6b7484;margin:4px 0">' + esc(x.desc) + '</div>'
+        + '<div style="font-size:12px;line-height:1.8">命中率 ' + fmt(x.hitRate) + '% '
+        + '(<span style="color:' + gain + '">' + (dHit > 0 ? '+' : '') + fmt(dHit) + 'pp</span>) · '
+        + '3日收益 ' + fmt(x.ret3, 3) + '% '
+        + '(<span style="color:' + ((dRet || 0) > 0 ? '#0f7b4f' : '#c62828') + '">' + (dRet > 0 ? '+' : '') + fmt(dRet, 3) + 'pp</span>) · '
+        + '样本 ' + (x.n || 0) + ' · Wilson下界 ' + fmt(x.wilson) + '%</div>'
+        + '</div>';
+    }).join(''));
+  }
+
+  if (v2) {
+    if (!R.hasActive) {
+      var best = imps[0];
+      box('evWinRate', '<div class="card" style="color:#a08b00">积累中：<b>启用 0 条</b>——所有候选未过「净收益&gt;0 + t≥3 + 覆盖率 + 跑赢基准」四关，不报胜率提升百分比（避免小样本与多重检验自欺）。'
+        + (best ? '<br>当前最接近：净收益 ' + fmt(best.netRet3, 3) + '%、t=' + fmt(best.tStat) + '（t 未达 3，仍不准启用）。' : '') + '</div>');
+    } else {
+      var top = imps.filter(function (x) { return x.status === 'active'; })[0];
+      box('evWinRate', '<div class="card" style="line-height:1.9">'
+        + '最佳启用规则净收益 <b style="color:#0f7b4f">' + fmt(top.netRet3, 3) + '%</b> · '
+        + 'baseline <b style="color:#c62828">' + fmt(b.signalRet3, 3) + '%</b> · '
+        + '差值 <b>' + (top.netDelta > 0 ? '+' : '') + fmt(top.netDelta, 3) + 'pp</b>'
+        + '<br>Wilson 胜率下界 <b>' + fmt(top.wilson) + '%</b> · t <b>' + fmt(top.tStat) + '</b> · '
+        + '跑赢持有基准 <b>' + (top.excessOverHold == null ? '—' : fmt(top.excessOverHold, 3) + 'pp') + '</b></div>'
+        + '<div style="font-size:11px;color:#8b93a1;margin-top:5px">口径：信号级历史回测 + kernel 裁判，已扣成本、含幸存者偏差，非实盘前瞻收益。</div></div>');
+    }
+    var hb2 = R.heartbeat || {};
+    var dh = R.dailyHistory || [];
+    box('evGaps', (R.dataGaps || []).map(function (g) {
+      var st = g.status === 'found_throttled' ? '<span class="tag tag-wait">已找到·限流</span>'
+        : g.status === 'partial' ? '<span class="tag tag-wait">部分缺失</span>' : '<span class="tag">待搜索</span>';
+      return '<div class="card" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between"><b style="font-size:13px">' + esc(g.label) + '</b>' + st + '</div>'
+        + '<div style="font-size:11.5px;color:#6b7484;margin-top:3px;line-height:1.7">' + esc(g.note) + '</div></div>';
+    }).join('') + '<div class="card" style="font-size:11.5px;color:#8b93a1;margin-top:6px">心跳 ' + esc(hb2.status) + ' · '
+      + (dh.length ? '最近 ' + dh.length + ' 代：' + dh.map(function (d) { return '第' + d.gen + '代(启用' + d.active + ')'; }).join('、') : '暂无演化记录') + '</div>');
+    var nexts2 = R.nextSteps || [];
+    box('evNext', nexts2.length ? '<div class="card"><ol style="margin:0;padding-left:20px;line-height:2;font-size:12.5px">'
+      + nexts2.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol></div>'
+      : '<div class="card" style="color:#8b93a1">活体池持续考核中。</div>');
+    return;   // v2 分支已处理完 evGaps/evNext
+  }
+
+  var rr = R.rolling || {};
+  if (!R.enough || (rr.samples || 0) < 1) {
+    box('evWinRate', '<div class="card" style="color:#a08b00">积累中：滚动 20 日 active 规则样本不足，暂不报胜率提升百分比（避免小样本自欺）。</div>');
+  } else {
+    var delta = (rr.hitRate != null && b.hitRate != null) ? rr.hitRate - b.hitRate : null;
+    box('evWinRate', '<div class="card"><div style="line-height:1.9">'
+      + '滚动 ' + (rr.days || 0) + ' 日实际命中率 <b>' + fmt(rr.hitRate) + '%</b> · '
+      + '固定 baseline <b>' + fmt(b.hitRate) + '%</b></div>'
+      + '<div style="font-size:11px;color:#8b93a1;margin-top:5px">口径：历史回测 + 影子裁判，非实盘前瞻收益。</div></div>');
+  }
+
+  var gaps = R.dataGaps || [];
+  box('evGaps', gaps.length ? gaps.map(function (g) {
+    var st = g.status === 'found_throttled' ? '<span class="tag tag-wait">已找到·限流</span>'
+      : g.status === 'partial' ? '<span class="tag tag-wait">部分缺失</span>' : '<span class="tag">待搜索</span>';
+    return '<div class="card" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between"><b style="font-size:13px">' + esc(g.label) + '</b>' + st + '</div>'
+      + '<div style="font-size:11.5px;color:#6b7484;margin-top:3px;line-height:1.7">' + esc(g.note) + '</div></div>';
+  }).join('') : '<div class="card" style="color:#0f7b4f">当前无数据缺口。</div>');
+
+  var nexts = R.nextSteps || [];
+  box('evNext', nexts.length ? '<div class="card"><ol style="margin:0;padding-left:20px;line-height:2;font-size:12.5px">'
+    + nexts.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol></div>'
+    : '<div class="card" style="color:#8b93a1">等待样本积累与模型触发。</div>');
+})();
+
+/* ===== 板块⑤：自由推演实验室 汇报渲染（与④独立，读 freelab_report.js） ===== */
+(function renderFreeLab() {
+  var R = window.AB_FREELAB_REPORT;
+  var box = function (id, html) { var e = document.getElementById(id); if (e) e.innerHTML = html; };
+  var fmt = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d == null ? 3 : d) : '—'; };
+  var pct1 = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? (v * 100).toFixed(d == null ? 2 : d) + '%' : '—'; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+
+  if (!R) {
+    box('flSummary', '<span style="color:#a08b00">自由推演报告（freelab_report.js）未加载。请先运行 node tools/evolve/freelab/report.js 再重建发布。</span>');
+    ['flPortrait','flModels','flFeatures','flSlices','flFundflow','flNext'].forEach(function (id) {
+      box(id, '<div class="card" style="color:#8b93a1">无数据</div>');
+    });
+    return;
+  }
+  var S = R.summary || {};
+  var dataAsOf = R.dataAsOf || '';
+  var dLabel = dataAsOf ? (dataAsOf.slice(0, 4) + '-' + dataAsOf.slice(4, 6) + '-' + dataAsOf.slice(6, 8)) : '未知';
+  var stale = dataAsOf ? Math.max(0, Math.round((Date.now() - Date.parse(dLabel + 'T00:00:00+08:00')) / 86400000)) : null;
+  box('flDate', '报告 ' + esc(R.at) + ' · 数据基准 ' + esc(dLabel)
+    + (stale != null && stale > 1 ? ' <span style="color:#c62828">（滞后 ' + stale + ' 天）</span>' : ''));
+  var en5 = document.getElementById('en5');
+  if (en5) en5.textContent = (R.verified ? R.verified.modelCount : 0) + ' 个模型 · 跑出 ' + (R.verified ? R.verified.passedCount : 0);
+
+  // 一眼看懂：和④完全同构的四行摘要
+  box('flSummary', '<div style="font-weight:700;color:#00695c;margin-bottom:6px;letter-spacing:.3px">一眼看懂：自由推演现在到底怎么样了</div>'
+    + '<div style="margin-bottom:5px"><b>① 什么状态</b>　' + esc(S.state) + '</div>'
+    + '<div style="margin-bottom:5px"><b>② 干了什么</b>　' + esc(S.did) + '</div>'
+    + '<div style="margin-bottom:5px"><b>③ 什么结果</b>　' + esc(S.result) + '</div>'
+    + '<div><b>④ 往哪努力</b>　' + esc(S.direction) + '</div>');
+
+  var b = R.baseline || {};
+  box('flPortrait', '<div>数据来源：' + esc((b.samples || 0).toLocaleString()) + ' 条真实信号 · '
+    + esc(R.window && R.window.firstDate || '—') + ' 至 ' + esc(R.window && R.window.lastDate || '—')
+    + ' · 可交易 ' + esc((b.tradable || 0).toLocaleString()) + ' 条（一字板剔除 ' + esc(b.skippedOneWord || 0)
+    + '、无数据 ' + esc(b.skippedNoData || 0) + '）</div>'
+    + '<div style="margin-top:5px">全市场追启动实测净收益 <b style="color:#c62828">' + fmt(b.measuredNet) + '%</b>，'
+    + '胜率 <b>' + pct1(b.measuredWinRate) + '</b>，扣 ' + fmt(b.costPct, 2) + '% 成本。'
+    + '大模型读的就是这份真实画像——每个特征分 5 档逐档算钱，再按月份/行业切片。</div>'
+    + (R.oneLine ? '<div style="margin-top:5px;color:#6a1b9a">模型前沿：' + esc(R.oneLine) + '</div>' : ''));
+
+  // 模型列表：按 verdict 上色。红=跑出（中国习惯涨红），灰=未证明，紫=自由假设
+  var V = R.verified || {};
+  var models = V.models || [];
+  if (!models.length) {
+    box('flModels', '<div class="card" style="color:#a08b00">尚未首次推演：当前只有真实市场画像。'
+      + '配置 LLM_API_KEY 后运行 <code>python github_ci/freelab_llm.py</code>，让大模型读画像自由提模型。</div>');
+  } else {
+    box('flModels', models.map(function (m) {
+      var x = m.metrics || {};
+      var tag, color, bd;
+      if (m.verdict === 'PASSED') { tag = '✓ 跑出'; color = '#c62828'; bd = 'border-left:4px solid #c62828'; }
+      else if (m.verdict === 'NOT_PROVEN') { tag = '未证明'; color = '#8b93a1'; bd = 'border-left:4px solid #c8cfda'; }
+      else if (m.verdict === 'FREE_HYPOTHESIS') { tag = '自由假设·待工程化'; color = '#6a1b9a'; bd = 'border-left:4px solid #6a1b9a'; }
+      else { tag = '拒绝'; color = '#b42318'; bd = 'border-left:4px solid #b42318'; }
+      var headline = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'
+        + '<b style="font-size:12.5px">' + esc(m.name || m.id) + '</b>'
+        + '<span class="tag" style="background:' + color + '1a;color:' + color + '">' + tag + '</span></div>';
+      var thesis = '<div style="font-size:11.5px;color:#6b7484;margin:4px 0;line-height:1.7">' + esc(m.thesis || '') + '</div>';
+      var metrics = (m.verdict === 'PASSED' || m.verdict === 'NOT_PROVEN')
+        ? '<div style="font-size:12px;line-height:1.8">净收益 <b style="color:' + ((x.netRet3 || 0) > 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(x.netRet3) + '%</b>'
+          + ' · t <b>' + fmt(x.tStat, 2) + '</b> · 覆盖率 <b>' + fmt(x.coverage, 2) + '%</b>'
+          + ' · 样本 ' + esc((x.n || 0).toLocaleString()) + ' · Wilson下界 <b>' + pct1(x.wilsonLower) + '</b>'
+          + ' · 超额 <b>' + fmt(x.excessOverHold) + 'pp</b></div>'
+        : '';
+      var reason = '<div style="font-size:11px;color:#8b93a1;margin-top:3px">' + esc(m.reason || '') + '</div>';
+      var fals = m.falsifier ? '<div style="font-size:11px;color:#6b7484;margin-top:3px">证伪条件：' + esc(m.falsifier) + '</div>' : '';
+      var needs = (m.dataNeeds && m.dataNeeds.length) ? '<div style="font-size:11px;color:#a1621a;margin-top:3px">待补数据：' + esc(m.dataNeeds.join('、')) + '</div>' : '';
+      return '<div class="card" style="margin-bottom:8px;' + bd + '">' + headline + thesis + metrics + reason + fals + needs + '</div>';
+    }).join(''));
+  }
+
+  // 画像亮点：每个特征分档的极差（数据里真实存在的结构）
+  var hi = R.portraitHighlights || [];
+  box('flFeatures', hi.length ? hi.map(function (h) {
+    return '<div class="card" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between"><b style="font-size:12.5px">' + esc(h.label) + ' <span style="color:#8b93a1;font-weight:400">(' + esc(h.key) + ')</span></b>'
+      + '<span class="tag">分档极差 ' + fmt(h.spread) + 'pp</span></div>'
+      + '<div style="font-size:11.5px;color:#6b7484;margin-top:4px">最好第 ' + esc(h.bestBucket) + ' 档净收益 <b style="color:#c62828">' + fmt(h.bestNet) + '%</b>'
+      + ' · 最差第 ' + esc(h.worstBucket) + ' 档 <b style="color:#0f7b4f">' + fmt(h.worstNet) + '%</b>'
+      + ' · 覆盖率 ' + pct1(h.coverage) + '</div></div>';
+  }).join('') : '<div class="card" style="color:#8b93a1">画像未生成。</div>');
+
+  // 月度 / 行业切片
+  var mo = R.byMonth || [], ind = R.byIndustry || [];
+  var sliceHtml = '<div class="card"><div style="font-size:12px;font-weight:600;margin-bottom:6px">月度净收益（真实）</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px">' + mo.map(function (m) {
+      return '<div style="background:' + ((m.net || 0) > 0 ? '#fdecec' : '#f3f7f5') + ';border-radius:6px;padding:4px 8px;font-size:11px">'
+        + esc(m.key) + ' <b style="color:' + ((m.net || 0) > 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(m.net) + '%</b></div>';
+    }).join('') + '</div></div>';
+  if (ind.length) {
+    sliceHtml += '<div class="card" style="margin-top:8px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">行业净收益 · 最好 5 / 最差 5</div>'
+      + ind.slice(0, 5).concat(ind.slice(-5)).map(function (m) {
+        return '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#6b7484">'
+          + '<span>' + esc(m.key) + ' <span style="color:#a8b0bb">(' + esc(m.n) + ')</span></span>'
+          + '<b style="color:' + ((m.net || 0) > 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(m.net) + '%</b></div>';
+      }).join('') + '</div>';
+  }
+  box('flSlices', sliceHtml);
+
+  // ⑤ 资金流维度：真实抓取的历史逐日主力资金 + join 画像（未覆盖标缺口）
+  var FF = R.fundflow;
+  if (FF) {
+    var ffHtml = '<div class="card" style="font-size:12px;line-height:1.9">'
+      + '<div style="color:#37474f;margin-bottom:6px">真实抓取 <b style="color:#00695c">' + esc(FF.fetchedCodes) + '</b> 只票的逐日五档资金流，'
+      + 'join <b>' + esc(FF.joinedRows) + '</b> 条样本（覆盖 ' + pct1(FF.joinRate) + '）。'
+      + (FF.status && FF.status.unsupportedCodes > 0
+          ? ' <span style="color:#a08b00">北交所 ' + esc(FF.status.unsupportedCodes) + ' 只 secid 暂不通，标缺口不编造</span>' : '')
+      + '</div>';
+    var hl = FF.highlights || [];
+    if (hl.length) {
+      ffHtml += '<div style="border-top:1px dashed #d7dee4;padding-top:6px;margin-top:6px">'
+        + '<div style="color:#607d8b;margin-bottom:4px">资金流特征分档 · 最强档 vs 最弱档（历史净收益，红涨绿跌）</div>';
+      hl.forEach(function (h) {
+        ffHtml += '<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;font-size:11.5px">'
+          + '<span style="color:#455a64">' + esc(h.label) + '</span>'
+          + '<span style="white-space:nowrap">最强 <b style="color:' + ((h.bestNet || 0) > 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(h.bestNet) + '%</b>'
+          + ' · 最弱 <b style="color:' + ((h.worstNet || 0) > 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(h.worstNet) + '%</b>'
+          + ' <span style="color:#a8b0bb">(' + pct1(h.coverage, 1) + ')</span></span></div>';
+      });
+      ffHtml += '</div>';
+    }
+    ffHtml += '<div style="color:#90a4ae;font-size:11px;margin-top:6px">资金流仅用信号日及之前数据（无未来函数）；覆盖率低时结论不稳健，仅供研究，不构成投资建议。</div></div>';
+    box('flFundflow', ffHtml);
+  } else {
+    box('flFundflow', '<div class="card" style="color:#8b93a1">资金流维度待抓（数据猎手抓取中，未覆盖标缺口不编造）。</div>');
+  }
+
+  box('flNext', '<div class="card" style="line-height:1.9;font-size:12.5px">' + esc(S.direction || '') + '</div>');
+})();
 
 /* 先试云端（带时间戳绕开 CDN 缓存），失败再退本地快照 */
 abLoadAll(AB_CDN, '?t=' + Date.now())
