@@ -1,0 +1,22 @@
+{
+  "n": 100877,
+  "tradable": 100877,
+  "eligible": 100877,
+  "skippedOneWord": 72,
+  "skippedNoData": 0,
+  "coverage": 100,
+  "benchmarkRet": -1.312,
+  "benchmarkSource": "CSI300_ETF",
+  "excessOverHold": 1.0752,
+  "grossAvg": 0.07317557024891923,
+  "costPct": 0.31,
+  "netRet3": -0.2368,
+  "winRate": 0.439,
+  "wilsonLower": 0.4359,
+  "tStat": -13.964,
+  "worstSegmentNet": -2.1727,
+  "segments": 21,
+  "note": "当前窗口实测基线（全样本口径）；宪法 baseline 冻结于旧窗口仅作参照，勿相减当超额",
+  "generatedAt": "2026-11-27T10:35:28.741Z",
+  "panel": "panel_sample100k.jsonl"
+}

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T09:17:25.457Z",
+  "generatedAt": "2026-11-27T10:27:29.888Z",
   "fundflowCodes": 5854,
   "features": [
     "main5",
@@ -9,8 +9,8 @@
   ],
   "jobs": [
     {
-      "rows": 108338,
-      "joined": 106218,
+      "rows": 100949,
+      "joined": 55317,
       "out": "C:\\Users\\36352\\Desktop\\三态看板\\三态看盘-便携版-含对话-20261113f\\三态看盘-便携版-含对话\\learn\\evolve\\panel_sample100k_ff.jsonl"
     }
   ],

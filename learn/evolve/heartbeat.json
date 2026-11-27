@@ -1,12 +1,13 @@
 {
   "date": "2026-11-27",
-  "status": "published",
-  "updatedAt": "2026-11-27T09:19:41.717Z",
+  "status": "done",
+  "updatedAt": "2026-11-27T18:40:35.872Z",
   "active": 0,
-  "evaluated": 104,
+  "evaluated": 164,
   "needTestTime": true,
-  "note": "2026-11-27 历史数据重训 gen5：104条规则/0达标(基线净-0.76% t=-43,硬门槛net>0&t>=3)，诚实0写回；已生成证据包",
-  "gen": 5,
+  "note": "2026-11-27 历史数据重训 gen8：164条规则/0条达标（基线净-0.24% t=-13.964，硬门槛net>0&t>=3），诚实0写回；已生成证据包",
+  "gen": 8,
   "version": 202611271601,
-  "publishedAt": "2026-11-27T09:19:41.717Z"
+  "publishedAt": "2026-11-27T09:19:41.717Z",
+  "error": "today is not defined"
 }
