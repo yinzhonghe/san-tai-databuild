@@ -23,6 +23,7 @@ var LAB = path.join(EVO, 'freelab');
 var OUT = path.join(ROOT, 'freelab_report.js');
 var FACTS = path.join(LAB, 'facts.json');
 var VERIFIED = path.join(LAB, 'verified.json');
+var VERIFIED_H = path.join(LAB, 'verified_horizons.json');
 var MODELS = path.join(LAB, 'models.jsonl');
 var CONST = path.join(EVO, 'constitution.json');
 
@@ -42,6 +43,7 @@ function loadJSONL(p) {
 function build() {
   var facts = loadJSON(FACTS, null);
   var verified = loadJSON(VERIFIED, null);
+  var verifiedH = loadJSON(VERIFIED_H, null);
   var models = loadJSONL(MODELS);
   var cons = loadJSON(CONST, {});
   var model = (cons.budget && cons.budget.model) || 'glm-5.3-flash';
@@ -100,6 +102,9 @@ function build() {
           '让大模型读画像自由提模型；当前只有真实市场画像，没有模型结论。'),
     direction: '自由度放在「假设」——鼓励大模型跨特征组合、造新表达式、提市场状态机/分域模型；' +
       '严格度放在「验证」——任何模型都要过净收益>0、t≥3、覆盖率≥2%、Wilson下界、跑赢持有基准五关。' +
+      '现已按【按月 / 按周 / 按日 / T0ETF·日内】四维度分类推演：每维度用真实 kline 算自己的基准' +
+      '（月T+20、周T+5、日T+1、日内开盘→收盘），模型只在自己声明的维度上结算，' +
+      '不拿T+3的旧尺子量所有持有期。' +
       (fund && fund.fetchedCodes > 0
         ? ('资金流维度已接入：真实抓取 ' + fund.fetchedCodes + ' 只票的逐日五档资金流，' +
            'join ' + fund.joinedRows.toLocaleString() + ' 条样本（覆盖率 ' + (fund.joinRate * 100).toFixed(1) +
@@ -112,7 +117,7 @@ function build() {
   var report = {
     summary: summary,
     at: todayCN(), generatedAt: new Date().toISOString(),
-    version: 'freelab-v1',
+    version: 'freelab-v2-horizons',
     model: model,
     dataAsOf: facts ? facts.dataAsOf : '',
     hasFacts: hasFacts,
@@ -139,6 +144,32 @@ function build() {
       notProvenCount: verified.notProvenCount, freeHypothesisCount: verified.freeHypothesisCount,
       sealOk: verified.sealOk, models: (verified.models || []).slice(-12)
     } : null,
+    // 四时间维度推演分类：月 / 周 / 日 / T0ETF·日内，各自真实基准 + 各自验证结论
+    dimensions: (verifiedH && verifiedH.dimensions || []).map(function (d) {
+      var b = d.baseline || {};
+      var factH = ((facts && facts.horizons) || []).filter(function (x) { return x.key === d.key; })[0] || {};
+      return {
+        key: d.key, name: d.name, desc: d.desc, retKey: d.retKey,
+        baseline: {
+          netRet: b.netRet != null ? b.netRet : factH.netRet,
+          tStat: b.tStat != null ? b.tStat : factH.tStat,
+          winRate: b.winRate != null ? b.winRate : factH.winRate,
+          samples: b.n != null ? b.n : factH.samples,
+          coverage: b.coverage, note: factH.note || ''
+        },
+        modelCount: (d.models || []).length,
+        passedCount: d.passedCount || 0,
+        notProvenCount: d.notProvenCount || 0,
+        models: (d.models || []).slice(-5).map(function (m) {
+          return { name: m.name, thesis: m.thesis, verdict: m.verdict,
+            reason: m.reason, netRet: m.metrics && m.metrics.netRet,
+            tStat: m.metrics && m.metrics.tStat, coverage: m.metrics && m.metrics.coverage };
+        })
+      };
+    }),
+    horizonDisclaimer: '四维度收益来自真实 kline（月=T+20 / 周=T+5 / 日=T+1 / 日内=T开盘→收盘），' +
+      '已扣往返成本、剔除一字板；日内T0只对名称命中跨境/黄金/债券/货币的ETF放行。' +
+      '全部为历史回测，含幸存者偏差，非前瞻收益、不构成投资建议。',
     oneLine: oneLine,
     lastModelAt: last && last.at || null
   };
