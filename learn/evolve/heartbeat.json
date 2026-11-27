@@ -1,11 +1,12 @@
 {
-  "date": "2026-11-26",
+  "date": "2026-11-27",
   "status": "published",
-  "updatedAt": "2026-11-26T14:07:13.933Z",
-  "gen": 99,
+  "updatedAt": "2026-11-27T09:19:41.717Z",
   "active": 0,
-  "evaluated": 44,
-  "needTestTime": false,
-  "version": "TEST",
-  "publishedAt": "2026-11-26T14:07:13.933Z"
+  "evaluated": 104,
+  "needTestTime": true,
+  "note": "2026-11-27 历史数据重训 gen5：104条规则/0达标(基线净-0.76% t=-43,硬门槛net>0&t>=3)，诚实0写回；已生成证据包",
+  "gen": 5,
+  "version": 202611271601,
+  "publishedAt": "2026-11-27T09:19:41.717Z"
 }
