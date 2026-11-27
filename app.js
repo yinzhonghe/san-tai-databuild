@@ -1216,6 +1216,14 @@
   // ---------- 行情（多源） ----------
   var QUOTES = {};           // code -> {price,chg,source}
   var QUOTES_TS = 0;
+  /* 状态栏来源必须「诚实」：源返回了但一只都没取到（map 空）时绝不能报「已更新」。
+     2026-11-26 真 bug：腾讯被扩展拦、东财 clist 也被断时，getAllQuotes 返回空 map，
+     旧代码无条件 updateStateBanner('em') → 顶部显示「东方财富·已更新」，
+     而表格「今日%」全是「…」。用户以为在刷新，其实一只实时价都没有。
+     这里是唯一判定口径，测试直接调它（tests/banner_honesty.test.js）。 */
+  function honestSource(source, mapCount) {
+    return (mapCount > 0) ? source : 'snapshot';
+  }
   function loadQuotes(codes, force) {
     var now = Date.now();
     if (!force && QUOTES_TS && now - QUOTES_TS < 15000 && Object.keys(QUOTES).length) {
@@ -1226,14 +1234,14 @@
       return DS.getAllQuotes(codes).then(function (res) {
         Object.keys(res.map).forEach(function (k) { QUOTES[k] = res.map[k]; });
         QUOTES_TS = Date.now();
-        updateStateBanner('em', res.update);
+        updateStateBanner(honestSource('em', Object.keys(QUOTES).length), res.update);
         return QUOTES;
       }).catch(function () { updateStateBanner('snapshot', 0); return QUOTES; });
     }
     return DS.getTodayQuotes(codes).then(function (res) {
       Object.keys(res.map).forEach(function (k) { QUOTES[k] = res.map[k]; });
       QUOTES_TS = Date.now();
-      updateStateBanner(res.source, res.update);
+      updateStateBanner(honestSource(res.source, Object.keys(QUOTES).length), res.update);
       /* 行业页的「板块今日%」在板块指数缺失时会回落到「池内均涨」，
          而池内均涨依赖 QUOTES：行情到货后必须自己重绘一次，
          否则那些行会一直显示「—」，用户以为是坏了（以前要点一下行才刷新）。 */
@@ -1249,9 +1257,14 @@
     Object.keys(h).forEach(function (k) {
       var o = h[k];
       if (o.state === 'idle') return;
-      var color = o.state === 'ok' ? '#0f7a3d' : (o.state === 'flaky' ? '#b45309' : '#b42318');
-      var mark = o.state === 'ok' ? '正常' : (o.state === 'flaky' ? '不稳' : '不可用');
-      parts.push('<span style="color:' + color + ';margin-left:8px">' + esc(o.name) + ' ' + mark + '</span>');
+      /* 单个源 down 不等于「看盘坏了」：本页有多源降级，某源被扩展/网络拦掉时
+         另一个源仍在供数（横幅会写明当前来源）。旧文案统一标红「不可用」，
+         用户以为整站故障；改成中性的「受限·已自动降级」，并保留 lastErr 供排查。 */
+      var color = o.state === 'ok' ? '#0f7a3d' : '#b45309';
+      var mark = o.state === 'ok' ? '正常' : (o.state === 'flaky' ? '不稳' : '受限·已降级');
+      var tip = '最近错误：' + (o.lastErr || '无') + '；其它源会自动接替，不影响行情更新';
+      parts.push('<span style="color:' + color + ';margin-left:8px" title="' + esc(tip) + '">'
+        + esc(o.name) + ' ' + mark + '</span>');
     });
     if (!parts.length) return '';
     return '<span class="cat" style="margin-left:10px">｜数据源</span>' + parts.join('');
@@ -1261,13 +1274,30 @@
     var meta = DS.meta() || {};
     if (source === 'snapshot' || source === 'cache' && !Object.keys(QUOTES).length) {
       dot.className = 'dot snap';
-      txt.textContent = '实时源暂不可用 · 已用快照口径（数据截至 ' + asOfClean(meta) + '，不含当日）';
+      /* 明确区分「快照基准日」和「今日实时价」：三态/区间仍是快照（有基准日），
+         但今日% 一只都没取到，必须直说，否则用户看「已更新」以为数据在刷新。 */
+      txt.textContent = '今日实时行情未取到 · 三态与区间为快照（截至 ' + asOfClean(meta)
+        + '，不含当日）· 点「手动刷新」重试' + (Object.keys(QUOTES).length ? '' : '');
+      txt.innerHTML += srcHealthHtml();
     } else {
       dot.className = 'dot live';
       txt.innerHTML = '实时行情来源：' + ({ em: '东方财富', tencent: '腾讯', sina: '新浪', cache: '本地缓存' }[source] || source)
         + ' · 已更新 ' + new Date(ts || Date.now()).toLocaleTimeString('zh-CN', { hour12: false })
         + srcHealthHtml();
     }
+    /* 诊断信息挂 title：悬停状态栏即可看到「实际取到几只 / 各源成败」，
+       用户环境里今日%全空时，能一眼分清是「腾讯被拦」还是「东财也没取到」。 */
+    try {
+      var h = DS.srcHealth ? DS.srcHealth() : {};
+      var parts = [];
+      Object.keys(h).forEach(function (k) {
+        if (h[k].state !== 'idle') parts.push(h[k].name + ':' + h[k].state + '(ok' + h[k].ok + '/fail' + h[k].fail + ')');
+      });
+      var dsStatus = DS.status ? DS.status() : null;
+      txt.title = '已取到实时价 ' + Object.keys(QUOTES).length + ' 只；'
+        + (parts.length ? parts.join(' ') : '各源未请求')
+        + (dsStatus && dsStatus.message ? '；取价器：' + dsStatus.message : '');
+    } catch (e) {}
   }
 
   // ---------- 图表（防压扁） ----------
@@ -1373,7 +1403,7 @@
     }
     hydrateInsights();      // 所有含 .insight / .arch-wrap 的页面统一水合日K 档案、预警与胜率
     hydrateQuotes();        // 任何标了 data-q 的元素自动补今日涨跌（不再各处各写一遍）
-    refreshMarketLive();    // 市场条：成交额 / 涨跌家数走实时，温度等仍是快照口径
+    refreshMarketLive();    // 市场条：成交额 / 涨跌家数 / 涨停跌停 / 温度 / 沪深300 均走实时现算
     markScrollHints();      // 手机端宽表格的「可左右滑」提示
     /* 重绘保持滚动位置；导航才回顶 */
     try {
@@ -2574,20 +2604,32 @@
       /* 拿到数据才敢标「实时」，否则保持「快照 + 日期」，绝不把旧值说成实时 */
       var t2 = document.querySelector('[data-mk-tag="amount"]');
       if (t2) t2.textContent = '实时';
-      try { updateStateBanner('tencent', Date.now()); } catch (e) { }
+      /* 成交额来自市场级接口，只代表「成交额实时」，不代表全市场个股今日%已取到。
+         绝不能用 'tencent' 覆盖整站状态栏——否则腾讯被拦、表格今日%全空时，
+         状态栏却显示「来源腾讯·已更新」，用户以为数据在刷新（2026-11-26 真 bug）。
+         整站状态栏只由 loadQuotes 的全市场结果决定，这里不碰。 */
       refreshBreadth();
+      refreshHs300();   // 沪深300 近20日：不用过期的 market 快照，在线取真实日 K 现算
     }).catch(function () { });
   }
   /* 涨跌家数：腾讯不给指数级家数，只能自己数。等全量取价（live-refresh）到位后统计，
      覆盖不足 1200 只就先不显示，绝不用部分样本冒充「两市家数」。 */
   var BREADTH_TRIES = 0;
   function refreshBreadth() {
-    var up = 0, down = 0, flat = 0, n = 0;
+    var up = 0, down = 0, flat = 0, n = 0, lu = 0, ld = 0;
     Object.keys(QUOTES).forEach(function (c) {
       var q = QUOTES[c];
       if (!q || q.chg == null || !isNum(q.chg)) return;
       n++;
       if (q.chg > 0.005) up++; else if (q.chg < -0.005) down++; else flat++;
+      /* 涨停/跌停：按板块阈值数（主板 9.8 / 创科 19.8 / 北交 29.8），
+         与 grab_breadth 后端口径一致；用现价/昨收自算更稳（q.chg 单位已是 %）。 */
+      var lim = limitPct(c);
+      if (isNum(q.price) && isNum(q.preClose) && q.preClose > 0) {
+        var pctChg = (q.price / q.preClose - 1) * 100;
+        if (pctChg >= lim) lu++; else if (pctChg <= -lim) ld++;
+      } else if (q.chg >= lim) lu++;
+      else if (q.chg <= -lim) ld++;
     });
     var t1 = document.querySelector('[data-mk-tag="updown"]');
     if (n < 1200) {
@@ -2598,11 +2640,56 @@
     BREADTH_TRIES = 0;
     function set(k, v) { var el = document.querySelector('[data-mk="' + k + '"]'); if (el) el.textContent = v; }
     set('up', up); set('down', down);
+    set('lu', lu); set('ld', ld);
+    /* 情绪温度：上涨占比，口径公开可复算。仅在无快照 temp 时写入，避免覆盖真实快照。 */
+    var tempEl = document.querySelector('[data-mk="temp"]');
+    var snapTemp = isNum((RAW().market || {}).temp);
+    if (!snapTemp && tempEl && up + down > 0) {
+      var t = Math.round(up / (up + down) * 1000) / 10;
+      tempEl.textContent = fmt(t, 1) + ' / 100';
+      var bar = document.querySelector('[data-mk="tempbar"]');
+      if (bar) bar.style.width = Math.max(2, Math.min(100, t)) + '%';
+      var tg = document.querySelector('[data-mk-tag="temp"]');
+      if (tg) tg.textContent = '实时·涨跌家数';
+    }
     if (t1) t1.textContent = '实时';
+    var lg = document.querySelector('[data-mk-tag="ludn"]');
+    if (lg) lg.textContent = '实时';
   }
+
+  /* 沪深300 近20日：在线日 K 现算。本地分片没有该指数，getKline 会自动走腾讯/东财。
+     取 25 根算 20 个交易日涨跌；取不到就留「—」，绝不编造。 */
+  function refreshHs300() {
+    if (!DS.getKline) return;
+    DS.getKline('000300.SH', 25).then(function (r) {
+      var b = r && r.bars;
+      if (!b || b.length < 21) return;
+      var v = (b[b.length - 1].c / b[b.length - 21].c - 1) * 100;
+      var el = document.querySelector('[data-mk="hs300"]');
+      if (!el || !isNum(v)) return;
+      el.textContent = pct(v);
+      el.className = 'v ' + signCls(v);
+      var tg = document.querySelector('[data-mk-tag="hs300"]');
+      if (tg) tg.textContent = '实时';
+    }).catch(function () {
+      var tg = document.querySelector('[data-mk-tag="hs300"]');
+      if (tg) tg.textContent = '取数失败';
+    });
+  }
+  /*
+   * 市场条数据口径（2026-11-27 修复）：
+   *   旧版 data.js 的 market 快照自 11-18 起为 null，导致温度恒显默认 50、
+   *   涨停/跌停 与 沪深300近20日 全是「—」。这些格子的真实数据来源改为：
+   *     · 温度 / 涨跌家数 / 涨停跌停：全市场实时报价 QUOTES 现算（见 refreshBreadth）
+   *     · 两市成交额：指数接口实时（见 getMarketLive）
+   *     · 沪深300 近20日：在线日 K 现算（见 refreshHs300）
+   *     · 个股中位数 / 连板梯队：仍是构建快照（如实标注「截至快照」）
+   *   绝不把快照旧值冒充实时；取不到就留「—」并标「取数失败」，不用 0 顶替。
+   */
   function marketBar() {
     var m = RAW().market || {}, s = RAW().summary || {}, bm = m.benchmark || {};
-    var temp = isNum(m.temp) ? m.temp : 50;
+    var hasSnapTemp = isNum(m.temp);
+    var temp = hasSnapTemp ? m.temp : null;           // 无快照时不造假 50，等实时算
     var med5 = median5Pct();
     var lb = limitBoards();
     var lbTxt = Object.keys(lb).sort(function (x, y) { return y - x; }).slice(0, 3)
@@ -2611,20 +2698,25 @@
     function cell(l, v, cls) { return '<div class="mkt-cell"><div class="l">' + l + '</div><div class="v ' + (cls || '') + '">' + v + '</div></div>'; }
     var L = MKT_LIVE;
     return '<div class="market-bar"><div class="mkt-temp">'
-      + '<div class="t"><span>市场情绪温度 <span class="cat">快照 ' + esc(snapDay) + '</span></span><b>' + fmt(temp, 1) + ' / 100</b></div>'
-      + '<div class="tempbar"><i style="width:' + Math.max(2, Math.min(100, temp)) + '%"></i></div>'
-      + '<div class="note">' + esc(m.phase || '—') + (m.phaseNote ? ' · ' + esc(m.phaseNote) : '')
-      + '<br>温度为快照口径，不随盘中变化；下面的成交额与涨跌家数是实时的。</div></div>'
+      + '<div class="t"><span>市场情绪温度 <span class="cat" data-mk-tag="temp">'
+        + (hasSnapTemp ? '快照 ' + esc(snapDay) : '实时·涨跌家数') + '</span></span>'
+        + '<b data-mk="temp">' + (temp != null ? fmt(temp, 1) + ' / 100' : '—') + '</b></div>'
+      + '<div class="tempbar"><i data-mk="tempbar" style="width:' + (temp != null ? Math.max(2, Math.min(100, temp)) : 2) + '%"></i></div>'
+      + '<div class="note">' + esc(m.phase || '实时情绪口径') + (m.phaseNote ? ' · ' + esc(m.phaseNote) : '')
+      + '<br>温度 = 上涨家数 ÷（上涨+下跌）×100，由全市场实时报价现算；成交额、涨跌家数、涨停跌停、沪深300 同为实时。</div></div>'
       + '<div class="mkt-cells">'
       + cell('上涨 / 下跌 <span class="cat" data-mk-tag="updown">' + (L ? '实时' : '快照 ' + esc(snapDay)) + '</span>',
         '<span data-mk="up">' + (L && isNum(L.up) ? L.up : (isNum(m.up) ? m.up : '—')) + '</span> / '
         + '<span data-mk="down">' + (L && isNum(L.down) ? L.down : (isNum(m.down) ? m.down : '—')) + '</span>', 'up')
-      + cell('涨停 / 跌停', (isNum(m.lu) ? m.lu : '—') + ' / ' + (isNum(m.ld) ? m.ld : '—'))
+      + cell('涨停 / 跌停 <span class="cat" data-mk-tag="ludn">实时</span>',
+        '<span data-mk="lu">' + (isNum(m.lu) ? m.lu : '—') + '</span> / '
+        + '<span data-mk="ld">' + (isNum(m.ld) ? m.ld : '—') + '</span>')
       + cell('个股中位数 <span class="cat">近5日</span>', med5 != null ? pct(med5) : '—', med5 != null ? signCls(med5) : '')
       + cell('连板梯队 <span class="cat">截至快照</span>', lbTxt || '—')
       + cell('两市成交额 <span class="cat" data-mk-tag="amount">' + (L ? '实时' : '快照 ' + esc(snapDay)) + '</span>',
         '<span data-mk="amount">' + amtText(L && isNum(L.amount) ? L.amount : m.amount) + '</span>')
-      + cell('沪深300 近20日', isNum(bm.m20) ? pct(bm.m20) : '—', isNum(bm.m20) ? signCls(bm.m20) : '')
+      + cell('沪深300 近20日 <span class="cat" data-mk-tag="hs300">实时</span>',
+        '<span data-mk="hs300">' + (isNum(bm.m20) ? pct(bm.m20) : '—') + '</span>', isNum(bm.m20) ? signCls(bm.m20) : '')
       + '</div></div>';
   }
   function quickLinks() {
@@ -2747,6 +2839,9 @@
       + '<span class="daily-verdict ' + vcls + '">' + esc(S.verdict || '中性') + '</span>'
       + '<span class="daily-toggle" data-daily="toggle">' + (DAILY_OPEN ? '收起 ▴' : '展开 ▾') + '</span></div>'
       + (pending ? '<div class="daily-pending">' + pending + '</div>' : '')
+      /* 重大事件强预警横幅：命中顶层会议/印花税/国家队/外部冲击时，代码确定性写入，
+         不给它单独颜色类也能靠 ⚠ + 加粗边框一眼看到；没命中就不渲染。 */
+      + (S.eventAlert ? '<div class="daily-event-alert">' + esc(S.eventAlert) + '</div>' : '')
       + '<div class="daily-line">' + esc(S.oneLine) + '</div>';
     if (DAILY_OPEN) {
       /* 多空清单摆在最前面：让「有没有真做权衡」变成看得见的东西，
@@ -5649,7 +5744,8 @@
     DS.getQuoteSingle(code).then(function (q) {
       if (!q) return;
       QUOTES[code] = q;
-      updateStateBanner(q.source, Date.now());
+      /* 只更新透镜自己的「今日」KPI，不要碰整站状态栏：
+         单只取价成功不等于全市场今日%已取到，覆盖状态栏会造成假「已更新」。 */
       var cell = $('lensDayKpi');
       if (cell) cell.innerHTML = '<div class="l">今日</div><div class="v">' + daySpan(q, '—') + '</div><div class="s">'
         + (isSuspended(q) ? '无成交 · 停牌或未开盘' : '实时 · ' + (q.source || '')) + '</div>';
@@ -5761,7 +5857,7 @@
     if (window.qrcode) return Promise.resolve(window.qrcode);
     return new Promise(function (res, rej) {
       var s = document.createElement('script');
-      s.src = 'qrcode.js?v=20261114f';
+      s.src = 'qrcode.js?v=20261114f&sharecode=EPDR6ET2KO';
       s.onload = function () { window.qrcode ? res(window.qrcode) : rej(new Error('qrcode 未就绪')); };
       s.onerror = function () { rej(new Error('二维码组件加载失败')); };
       document.head.appendChild(s);
@@ -6472,6 +6568,8 @@
       _mrsT = setTimeout(function () { try { markScrollHints(); } catch (e) {} }, 180);
     });
     render();
+    /* 渲染成功 → 移除「脚本未能启动」诊断探针（纯 CSS 8 秒必现，正常加载时必须主动隐藏） */
+    try { var p = document.getElementById('jsStallProbe'); if (p && p.parentNode) p.parentNode.removeChild(p); } catch (e) {}
     refreshTrialUI();
     // 打开即实时：全市场批量取价 → 重算四窗口 → 重跑六派 → 重渲染（非交易时段自然回退收盘）
     if (window.AB_LIVE && window.AB_LIVE.start) window.AB_LIVE.start();
