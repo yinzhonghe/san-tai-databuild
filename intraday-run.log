@@ -1,4 +1,3 @@
-[盘中] 触发检查：['深成指 涨跌 2.76%', '创业板指 涨跌 4.67%', '科创50 涨跌 5.69%']
 [盘中] 通道=zhipu 候选=glm-4.7
-[盘中] glm-4.7 解析失败：Expecting ',' delimiter: line 9 column 58 (char 450)
+[盘中] glm-4.7 解析失败：Expecting ',' delimiter: line 9 column 22 (char 449)
 [盘中] 生成失败：所有候选模型都失败
