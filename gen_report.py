@@ -171,11 +171,37 @@ def grab_cn_spot():
     return round(total / 1e8, 0), None
 
 
+ZT_POOL_UT = '7eea3edcaed734bea9cbfc24409ed989'
+
+
+def grab_limit_pool(kind, date_str):
+    """东财涨停/跌停股池的真实封板家数（data.tc）。
+
+    2026-11-27 事故：clist 用「涨跌幅 >=9.8%」近似涨停，在创业板/科创板 20CM、
+    北交所 30CM 集体大涨的日子会把「涨了 10% 以上」当成封板——当天真实涨停 426 只，
+    近似值却是 1465 只。真实封板只能问专门的涨停池/跌停池接口。
+    """
+    url = ('https://push2ex.eastmoney.com/getTopic%sPool?ut=%s&dpt=wz.ztzt'
+           '&Pageindex=0&pagesize=10&sort=%s&date=%s'
+           % ('ZT' if kind == 'up' else 'DT', ZT_POOL_UT,
+              'fbt%%3Aasc' if kind == 'up' else 'fund%%3Aasc', date_str))
+    j, err = get_json(url, timeout=20)
+    if err or not j or not j.get('data'):
+        return None, err or '空响应'
+    tc = j['data'].get('tc')
+    try:
+        return int(tc), None
+    except (TypeError, ValueError):
+        return None, 'tc 字段异常'
+
+
 def grab_breadth():
-    """全市场涨跌家数与涨跌停家数。
+    """全市场涨跌家数 + 真实涨跌停封板数。
 
     东财 clist 单页硬上限 100 条（pz 传多大都只回 100），全市场约 6000 只，
-    所以按 pn 并发翻页把涨跌幅全抓回来自己统计。口径：涨跌幅 >=9.8% 计涨停、<=-9.8% 计跌停。
+    所以按 pn 并发翻页把涨跌幅全抓回来自己统计 up/down/flat。
+    涨跌停**不再**用 >=9.8% 近似（见 grab_limit_pool 注释），只在股池接口失败时
+    降级，并在事实包里显式标注「估算，非真实封板」，禁止模型冒充真实涨停数。
     """
     base = ('https://push2.eastmoney.com/api/qt/clist/get?po=1&np=1&fltt=2&invt=2&fid=f3'
             '&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048'
@@ -211,8 +237,21 @@ def grab_breadth():
             lu += 1
         if v <= -9.8:
             ld += 1
-    return {'up': up, 'down': dn, 'flat': flat, 'limit_up': lu, 'limit_down': ld,
-            'total': len(rows), 'pages': pages}, None
+    bj_date = time.strftime('%Y%m%d', time.gmtime(time.time() + 8 * 3600))
+    lu_real, lu_err = grab_limit_pool('up', bj_date)
+    ld_real, ld_err = grab_limit_pool('down', bj_date)
+    approx = lu_real is None or ld_real is None
+    return {
+        'up': up, 'down': dn, 'flat': flat,
+        'limit_up': lu if lu_real is None else lu_real,
+        'limit_down': ld if ld_real is None else ld_real,
+        'total': len(rows), 'pages': pages,
+        'limitUpSource': ('涨幅≥9.8%估算（非真实封板）' if approx
+                          else '东财涨停池（真实封板）'),
+        'limitUpApprox': approx,
+        'limitUpEstimate': lu, 'limitDownEstimate': ld,
+        'limitPoolError': '; '.join(x for x in (lu_err, ld_err) if x)[:120],
+    }, None
 
 
 
@@ -1025,6 +1064,7 @@ def compact_facts(f, slot):
         '美元指数': f['usd'],
         '沪深两市成交额_亿元': f['turnover'],
         '涨跌家数': f['breadth'],
+        '涨停口径': (f['breadth'] or {}).get('limitUpSource'),
         '行业涨幅前8': f['sectors_top'][:8],
         '行业跌幅前8': f['sectors_bottom'][:8],
         # 快讯：400 条原始 → 事件级去重后取前 90 条。
@@ -1053,6 +1093,8 @@ def compact_facts(f, slot):
             '操作提示': a['action'], '为什么重要': a['why']
         } for a in (f.get('eventAlerts') or [])],
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
+                '涨停/跌停只能照抄「涨跌家数」的 limit_up/limit_down，并按「涨停口径」表述：'
+                '口径是估算时必须写「涨幅超过9.8%的约N只」，绝不能写成真实涨停N只。'
                 '美债收益率等未提供项不要提及。「昨日滚动观点」里的主线要滚动修订，'
                 '不要照抄；事件日期与节点可以引用。'
                 '「重大事件预警」里若有条目，按 SYSTEM 里的强预警写作硬要求处理：'
@@ -1105,6 +1147,13 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
     并写明出处机构（CME / 集邦 / 中信证券 / 新华社 等）。这些是拉开质量差距的关键，
     不要用快讯里的泛泛表述替代它们。
 7. 只输出 JSON，不要 markdown 代码块，不要解释文字。
+8. 历史对比必须「同指数、同口径、同方向」：只有同一个指数的涨跌幅才能用
+   「超过/超越/高于/强于」比较。禁止拿创业板/科创50/北证50的今日涨幅去比上证的历史涨幅，
+   也禁止拿盘中最高涨幅去比历史收盘涨幅。写「今日涨幅已超越某案例」前，
+   先确认两个数字属于同一指数；若今日上证涨幅低于案例中的上证涨幅，
+   就不能写「今日涨幅超越该案例」，只能写「成长指数弹性更大，但该指数当日尚未超过案例」。
+9. 「涨停/跌停」只能引用事实包「涨跌家数」里的 limit_up/limit_down，
+   并遵守「涨停口径」字段；涨幅≥9.8% 不是涨停，20CM/30CM 板块尤其不能混算。
 
 【输出结构】
 {
@@ -1623,6 +1672,48 @@ def style_issues(c, slot='morning'):
     return issues
 
 
+def comparison_issues(content, facts_raw):
+    """抓「数字都在事实包里，但跨指数/跨口径的历史对比不成立」。
+
+    2026-11-27 事故：模型写「今日涨幅已超越该案例（924 上证 +4.15%）」，
+    同一段却写今日上证 +3.73%。两个数字都在事实包里，unmatched_numbers 查不出来，
+    但结论是反的。这里只拦「超越/超过 + 案例数字」的硬伤，不评判一般修辞。
+    """
+    issues = []
+    text = json.dumps(content or {}, ensure_ascii=False)
+    if not re.search(r'(超越|超过|高于|强于)', text):
+        return issues
+    if not re.search(r'(今日|当天|本次|收盘).{0,60}(超越|超过|高于|强于)|'
+                     r'(超越|超过|高于|强于).{0,30}(该案例|历史案例|案例)', text):
+        return issues
+    # 「未超越/尚未超过」是诚实的否定式，不能误伤
+    if re.search(r'(未|没有|尚未|未能)[^。]{0,12}(超越|超过|高于|强于)', text):
+        return issues
+    q = (facts_raw or {}).get('quotes') or {}
+    sh_pct = (q.get('sh000001') or {}).get('pct')
+    case_pcts = []
+    for a in (facts_raw or {}).get('eventAlerts') or []:
+        for c in (a.get('cases') or []):
+            for m in re.finditer(r'(?:上证|沪指)[^，。；]{0,24}?([+\-]?\d+(?:\.\d+)?)\s*%', str(c)):
+                try:
+                    case_pcts.append(abs(float(m.group(1))))
+                except ValueError:
+                    pass
+    if sh_pct is not None and case_pcts:
+        for cp in case_pcts:
+            pat = (r'(?:超越|超过|高于|强于)[^。]{0,40}%.2f|'
+                   r'%.2f[^。]{0,40}(?:超越|超过|高于|强于)' % (cp, cp))
+            if not re.search(pat, text):
+                continue
+            if abs(sh_pct) < cp:
+                issues.append('历史对比结论反了：上证今日 %.2f%% 低于案例 %.2f%%，'
+                              '不能写「今日涨幅超越该案例」' % (sh_pct, cp))
+            break
+    if not re.search(r'(上证|沪指)[^。]{0,80}(上证|沪指)', text):
+        issues.append('历史对比没有同指数同口径并列：写「超越案例」时必须在同一句里点名同一指数')
+    return issues
+
+
 # ---------------------------------------------------------------- 滚动观点
 # 参考包里最有价值的不是某一期的文字，而是「中期预测表 + 时间轴」逐日滚动修订。
 # 客户页不新增栏目，所以把这两块的精华压缩进 report_state.json，
@@ -1698,7 +1789,7 @@ def main():
         # 篇幅门禁：points 四段合计不足 800 字基本就是模型偷懒（实测弱模型只写 230 字），
         # 这种稿子发出去还不如不发，先让它重写一次
         thin = sum(len(p) for p in (content.get('points') or [])) < 800
-        issues = style_issues(content, args.slot)
+        issues = style_issues(content, args.slot) + comparison_issues(content, facts_raw)
         # 只有「明显有问题」才重写：1–3 个未命中数字多数是「整数关口/目标位」这类合理表述，
         # 为它们重写一次要多花 4 分钟（5.x）并可能降级，不值得
         if len(unverified) > 3 or thin or issues:
@@ -1720,7 +1811,7 @@ def main():
                 u2 = unmatched_numbers(content2, facts)
                 t2 = sum(len(p) for p in (content2.get('points') or []))
                 t1 = sum(len(p) for p in (content.get('points') or []))
-                i2 = style_issues(content2, args.slot)
+                i2 = style_issues(content2, args.slot) + comparison_issues(content2, facts_raw)
                 # 重写轮用快速档，篇幅可能短一点（实测 4.7 比 5.3 少约 5%），
                 # 只要没短过 70%、数字更干净、风格问题不更多就采用，否则会白白退回模板稿
                 ok2 = (len(u2) <= len(unverified) and t2 >= t1 * 0.7 and len(i2) <= len(issues))
@@ -1739,7 +1830,7 @@ def main():
                 if content3:
                     u3 = unmatched_numbers(content3, facts)
                     t3 = sum(len(p) for p in (content3.get('points') or []))
-                    i3 = style_issues(content3, args.slot)
+                    i3 = style_issues(content3, args.slot) + comparison_issues(content3, facts_raw)
                     if len(u3) <= len(unverified) + 3 and t3 >= t1 * 0.7 and len(i3) <= len(issues) + 1:
                         content, model, unverified, issues = content3, model3, u3, i3
                         print('[校验] flash 降级稿已由 glm-4.7 替换：剩 %d 个无出处数字，'
