@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-11-27T07:26:17.106Z",
-  "source": "eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(全市场批量) + fflow/daykline(ETF逐票)",
-  "fetchedCodes": 5343,
+  "generatedAt": "2026-11-27T08:17:36.835Z",
+  "source": "eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(个股+北交所批量) + FTShare ETF资金流批量(2026-03-16起) + fflow/daykline(ETF逐票兜底)",
+  "fetchedCodes": 5854,
   "fundStatus": {
-    "fetchedCodes": 23,
-    "coveragePct": 0.4,
+    "fetchedCodes": 452,
+    "coveragePct": 84.58,
     "unsupportedCodes": 0,
-    "unsupportedReason": "北交所 secid 映射暂不通（0./1. 实测 HTTP000），标缺口不编造",
-    "failedCodes": 0
+    "unsupportedReason": "北交所 secid 误判已修（0.920xxx 服务端实测可用）；个股/北交所已由 datacenter 批量报表覆盖，ETF 走本脚本逐票补抓",
+    "failedCodes": 6
   },
   "batchStatus": {
     "source": "eastmoney datacenter-web RPT_DMSK_TS_FUNDFLOW (batch)",
@@ -23,13 +23,25 @@
       "lookbackDays": 30
     }
   },
+  "etfStatus": {
+    "source": "FTShare eastmoney-etf-flow (ETF 日资金流批量, 与 push2his 逐位一致)",
+    "fetchedEtfCodes": 495,
+    "etfCoveragePct": 71.66,
+    "earlyGapRows": 873,
+    "earlyGapNote": "2026-03-16 前 FTShare/push2his 均无 ETF 资金流数据，标缺口不填0",
+    "window": {
+      "from": "2026-03-16",
+      "to": "2026-11-23",
+      "dataStart": "2026-03-16"
+    }
+  },
   "panelRows": 108338,
-  "joinedRows": 98720,
-  "joinRate": 0.9112,
+  "joinedRows": 106151,
+  "joinRate": 0.9798,
   "baseline": {
-    "measuredNet": -0.7716,
-    "measuredWinRate": 0.4086,
-    "samples": 98720,
+    "measuredNet": -0.7648,
+    "measuredWinRate": 0.4042,
+    "samples": 106151,
     "costPct": 0.31
   },
   "features": {
@@ -39,55 +51,55 @@
         {
           "bucket": "1/5",
           "lo": -1092509.29,
-          "hi": -4433.19,
-          "n": 19744,
-          "net": -0.9229,
-          "winRate": 0.4041,
-          "excess": -0.1513
+          "hi": -4222.7,
+          "n": 21230,
+          "net": -0.9083,
+          "winRate": 0.4021,
+          "excess": -0.1435
         },
         {
           "bucket": "2/5",
-          "lo": -4432.99,
-          "hi": -1228.55,
-          "n": 19744,
-          "net": -0.7582,
-          "winRate": 0.4071,
-          "excess": 0.0134
+          "lo": -4221.96,
+          "hi": -1112.61,
+          "n": 21230,
+          "net": -0.7547,
+          "winRate": 0.4064,
+          "excess": 0.0101
         },
         {
           "bucket": "3/5",
-          "lo": -1228.52,
-          "hi": -159.9,
-          "n": 19744,
-          "net": -0.6878,
-          "winRate": 0.4099,
-          "excess": 0.0838
+          "lo": -1112.59,
+          "hi": -93.05,
+          "n": 21230,
+          "net": -0.687,
+          "winRate": 0.4065,
+          "excess": 0.0778
         },
         {
           "bucket": "4/5",
-          "lo": -159.9,
-          "hi": 1007.65,
-          "n": 19744,
-          "net": -0.6559,
-          "winRate": 0.412,
-          "excess": 0.1157
+          "lo": -93.05,
+          "hi": 971.87,
+          "n": 21230,
+          "net": -0.6595,
+          "winRate": 0.3991,
+          "excess": 0.1053
         },
         {
           "bucket": "5/5",
-          "lo": 1007.8,
+          "lo": 971.91,
           "hi": 678143.77,
-          "n": 19744,
-          "net": -0.833,
-          "winRate": 0.4099,
-          "excess": -0.0614
+          "n": 21231,
+          "net": -0.8144,
+          "winRate": 0.4069,
+          "excess": -0.0496
         }
       ],
-      "coverage": 0.9118,
+      "coverage": 0.9804,
       "bestBucket": "4/5",
-      "bestNet": -0.6559,
+      "bestNet": -0.6595,
       "worstBucket": "1/5",
-      "worstNet": -0.9229,
-      "spread": 0.267
+      "worstNet": -0.9083,
+      "spread": 0.2488
     },
     "superRatio5": {
       "label": "超大单占主力比",
@@ -95,55 +107,55 @@
         {
           "bucket": "1/5",
           "lo": -9200.29,
-          "hi": -0.72,
-          "n": 19740,
-          "net": -0.771,
-          "winRate": 0.4083,
-          "excess": 0.0006
+          "hi": -0.73,
+          "n": 21218,
+          "net": -0.7636,
+          "winRate": 0.4018,
+          "excess": 0.0012
         },
         {
           "bucket": "2/5",
-          "lo": -0.72,
-          "hi": -0.36,
-          "n": 19740,
-          "net": -0.8322,
-          "winRate": 0.4015,
-          "excess": -0.0606
+          "lo": -0.73,
+          "hi": -0.35,
+          "n": 21218,
+          "net": -0.8356,
+          "winRate": 0.4014,
+          "excess": -0.0708
         },
         {
           "bucket": "3/5",
-          "lo": -0.36,
+          "lo": -0.35,
           "hi": 0,
-          "n": 19741,
-          "net": -0.7824,
-          "winRate": 0.4137,
-          "excess": -0.0108
+          "n": 21219,
+          "net": -0.757,
+          "winRate": 0.4128,
+          "excess": 0.0078
         },
         {
           "bucket": "4/5",
           "lo": 0,
-          "hi": 0.47,
-          "n": 19740,
-          "net": -0.7767,
-          "winRate": 0.408,
-          "excess": -0.0051
+          "hi": 0.53,
+          "n": 21218,
+          "net": -0.8009,
+          "winRate": 0.4033,
+          "excess": -0.0361
         },
         {
           "bucket": "5/5",
-          "lo": 0.47,
+          "lo": 0.53,
           "hi": 8485.58,
-          "n": 19741,
-          "net": -0.6954,
-          "winRate": 0.4114,
-          "excess": 0.0762
+          "n": 21219,
+          "net": -0.6669,
+          "winRate": 0.4019,
+          "excess": 0.0979
         }
       ],
-      "coverage": 0.9116,
+      "coverage": 0.9799,
       "bestBucket": "5/5",
-      "bestNet": -0.6954,
+      "bestNet": -0.6669,
       "worstBucket": "2/5",
-      "worstNet": -0.8322,
-      "spread": 0.1368
+      "worstNet": -0.8356,
+      "spread": 0.1687
     },
     "accel": {
       "label": "主力资金加速度(万元)",
@@ -151,114 +163,114 @@
         {
           "bucket": "1/5",
           "lo": -1384244.55,
-          "hi": -3285.27,
-          "n": 19744,
-          "net": -0.9268,
-          "winRate": 0.4059,
-          "excess": -0.1552
+          "hi": -3113.27,
+          "n": 21230,
+          "net": -0.9134,
+          "winRate": 0.4032,
+          "excess": -0.1486
         },
         {
           "bucket": "2/5",
-          "lo": -3285.23,
-          "hi": -377.8,
-          "n": 19744,
-          "net": -0.6616,
-          "winRate": 0.417,
-          "excess": 0.11
+          "lo": -3113.11,
+          "hi": -318.59,
+          "n": 21230,
+          "net": -0.6571,
+          "winRate": 0.4138,
+          "excess": 0.1077
         },
         {
           "bucket": "3/5",
-          "lo": -377.76,
-          "hi": 669.32,
-          "n": 19744,
-          "net": -0.6589,
-          "winRate": 0.4188,
-          "excess": 0.1127
+          "lo": -318.57,
+          "hi": 584.92,
+          "n": 21230,
+          "net": -0.6752,
+          "winRate": 0.4045,
+          "excess": 0.0896
         },
         {
           "bucket": "4/5",
-          "lo": 669.57,
-          "hi": 3845.47,
-          "n": 19744,
-          "net": -0.6716,
-          "winRate": 0.4018,
-          "excess": 0.1
+          "lo": 584.93,
+          "hi": 3648.91,
+          "n": 21230,
+          "net": -0.6617,
+          "winRate": 0.4009,
+          "excess": 0.1031
         },
         {
           "bucket": "5/5",
-          "lo": 3845.51,
+          "lo": 3649.57,
           "hi": 1658103.09,
-          "n": 19744,
-          "net": -0.9389,
-          "winRate": 0.3995,
-          "excess": -0.1673
+          "n": 21231,
+          "net": -0.9165,
+          "winRate": 0.3987,
+          "excess": -0.1517
         }
       ],
-      "coverage": 0.9118,
-      "bestBucket": "3/5",
-      "bestNet": -0.6589,
+      "coverage": 0.9804,
+      "bestBucket": "2/5",
+      "bestNet": -0.6571,
       "worstBucket": "5/5",
-      "worstNet": -0.9389,
-      "spread": 0.28
+      "worstNet": -0.9165,
+      "spread": 0.2594
     },
     "mainPctT": {
       "label": "当日主力净占比(%)",
       "buckets": [
         {
           "bucket": "1/5",
-          "lo": -66.22,
-          "hi": -7.8,
-          "n": 19744,
-          "net": -0.8202,
-          "winRate": 0.4043,
-          "excess": -0.0486
+          "lo": -99.99,
+          "hi": -7.78,
+          "n": 21230,
+          "net": -0.8077,
+          "winRate": 0.4009,
+          "excess": -0.0429
         },
         {
           "bucket": "2/5",
-          "lo": -7.8,
-          "hi": -3.52,
-          "n": 19744,
-          "net": -0.7242,
-          "winRate": 0.4162,
-          "excess": 0.0474
+          "lo": -7.78,
+          "hi": -3.4,
+          "n": 21230,
+          "net": -0.7129,
+          "winRate": 0.4139,
+          "excess": 0.0519
         },
         {
           "bucket": "3/5",
-          "lo": -3.52,
-          "hi": -0.02,
-          "n": 19744,
-          "net": -0.7795,
-          "winRate": 0.4056,
-          "excess": -0.0079
+          "lo": -3.4,
+          "hi": 0.04,
+          "n": 21230,
+          "net": -0.7849,
+          "winRate": 0.3988,
+          "excess": -0.0201
         },
         {
           "bucket": "4/5",
-          "lo": -0.02,
-          "hi": 3.96,
-          "n": 19744,
-          "net": -0.8429,
-          "winRate": 0.4056,
-          "excess": -0.0713
+          "lo": 0.04,
+          "hi": 4.17,
+          "n": 21230,
+          "net": -0.8366,
+          "winRate": 0.4006,
+          "excess": -0.0718
         },
         {
           "bucket": "5/5",
-          "lo": 3.96,
-          "hi": 94.58,
-          "n": 19744,
-          "net": -0.691,
-          "winRate": 0.4113,
-          "excess": 0.0806
+          "lo": 4.17,
+          "hi": 100,
+          "n": 21231,
+          "net": -0.6817,
+          "winRate": 0.4067,
+          "excess": 0.0831
         }
       ],
-      "coverage": 0.9118,
+      "coverage": 0.9804,
       "bestBucket": "5/5",
-      "bestNet": -0.691,
+      "bestNet": -0.6817,
       "worstBucket": "4/5",
-      "worstNet": -0.8429,
-      "spread": 0.1519
+      "worstNet": -0.8366,
+      "spread": 0.1549
     }
   },
   "gaps": {
-    "note": "个股/北交所走 datacenter 批量报表（不同WAF，不受push2his限流）；ETF 走 push2his 云端逐票补抓。缺口保留为空，不填 0、不估算。"
+    "note": "个股/北交所走 datacenter 批量报表（不同WAF，不受push2his限流）；ETF 走 FTShare 东财ETF资金流批量接口（2026-03-16起）+ push2his 逐票兜底，两源已逐位验证一致。2026-03-16 前 ETF 无公开资金流历史，标缺口。缺口保留为空，不填 0、不估算。"
   }
 }
