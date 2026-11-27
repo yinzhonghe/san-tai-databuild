@@ -13,7 +13,8 @@ tools/fetch_fundflow_hist.py · 历史逐日资金流抓取器（自进化地基
   - 不编造：抓不到就记 status 缺口，绝不用 0 或估算顶替
   - 断点续传：已抓的代码跳过，可反复运行逐步补全
   - 覆盖优先：按 panel 样本出现次数排序，先抓覆盖样本多的票
-  - 北交所 secid 映射暂不通 → 明确标 unsupported，不静默丢弃
+  - 北交所 920 新代码走 0.920xxx（服务端实测可用）；个股/北交所已由 fetch_fundflow_batch.py 批量覆盖
+  - 本脚本默认抓全部；云端用 --only-etf 只补 ETF（批量报表不含ETF），避免 push2his 限流
 
 输出：
   learn/evolve/fundflow_hist.jsonl   每行一只票的完整逐日资金流
@@ -55,14 +56,19 @@ FIELDS2 = 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65'
 
 
 def secid_of(code):
-    """沪深/ETF secid 映射；北交所暂不支持（实测 0./1. 均 HTTP000）。"""
+    """沪深/ETF/北交所 secid 映射。
+    2026-11-27 修正：此前 BJ 标 unsupported 是【本地 IP 被 push2his 限流的假象】。
+    服务端实测 0.920819 / 0.920000 均返回真实 klines（market=0），北交所 920 新代码
+    走深市 secid 前缀 0. 即可。批量报表 fetch_fundflow_batch.py 也覆盖全部 920xxx。
+    """
     bare, mkt = (code.split('.') + [''])[:2]
     if mkt == 'SH':
         return '1.' + bare, None
     if mkt == 'SZ':
         return '0.' + bare, None
     if mkt == 'BJ':
-        return None, 'unsupported_bj_secid'
+        # 2025-10-09 起北交所统一 920 新代码；旧 43/83/87 号段按 0. 亦可查
+        return '0.' + bare, None
     return None, 'unknown_market_' + (mkt or 'none')
 
 
@@ -183,7 +189,8 @@ def write_status(targets, done, fails, stats):
         'totalSampleRows': total_rows,
         'unsupportedCodes': len(unsupported),
         'unsupportedSampleRows': sum(t['n'] for t in unsupported),
-        'unsupportedReason': '北交所 secid 映射暂不通（0./1. 实测 HTTP000），标缺口不编造',
+        'unsupportedReason': ('北交所 secid 误判已修（0.920xxx 服务端实测可用）；'
+                              '个股/北交所已由 datacenter 批量报表覆盖，ETF 走本脚本逐票补抓'),
         'failedCodes': len(fails),
         'failedSample': fails[:20],
         'requestStats': stats,
@@ -202,12 +209,18 @@ def main():
     ap.add_argument('--limit', type=int, default=600, help='抓覆盖优先的前N只(0=全量)')
     ap.add_argument('--check', action='store_true', help='只统计，不抓')
     ap.add_argument('--interval', type=float, default=15.0, help='基准请求间隔秒(东财按IP滑动窗限流；默认15s慢抓)')
+    ap.add_argument('--only-etf', action='store_true',
+                    help='只抓ETF（个股/北交所已由 fetch_fundflow_batch.py 批量覆盖，'
+                         '避免 push2his 重复请求触发IP限流）')
     args = ap.parse_args()
 
     targets = load_targets()
     if not targets:
         print('[fundflow] 无目标代码，退出')
         return 1
+    if args.only_etf:
+        targets = [t for t in targets if t['isEtf']]
+        print('[fundflow] --only-etf：仅处理 %d 只ETF（个股走批量接口）' % len(targets))
     done = load_done()
     fails = []
     stats = {'ok': 0, 'empty': 0, 'error': 0, 'retries': 0}
