@@ -22,6 +22,10 @@ var ROOT = path.dirname(path.dirname(path.dirname(__dirname))); // tools/evolve/
 var EVO = path.join(ROOT, 'learn', 'evolve');
 var LAB = path.join(EVO, 'freelab');
 var SAMPLE = path.join(EVO, 'panel_sample100k.jsonl');
+/* 资金流增强样本（f 注入 main5/superRatio5/accel/mainPctT，98% join）。
+   存在时优先用它，让画像里资金流特征有真实分档净收益，供大模型自由推演。 */
+var SAMPLE_FF = path.join(EVO, 'panel_sample100k_ff.jsonl');
+var FULL_FF = path.join(EVO, 'panel_ff.jsonl');
 var FULL = path.join(EVO, 'panel.jsonl');
 var CONST = path.join(EVO, 'constitution.json');
 var GAPS = path.join(EVO, 'panel_gaps.json');
@@ -130,7 +134,11 @@ function build(useFull) {
   var netSum = 0, netN = 0, wins = 0;
   var dates = [], firstDate = null, lastDate = null;
 
-  var src = useFull && fs.existsSync(FULL) ? FULL : SAMPLE;
+  /* 优先资金流增强样本：画像里 4 个资金流特征才有真实分档净收益。
+     增强样本不存在时自动回退普通样本（资金流特征显示"无有效样本"，不编造）。 */
+  var src = SAMPLE;
+  if (useFull) src = fs.existsSync(FULL_FF) ? FULL_FF : (fs.existsSync(FULL) ? FULL : SAMPLE);
+  else src = fs.existsSync(SAMPLE_FF) ? SAMPLE_FF : SAMPLE;
   var lines = fs.readFileSync(src, 'utf8').split('\n');
   for (var li = 0; li < lines.length; li++) {
     var line = lines[li];
