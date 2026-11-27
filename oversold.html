@@ -463,19 +463,19 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+<script src="echarts.min.js?v=202611271618&sharecode=EPDR6ET2KO"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
-<script src="fundflow.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
-<script src="state-phase.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
-<script src="evolve_report.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
-<script src="freelab_report.js?v=202611271529&sharecode=EPDR6ET2KO"></script>
+<script src="data-service.js?v=202611271618&sharecode=EPDR6ET2KO"></script>
+<script src="fundflow.js?v=202611271618&sharecode=EPDR6ET2KO"></script>
+<script src="state-phase.js?v=202611271618&sharecode=EPDR6ET2KO"></script>
+<script src="evolve_report.js?v=202611271618&sharecode=EPDR6ET2KO"></script>
+<script src="freelab_report.js?v=202611271618&sharecode=EPDR6ET2KO"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
 /* 本地快照回退路径同样要带 sharecode，否则分享站点回「链接不完整」403 */
-var AB_LOCAL_V = '?v=202611271529&sharecode=EPDR6ET2KO';
+var AB_LOCAL_V = '?v=202611271618&sharecode=EPDR6ET2KO';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 /* 深链统一入口：分享站点对每个顶层导航都校验 ?sharecode=，
    少了就回 403「链接不完整」。从当前地址取（更通用），取不到再用固定兜底。
@@ -1831,9 +1831,14 @@ function abBoot() {
             + '</b> 只 · 个股覆盖 ' + pct1((FF.batchStatus.stockCoveragePct || 0) / 100, 1)
             + ' · 北交所 <b>' + esc(FF.batchStatus.bjCovered || 0) + '/' + esc(FF.batchStatus.bjCodes || 0)
             + '</b> 已纳入（此前标 unsupported 是本地IP被限流的假象，0.920xxx 服务端实测可用）</div>' : '')
-      + (FF.batchStatus && FF.batchStatus.etfGapRows > 0
+      + (FF.etfStatus && FF.etfStatus.fetchedEtfCodes > 0
+          ? '<div style="color:#00695c">ETF 批量(FTShare 东财ETF资金流)：<b>' + esc(FF.etfStatus.fetchedEtfCodes)
+            + '</b> 只 · ETF 样本覆盖 <b>' + pct1((FF.etfStatus.etfCoveragePct || 0) / 100, 1) + '</b>'
+            + (FF.etfStatus.earlyGapRows > 0 ? ' · <span style="color:#a08b00">'
+               + esc(FF.etfStatus.earlyGapRows) + ' 行(2026-03-16 前无公开历史)标缺口不编造</span>' : '') + '</div>' : '')
+      + (FF.batchStatus && FF.batchStatus.etfGapRows > 0 && !(FF.etfStatus && FF.etfStatus.fetchedEtfCodes > 0)
           ? '<div style="color:#a08b00">ETF 不在批量报表内，' + esc(FF.batchStatus.etfGapRows)
-            + ' 行样本走 push2his 云端逐票补抓，未抓到标缺口不编造</div>' : '')
+            + ' 行样本待 ETF 批量源补齐，未覆盖标缺口不编造</div>' : '')
       + '</div>';
     var hl = FF.highlights || [];
     if (hl.length) {
