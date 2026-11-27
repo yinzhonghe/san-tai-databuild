@@ -10,7 +10,8 @@
  *   - 资金流行为信号日 T 及之前的数据，绝不用 T+1..T+3（避免未来函数）。
  *   - 不改 constitution / population / heartbeat。
  *
- * 输入：learn/evolve/fundflow_hist.jsonl（tools/fetch_fundflow_hist.py 产出）
+ * 输入：learn/evolve/fundflow_batch.jsonl.gz（fetch_fundflow_batch.py 批量全市场，主力）
+ *       learn/evolve/fundflow_hist.jsonl（fetch_fundflow_hist.py 逐票，ETF 补抓）
  *       learn/evolve/panel_sample100k.jsonl
  * 输出：learn/evolve/freelab/fundflow_portrait.json
  * 用法：node tools/evolve/freelab/fundflow_portrait.js
@@ -18,12 +19,15 @@
 'use strict';
 var fs = require('fs');
 var path = require('path');
+var zlib = require('zlib');
 
 var ROOT = path.dirname(path.dirname(path.dirname(__dirname)));
 var EVO = path.join(ROOT, 'learn', 'evolve');
 var LAB = path.join(EVO, 'freelab');
 var FUND = path.join(EVO, 'fundflow_hist.jsonl');
+var FUND_BATCH = path.join(EVO, 'fundflow_batch.jsonl.gz');
 var FUND_STATUS = path.join(EVO, 'fundflow_status.json');
+var FUND_BATCH_STATUS = path.join(EVO, 'fundflow_batch_status.json');
 var SAMPLE = path.join(EVO, 'panel_sample100k.jsonl');
 var CONST = path.join(EVO, 'constitution.json');
 var OUT = path.join(LAB, 'fundflow_portrait.json');
@@ -36,16 +40,26 @@ function r(v, d) { return isNum(v) ? +v.toFixed(d == null ? 4 : d) : null; }
 /* 资金流行字段索引（与 fetch_fundflow_hist.py 一致）：
    0 date, 1 mainWan, 2 superWan, 3 bigWan, 4 midWan, 5 smallWan,
    6 mainPct, 7 close, 8 chg */
+function absorb(map, line) {
+  if (!line.trim()) return;
+  var o; try { o = JSON.parse(line); } catch (e) { return; }
+  var byDate = map[o.code] || (map[o.code] = {});
+  (o.rows || []).forEach(function (row) { byDate[row[0]] = row; });
+}
+
 function loadFundflow() {
   var map = {};
-  if (!fs.existsSync(FUND)) return map;
-  fs.readFileSync(FUND, 'utf8').split('\n').forEach(function (line) {
-    if (!line.trim()) return;
-    var o; try { o = JSON.parse(line); } catch (e) { return; }
-    var byDate = {};
-    (o.rows || []).forEach(function (row) { byDate[row[0]] = row; });
-    map[o.code] = byDate;
-  });
+  // ① 批量全市场（个股 + 北交所）：datacenter-web 不同 WAF，不受 push2his 封禁影响
+  if (fs.existsSync(FUND_BATCH)) {
+    try {
+      var txt = zlib.gunzipSync(fs.readFileSync(FUND_BATCH)).toString('utf8');
+      txt.split('\n').forEach(function (line) { absorb(map, line); });
+    } catch (e) { /* 批量文件损坏 → 退回逐票数据，标缺口 */ }
+  }
+  // ② 逐票补抓（ETF）：批量报表不含 ETF，这部分由 push2his 云端补
+  if (fs.existsSync(FUND)) {
+    fs.readFileSync(FUND, 'utf8').split('\n').forEach(function (line) { absorb(map, line); });
+  }
   return map;
 }
 
@@ -97,6 +111,7 @@ function build() {
   var cons = loadJSON(CONST, {});
   var cost = (cons.costModel && cons.costModel.totalRoundTripPct) || 0.31;
   var fundStatus = loadJSON(FUND_STATUS, {});
+  var batchStatus = loadJSON(FUND_BATCH_STATUS, {});
   var codeMap = loadFundflow();
   var keys = ['main5', 'superRatio5', 'accel', 'mainPctT'];
   var labels = { main5: '近5日主力净流入(万元)', superRatio5: '超大单占主力比', accel: '主力资金加速度(万元)', mainPctT: '当日主力净占比(%)' };
@@ -141,7 +156,7 @@ function build() {
 
   var out = {
     generatedAt: new Date().toISOString(),
-    source: 'eastmoney fflow/daykline (真实抓取, T日及之前, 无未来函数)',
+    source: 'eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(全市场批量) + fflow/daykline(ETF逐票)',
     fetchedCodes: Object.keys(codeMap).length,
     fundStatus: {
       fetchedCodes: fundStatus.fetchedCodes || 0,
@@ -150,12 +165,21 @@ function build() {
       unsupportedReason: fundStatus.unsupportedReason || '',
       failedCodes: fundStatus.failedCodes || 0
     },
+    batchStatus: {
+      source: batchStatus.source || null,
+      mergedCodes: batchStatus.mergedCodes || 0,
+      stockCoveragePct: batchStatus.stockCoveragePct || 0,
+      bjCodes: batchStatus.bjCodes || 0,
+      bjCovered: batchStatus.bjCovered || 0,
+      etfGapRows: batchStatus.etfGapRows || 0,
+      window: batchStatus.window || null
+    },
     panelRows: rows, joinedRows: joined,
     joinRate: r(joined / Math.max(1, rows), 4),
     baseline: { measuredNet: realNet, measuredWinRate: netN ? r(wins / netN) : null, samples: netN, costPct: cost },
     features: features,
     gaps: {
-      note: '资金流历史覆盖不足/北交所 secid 不支持的样本一律标缺口，不填 0、不估算。join 不上的样本不进资金流画像。'
+      note: '个股/北交所走 datacenter 批量报表（不同WAF，不受push2his限流）；ETF 走 push2his 云端逐票补抓。缺口保留为空，不填 0、不估算。'
     }
   };
   fs.mkdirSync(LAB, { recursive: true });
