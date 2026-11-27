@@ -35,12 +35,15 @@ var OPS = {
   'isDown': function (x) { return isNum(x) && x < 0; }
 };
 
-/* 校验规则合法性：返回 {ok, errors[]} */
-function validate(rule) {
+/* 校验规则合法性：返回 {ok, errors[]}
+   extraFields 可选：额外合法的字段名数组（自由推演实验室造的可复现新特征用）。
+   不传时行为与原来完全一致（只认 features.META 已注册特征）。 */
+function validate(rule, extraFields) {
+  var extra = extraFields || [];
   var errors = [];
   if (!rule || !rule.when || !rule.when.length) errors.push('缺 when 条件');
   (rule.when || []).concat(rule.unless || []).forEach(function (c) {
-    if (!FEAT.META[c.f]) errors.push('未知特征字段: ' + c.f);
+    if (!FEAT.META[c.f] && extra.indexOf(c.f) < 0) errors.push('未知特征字段: ' + c.f);
     if (!OPS[c.op]) errors.push('未知操作符: ' + c.op);
     if (['>', '>=', '<', '<=', '='].indexOf(c.op) >= 0 && !isNum(c.v)) errors.push(c.f + ' 缺数值阈值 v');
     if (c.op === 'between' && (!isNum(c.lo) || !isNum(c.hi))) errors.push(c.f + ' between 缺 lo/hi');
