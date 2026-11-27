@@ -28,14 +28,26 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+# 重大事件强预警库（2026-11-27）：顶层会议/印花税/国家队/外部冲击等规律 + 强预警写作要求。
+# 与 gen_report 同目录部署；本地 github_ci/ 与云端仓库根均成立。
+try:
+    import event_alert as EA
+except ImportError:  # 云端若路径不同，尝试同目录绝对加载，绝不因缺模块中断三报
+    EA = None
+
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/131.0 Safari/537.36')
 REPO = os.environ.get('REPORT_REPO', 'yinzhonghe/san-tai-databuild')
 BRANCH = os.environ.get('REPORT_BRANCH', 'data')
 TOKEN = os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN') or ''
 API = 'https://api.github.com'
-RISK = ('以上内容根据公开新闻整理，由 AI 辅助总结，仅作信息参考，不构成投资建议，'
-        '不代表对走势的预测。市场有风险，决策请独立判断。')
+RISK = ('风险提示：①政策风险——美联储议息、国内稳市与产业政策的实际力度可能与预期不符；'
+        '②地缘风险——中东、俄乌局势与油价波动会改变通胀与风险偏好；'
+        '③业绩风险——财报与解禁密集期，高位题材股存在估值回调压力；'
+        '④风格切换风险——成交量不能持续放大时，主线可能快速轮动，追高易套。 '
+        '以上内容根据公开新闻整理，由 AI 辅助总结；行情数据以交易所与官方渠道披露为准，'
+        '涉及历史类比与「模型已有信息（非实时）」的条目未经当日核实。仅作信息参考，'
+        '不构成投资建议，不代表对走势的预测。市场有风险，决策请独立判断。')
 
 MODELS = [os.environ.get('REPORT_MODEL') or 'gpt-4o', 'gpt-4.1', 'gpt-4o-mini',
           'gpt-4.1-mini', 'DeepSeek-V3-0324']
@@ -685,6 +697,10 @@ DEEP_QUERY = (
     # 国内政策与资金
     '融资保证金 80% 降费 亿', '主动ETF 360亿 上市', '央行 逆回购 MLF 净投放',
     '十大券商 周策略 不必悲观', '证监会 稳市 政策 组合拳', 'ETF 净申购 宽基 资金',
+    # 顶层会议与重大事件（2026-11-27 国常会午后暴涨教训：必须主动检索、提前预警）
+    '国务院常务会议 资本市场 稳市', '国常会 投融资 综合改革', '政治局会议 资本市场',
+    '中央经济工作会议 股市 政策', '印花税 下调 上调', '中央汇金 增持ETF 平准基金',
+    '降准降息 预期 落地', '国务院常务会议 召开 部署',
     # A股盘面与结构
     'A股 上周五 收盘 成交额 低点', '沪指 3500 支撑 量能', '两融余额 杠杆资金 流出',
     '板块 涨跌 领涨 领跌', '个股 解禁 业绩预告', '北向资金 外资 A股',
@@ -843,9 +859,31 @@ def build_facts(slot, now_bj=None):
 
     diag['missing'].append('美债10年期收益率（东财/新浪公开接口均无返回，已从正文剔除）')
 
+    # 重大事件强预警扫描：把快讯 + 深料汇总成文本，逐条过事件库。
+    # 命中「已发生 / 即将发生」都写进事实包，午报尤其靠它抓住午间通稿类政策底信号。
+    scan_items = []
+    for x in raw_news:
+        scan_items.append({'t': x.get('t') or '', 'sum': x.get('sum') or '',
+                           'time': x.get('time') or '', 'src': x.get('src') or '快讯'})
+    for x in deep:
+        scan_items.append({'t': x.get('title') or '', 'sum': x.get('sum') or '',
+                           'date': x.get('date') or '', 'src': x.get('query') or '深料'})
+    try:
+        alerts = EA.detect_alerts(scan_items) if EA else []
+    except Exception as e:
+        alerts = []
+        diag['steps'].append({'name': '重大事件强预警扫描', 'ok': False, 'note': str(e)[:80]})
+    else:
+        ev_note = '未命中重大事件库'
+        if alerts:
+            ev_note = '%d 条：%s' % (len(alerts), ' / '.join(
+                '%s·%s' % (a['name'], a['stageLabel']) for a in alerts[:4]))
+        diag['steps'].append({
+            'name': '重大事件强预警扫描', 'ok': True, 'note': ev_note})
+
     return {'quotes': q, 'futures': fut, 'usd': usd, 'turnover': spot,
             'breadth': breadth, 'sectors_top': top, 'sectors_bottom': bottom,
-            'news': raw_news, 'deep': deep}, diag
+            'news': raw_news, 'deep': deep, 'eventAlerts': alerts}, diag
 
 
 def rank_deep(rows, cap=200):
@@ -1005,12 +1043,49 @@ def compact_facts(f, slot):
                    for ev in dedupe_events(rank_deep(f.get('deep') or [], 400),
                                            'title', cap=120)],
         '昨日滚动观点': f.get('rolling') or {},
+        # 重大事件强预警：命中的顶层会议/政策/外部冲击，模型必须显式回应（见 SYSTEM 硬要求）。
+        # 只带历史类比案例（标注回测案例），绝不当成今日事实。
+        '重大事件预警': [{
+            '事件': a['name'], '级别': a['level'], '方向': a['dir'],
+            '阶段': a['stageLabel'], '命中条数': a['evidenceCount'],
+            '命中样例': [e['title'] for e in a['evidence']],
+            '历史类比案例': a['cases'], '结构分化': a['sector'],
+            '操作提示': a['action'], '为什么重要': a['why']
+        } for a in (f.get('eventAlerts') or [])],
         '注意': '以上是本次能抓到的全部数据。正文禁止出现本包里没有的数字；'
                 '美债收益率等未提供项不要提及。「昨日滚动观点」里的主线要滚动修订，'
-                '不要照抄；事件日期与节点可以引用。',
+                '不要照抄；事件日期与节点可以引用。'
+                '「重大事件预警」里若有条目，按 SYSTEM 里的强预警写作硬要求处理：'
+                'oneLine 点名事件方向、第一段写「⚠事件强预警」、第四段与 watch 给下一节点与证伪条件；'
+                '历史案例数字只作类比，标注「历史复盘」，不得冒充今日事实。',
     }
     return out
 
+
+# ---------------------------------------------------------------- 历史回测案例库
+# 取自长期维护的《A股每日新闻早报·历史回测附录》，作为「这类事该跌多少、看指数还是看结构、
+# 情绪修复要几天」的判断先验。硬编码进提示词而非外部文件：GitHub Actions 单文件运行最稳，
+# 也不用改 yml 和数据同步。数字均为公开行情复盘，不得当作当日事实照抄，只能用于类比。
+BACKTEST_PRIMER = """
+
+【历史回测案例库：突发事件对 A 股当日走势的影响（只作类比，不得冒充今日事实）】
+案例（事件 → 当日大盘 → 结构分化）：
+- 2025-04-07 美国"对等关税"超预期：上证 -7.34%、创业板 -12.5%，成交 1.59 万亿；农业、稀土逆势大涨，消费电子/跨境电商/锂电重挫。
+- 2024-09-24 "一行一局一会"一揽子政策：上证 +4.15%，创 4 年最大单日涨幅，成交 9700 亿；券商、食品饮料、地产、非银全线爆发。
+- 2022-02-24 俄乌战争爆发：上证 -1.70%、深成指 -2.20%；石油 +3.22%、黄金 +0.73%、军工走强，白酒跌超 3%。
+- 2020-02-03 新冠疫情后首个交易日：上证 -7.72%、深成指 -8.45%，逾 3000 股跌停；医药、在线办公逆势，次日即 V 型反弹（"黄金坑"）。
+- 2020-03 沙特油价战＋全球熔断潮（模型已有信息，非实时）：上证单日约 -3%，随全球动荡反复探底；口罩、医药、必选消费相对抗跌。
+- 2023-03 硅谷银行倒闭（模型已有信息，非实时）：A 股当日波动有限，银行股小幅走弱；大银行相对抗跌，外围敞口小的板块几乎无感。
+
+五条回测规律（用于判断"这次该怎么看"）：
+1. 事件决定跌幅档位：普通地缘冲突当日跌 1%–2%；供给型/制度型重大冲击（疫情、超预期关税）跌 7%–8%；国内重磅政策利好可单日拉升 4% 以上。
+2. A 股"利空看结构、利好看整体"：外部利空下指数往往只小跌，但油气、黄金、军工、农业等逆势大涨；国内政策利好则是全市场普涨，券商与核心资产弹性最大。
+3. 情绪修复通常只要 1–5 个交易日：恐慌性低开经常是短线"黄金坑"，但前提是没有新的利空接力。
+4. "国家队"是重要变量：历次大跌尾盘常有中央汇金增持 ETF 等稳市操作带动跌幅收窄，重大利空日不宜尾盘追卖。
+5. 最需要警惕"超预期"三个字：市场不怕坏消息，怕比预期更坏。关税、加息、财报只要符合预期，冲击通常有限。
+
+用法：第四段「中期预测表浓缩」点名历史参照时，优先从上面 6 个案例里挑 1 个最像的，写清「案例日期＋当日涨跌数字＋当时的结构分化」，再对照今天。引用时标注"回测案例"或"历史复盘"，不要写成今天发生的事。
+"""
 
 # ---------------------------------------------------------------- 写作提示
 SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写「三报」（早报 / 午间速览 / 收盘复盘）。
@@ -1053,8 +1128,9 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
   事件脉冲的），再点名 1–2 个要躲的方向，都要说不追高的理由。
 - 第四段「中期时间轴与盘后关注」必须包含三块，缺一不可：
   ① **中期预测表浓缩**：挑 2–3 个重大事件，每个写成「事件 → 历史参照（过去同类周期股市怎么走）
-     → 未来 1–3 个月板块影响 → 关键时间节点」。例如存储周期要写 DRAM 强 / NAND 弱的剪刀差、
-     2017/2021 涨价周期的股价表现、12 月合约价与答辩日期。
+     → 未来 1–3 个月板块影响 → 关键时间节点」。历史参照必须从【历史回测案例库】里挑 1 个最像的案例，
+     写清「案例日期＋当日涨跌数字＋当时结构分化」再对照今天；案例数字只能作类比，不得冒充今日事实。
+     例如存储周期要写 DRAM 强 / NAND 弱的剪刀差、2017/2021 涨价周期的股价表现、12 月合约价与答辩日期。
   ② **四阶段大盘时间轴**：按「未来两周 / 12 月上旬 / 12 月中下旬 / 次年 1–3 月」四段推演，
      每段有明确的事件驱动与操作重心，不要笼统说「继续观察」。
   ③ **三情景区间**：乐观 / 中性 / 悲观各给点位区间与触发条件（点位可作条件位，不得冒充已发生）。
@@ -1077,6 +1153,14 @@ SYSTEM = """你是 A 股盘面分析师，给一个客户看的看盘网站写�
   点名来源；不要 5 条就交差。
 - watch 4–5 条，每条带具体日期/时间点与可验证数字，不要一句话打包。
 - verdict 只能取三个值之一，与整体强弱一致。
+
+【重大事件强预警：最高优先级，覆盖上面所有写法要求】
+- 事实包「重大事件预警」字段若非空，说明抓到了会引发 A 股暴涨/暴跌的顶层事件或预告。
+  命中时：oneLine 开头必须点名事件与方向；第一段必须出现「⚠事件强预警：事件名（已发生/即将发生）」；
+  第四段中期时间轴写清该事件的下一节点与失效条件；watch 至少 1 条给可验证日期与证伪条件。
+- 严禁把重大事件埋在 news 列表或笼统写成「关注政策」。历史上国常会午间定调曾让午后科创50盘中涨超11%，
+  早报/午报若漏掉这类信号就是失职。命中的事件就算还没有盘面反应，也要按「即将发生」做强预警。
+- 事件库给出的历史案例数字只是类比，必须标注「历史复盘」，绝不写成今天已发生的事实。
 """
 
 
@@ -1108,7 +1192,9 @@ SLOT_OVERRIDES = {
 
 
 def system_prompt(slot):
-    return SYSTEM + SLOT_OVERRIDES.get(slot, '')
+    # 事件规律接进注意事项：每个时段都能读到「国常会/印花税/国家队/外部冲击」的重大事件清单。
+    ev_primer = EA.primer() if EA else ''
+    return SYSTEM + BACKTEST_PRIMER + ev_primer + SLOT_OVERRIDES.get(slot, '')
 
 
 TIER = (os.environ.get('LLM_TIER') or 'high').strip().lower()
@@ -1506,6 +1592,11 @@ def style_issues(c, slot='morning'):
             issues.append('第四段缺三情景（乐观/中性/悲观）')
         if not any(k in last for k in ('历史参照', '2017', '2021', '上轮', '上一轮')):
             issues.append('第四段缺中期预测表的历史参照')
+        # 回测框架硬判定：必须出现一个带日期+涨跌数字的历史案例，不能只写「参照历史」空话。
+        has_case_date = bool(re.search(r'(19|20)\d{2}[-年./]\d{1,2}[-月./]\d{1,2}|20\d{2}年|2017|2021|2025|2024|2022|2020|2023', last))
+        has_case_pct = bool(re.search(r'[-－−]?\d+(?:\.\d+)?\s*%|跌\d|涨\d|跌超|涨超', last))
+        if not (has_case_date and has_case_pct):
+            issues.append('第四段历史参照缺具体案例日期+涨跌数字（要从回测案例库点名一个）')
         if not any(k in last for k in ('12月', '12 月', '次年', '1–3月', '1-3月')):
             issues.append('第四段缺四阶段时间轴（12月/次年1-3月）')
     one = str(c.get('oneLine') or '')
@@ -1671,13 +1762,23 @@ def main():
 
     content = normalize_content(content)
     content['at'] = hhmm
+    # 重大事件强预警横幅：由代码确定性写入，即使模型漏写/模板兜底也不会丢。
+    # 前端可读 content.eventAlert 独立显示；正文里模型仍按 SYSTEM 硬要求写进 oneLine/第一段。
+    ev_alerts = facts_raw.get('eventAlerts') or []
+    content['eventAlert'] = EA.banner(ev_alerts) if EA else ''
+    content['eventAlerts'] = [{
+        '事件': a['name'], '级别': a['level'], '方向': a['dir'],
+        '阶段': a['stageLabel'], '结构': a['sector'],
+        '操作': a['action'], '为什么': a['why'], '历史案例': a['cases']
+    } for a in ev_alerts]
     # 参考包每期一句话末尾都标数据截止时间。由代码补写，避免模型写错时间。
     stamp = '数据截至 %s %s。' % (today, hhmm)
     if stamp not in (content.get('oneLine') or ''):
         content['oneLine'] = (content.get('oneLine') or '').rstrip() + stamp
     payload = {'date': today, 'slot': args.slot, 'report': content,
                'diagnostics': diag, 'model': model, 'unverified': unverified,
-               'style_issues': issues, 'generated_at': '%s %s' % (today, hhmm)}
+               'style_issues': issues, 'generated_at': '%s %s' % (today, hhmm),
+               'eventAlertCount': len(ev_alerts)}
 
     # 读取旧 daily.js 并合并
     old_bytes, sha, rerr = read_remote('daily.js')
