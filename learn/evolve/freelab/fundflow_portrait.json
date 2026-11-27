@@ -1,0 +1,250 @@
+{
+  "generatedAt": "2026-11-27T06:06:40.091Z",
+  "source": "eastmoney fflow/daykline (真实抓取, T日及之前, 无未来函数)",
+  "fetchedCodes": 15,
+  "fundStatus": {
+    "fetchedCodes": 12,
+    "coveragePct": 0.21,
+    "unsupportedCodes": 332,
+    "unsupportedReason": "北交所 secid 映射暂不通（0./1. 实测 HTTP000），标缺口不编造",
+    "failedCodes": 0
+  },
+  "panelRows": 108338,
+  "joinedRows": 165,
+  "joinRate": 0.0015,
+  "baseline": {
+    "measuredNet": -0.9921,
+    "measuredWinRate": 0.4121,
+    "samples": 165,
+    "costPct": 0.31
+  },
+  "features": {
+    "main5": {
+      "label": "近5日主力净流入(万元)",
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -158068.4,
+          "hi": -6423.3,
+          "n": 33,
+          "net": -0.7173,
+          "winRate": 0.4545,
+          "excess": 0.2748
+        },
+        {
+          "bucket": "2/5",
+          "lo": -5843.1,
+          "hi": -2121,
+          "n": 33,
+          "net": -0.2289,
+          "winRate": 0.5152,
+          "excess": 0.7632
+        },
+        {
+          "bucket": "3/5",
+          "lo": -2109.6,
+          "hi": -548.8,
+          "n": 33,
+          "net": -1.1883,
+          "winRate": 0.303,
+          "excess": -0.1962
+        },
+        {
+          "bucket": "4/5",
+          "lo": -529.1,
+          "hi": 1309.8,
+          "n": 33,
+          "net": -0.1873,
+          "winRate": 0.4545,
+          "excess": 0.8048
+        },
+        {
+          "bucket": "5/5",
+          "lo": 1619.3,
+          "hi": 60859.2,
+          "n": 33,
+          "net": -2.6388,
+          "winRate": 0.3333,
+          "excess": -1.6467
+        }
+      ],
+      "coverage": 0.0015,
+      "bestBucket": "4/5",
+      "bestNet": -0.1873,
+      "worstBucket": "5/5",
+      "worstNet": -2.6388,
+      "spread": 2.4515
+    },
+    "superRatio5": {
+      "label": "超大单占主力比",
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -12.82,
+          "hi": -0.61,
+          "n": 33,
+          "net": -1.4953,
+          "winRate": 0.3636,
+          "excess": -0.5032
+        },
+        {
+          "bucket": "2/5",
+          "lo": -0.59,
+          "hi": -0.33,
+          "n": 33,
+          "net": 0.6627,
+          "winRate": 0.5455,
+          "excess": 1.6548
+        },
+        {
+          "bucket": "3/5",
+          "lo": -0.33,
+          "hi": 0.01,
+          "n": 33,
+          "net": -0.6159,
+          "winRate": 0.3636,
+          "excess": 0.3762
+        },
+        {
+          "bucket": "4/5",
+          "lo": 0.01,
+          "hi": 0.57,
+          "n": 33,
+          "net": -1.5755,
+          "winRate": 0.3636,
+          "excess": -0.5834
+        },
+        {
+          "bucket": "5/5",
+          "lo": 0.59,
+          "hi": 23.02,
+          "n": 33,
+          "net": -1.9367,
+          "winRate": 0.4242,
+          "excess": -0.9446
+        }
+      ],
+      "coverage": 0.0015,
+      "bestBucket": "2/5",
+      "bestNet": 0.6627,
+      "worstBucket": "5/5",
+      "worstNet": -1.9367,
+      "spread": 2.5994
+    },
+    "accel": {
+      "label": "主力资金加速度(万元)",
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -142546.5,
+          "hi": -6315.8,
+          "n": 33,
+          "net": -0.8165,
+          "winRate": 0.4545,
+          "excess": 0.1756
+        },
+        {
+          "bucket": "2/5",
+          "lo": -4734,
+          "hi": -1207.3,
+          "n": 33,
+          "net": 0.0886,
+          "winRate": 0.5152,
+          "excess": 1.0807
+        },
+        {
+          "bucket": "3/5",
+          "lo": -1190.2,
+          "hi": 610.2,
+          "n": 33,
+          "net": -1.0503,
+          "winRate": 0.4242,
+          "excess": -0.0582
+        },
+        {
+          "bucket": "4/5",
+          "lo": 619.7,
+          "hi": 4950,
+          "n": 33,
+          "net": 0.5188,
+          "winRate": 0.4242,
+          "excess": 1.5109
+        },
+        {
+          "bucket": "5/5",
+          "lo": 5181.3,
+          "hi": 473665.8,
+          "n": 33,
+          "net": -3.7012,
+          "winRate": 0.2424,
+          "excess": -2.7091
+        }
+      ],
+      "coverage": 0.0015,
+      "bestBucket": "4/5",
+      "bestNet": 0.5188,
+      "worstBucket": "5/5",
+      "worstNet": -3.7012,
+      "spread": 4.22
+    },
+    "mainPctT": {
+      "label": "当日主力净占比(%)",
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -20.61,
+          "hi": -8.59,
+          "n": 33,
+          "net": -0.5536,
+          "winRate": 0.3939,
+          "excess": 0.4385
+        },
+        {
+          "bucket": "2/5",
+          "lo": -8.5,
+          "hi": -3.64,
+          "n": 33,
+          "net": -0.656,
+          "winRate": 0.3939,
+          "excess": 0.3361
+        },
+        {
+          "bucket": "3/5",
+          "lo": -3.6,
+          "hi": -0.27,
+          "n": 33,
+          "net": -0.4848,
+          "winRate": 0.4848,
+          "excess": 0.5073
+        },
+        {
+          "bucket": "4/5",
+          "lo": -0.06,
+          "hi": 3.76,
+          "n": 33,
+          "net": -1.738,
+          "winRate": 0.3939,
+          "excess": -0.7459
+        },
+        {
+          "bucket": "5/5",
+          "lo": 3.78,
+          "hi": 40.31,
+          "n": 33,
+          "net": -1.5283,
+          "winRate": 0.3939,
+          "excess": -0.5362
+        }
+      ],
+      "coverage": 0.0015,
+      "bestBucket": "3/5",
+      "bestNet": -0.4848,
+      "worstBucket": "4/5",
+      "worstNet": -1.738,
+      "spread": 1.2532
+    }
+  },
+  "gaps": {
+    "note": "资金流历史覆盖不足/北交所 secid 不支持的样本一律标缺口，不填 0、不估算。join 不上的样本不进资金流画像。"
+  }
+}
