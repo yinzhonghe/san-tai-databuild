@@ -1,10 +1,10 @@
 {
   "name": "san-tai-kan-pan",
-  "version": "20261127f",
+  "version": "20261127g",
   "private": true,
   "description": "三态看盘 · 纯静态 A 股看板（便携版）· 六派交叉验证引擎",
   "scripts": {
-    "test": "node tests/engine.test.js && node tests/resolve.test.js && node tests/limitup.test.js && node tests/watch.test.js && node tests/observe.test.js && node tests/evolve_v2.test.js && node tests/data_foundation.test.js && node tests/freelab.test.js && node tests/event_alert.test.js && node tests/sharecode_links.test.js && node tests/loading_fallback.test.js && node tests/inline_scripts.test.js && node tests/quote_source.test.js && node tests/banner_honesty.test.js",
+    "test": "node tests/engine.test.js && node tests/resolve.test.js && node tests/limitup.test.js && node tests/watch.test.js && node tests/observe.test.js && node tests/evolve_v2.test.js && node tests/data_foundation.test.js && node tests/freelab.test.js && node tests/fundflow_batch.test.js && node tests/event_alert.test.js && node tests/sharecode_links.test.js && node tests/loading_fallback.test.js && node tests/inline_scripts.test.js && node tests/quote_source.test.js && node tests/banner_honesty.test.js",
     "preflight": "node tools/preflight.js"
   },
   "license": "MIT"
