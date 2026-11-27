@@ -1,0 +1,22 @@
+{
+  "asOf": "2026-11-27 14:02:14",
+  "source": "eastmoney fflow/daykline",
+  "endpoint": "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+  "totalCodes": 5854,
+  "fetchedCodes": 12,
+  "coveragePct": 0.21,
+  "coveredSampleRows": 228,
+  "totalSampleRows": 108338,
+  "unsupportedCodes": 332,
+  "unsupportedSampleRows": 5646,
+  "unsupportedReason": "北交所 secid 映射暂不通（0./1. 实测 HTTP000），标缺口不编造",
+  "failedCodes": 0,
+  "failedSample": [],
+  "requestStats": {
+    "ok": 8,
+    "empty": 0,
+    "error": 0,
+    "retries": 0
+  },
+  "note": "逐日五档净流入真实抓取；净流入单位万元。断点续传，可反复运行补全。覆盖率按 panel 加权样本行计，未抓到的票一律标缺口，不填 0。"
+}
