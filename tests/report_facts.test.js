@@ -46,9 +46,9 @@ test('事实包/提示词把封板口径交给模型', function () {
 
 test('历史对比同指数同口径门禁已接线（首稿+两轮重写）', function () {
   assert.ok(gr.indexOf('def comparison_issues') >= 0, '缺 comparison_issues()');
-  assert.ok(gr.indexOf('style_issues(content, args.slot) + comparison_issues(content, facts_raw)') >= 0,
+  assert.ok(gr.indexOf('case_as_today_issues(content, facts_raw)') >= 0,
     '首稿未过门禁');
-  assert.ok((gr.match(/comparison_issues\(content[23], facts_raw\)/g) || []).length === 2,
+  assert.ok((gr.match(/case_as_today_issues\(content[23], facts_raw\)/g) || []).length === 2,
     '两轮重写未过门禁');
   assert.ok(gr.indexOf('同指数、同口径、同方向') >= 0, 'SYSTEM 缺同指数比较规则');
 });
@@ -76,6 +76,70 @@ test('comparison_issues 运行时：拦反结论、放过否定式与真实超�
     'facts2 = {"quotes": {"sh000001": {"pct": 5.2}}, "eventAlerts": [{"cases": cases}]}',
     'good = {"points": ["上证今日涨5.2%，历史复盘上证涨4.15%，今日涨幅已超越该案例。"]}',
     'assert not m.comparison_issues(good, facts2), "真实超越被误伤"',
+    'print("OK")'
+  ].join('\n');
+  var r = cp.spawnSync(exe, ['-c', code, path.join(ROOT, 'github_ci', 'gen_report.py')],
+    { cwd: ROOT, encoding: 'utf8', timeout: 40000 });
+  assert.equal(r.status, 0, 'Python 校验失败: ' + (r.stdout || '') + (r.stderr || '').slice(-400));
+  assert.ok((r.stdout || '').indexOf('OK') >= 0, '未输出 OK');
+});
+
+test('前端市场条不再用涨幅阈值冒充封板数', function () {
+  var app = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+  var ds = fs.readFileSync(path.join(ROOT, 'data-service.js'), 'utf8');
+  assert.ok(ds.indexOf('getLimitPools') >= 0, 'DS 缺真实封板池接口');
+  assert.ok(ds.indexOf('getTopic') >= 0 && ds.indexOf('Pool') >= 0, '未接涨停/跌停池');
+  assert.ok(ds.indexOf('data.tc') >= 0 || ds.indexOf('dd.tc') >= 0, '未读 tc 封板数');
+  assert.ok(app.indexOf('DS.getLimitPools') >= 0, 'app.js 未调真实封板池');
+  assert.ok(app.indexOf('实时·真实封板') >= 0, '未标注真实封板口径');
+  assert.ok(app.indexOf('取数失败') >= 0, '取数失败未明确标注');
+  // 不允许再用 limitPct 阈值数涨停（refreshBreadth 里那段必须已删）
+  var rb = app.slice(app.indexOf('function refreshBreadth'), app.indexOf('function refreshHs300'));
+  assert.ok(rb.indexOf('limitPct') < 0, 'refreshBreadth 仍用涨幅阈值近似涨停');
+});
+
+test('comparison_issues 运行时：整数案例/提示词照抄/创纪录也拦，跨指数不误伤', function () {
+  var exe = process.platform === 'win32' ? 'python' : 'python3';
+  var code = [
+    'import importlib.util, sys',
+    'spec = importlib.util.spec_from_file_location("gr", sys.argv[1])',
+    'm = importlib.util.module_from_spec(spec)',
+    'spec.loader.exec_module(m)',
+    'def chk(name, points, q, expect, alerts=None):',
+    '    f = {"quotes": q}',
+    '    if alerts is not None: f["eventAlerts"] = alerts',
+    '    got = bool(m.comparison_issues({"points": points}, f))',
+    '    assert got == expect, name + " expect=" + str(expect) + " got=" + str(got)',
+    'sh = {"sh000001": {"pct": 3.73}}',
+    'alerts = [{"cases": ["2024-09-24 上证 +4.15%"]}]',
+    'chk("整数案例4%", ["上证今日涨3.73%，历史案例上证涨4%，今日涨幅已超越该案例。"], sh, True)',
+    'chk("无eventAlert照抄924", ["上证今日涨3.73%，924案例上证涨4.15%，今日涨幅已超越该案例。"], sh, True)',
+    'chk("创历史新高", ["上证今日涨3.73%，创下历史新高。"], sh, True, alerts)',
+    'chk("真实超越5.2", ["上证今日涨5.2%，924案例上证涨4.15%，今日涨幅已超越该案例。"], {"sh000001":{"pct":5.2}}, False)',
+    'chk("否定式", ["上证今日涨3.73%，924案例上证涨4.15%，今日涨幅尚未超越该案例。"], sh, False, alerts)',
+    'chk("创业板口径不误伤", ["创业板今日涨11.61%，924案例创业板涨5.54%，今日涨幅已超越该案例。"], {"sz399006":{"pct":11.61}}, False, [{"cases":["2024-09-24 创业板 +5.54%"]}])',
+    'print("OK")'
+  ].join('\n');
+  var r = cp.spawnSync(exe, ['-c', code, path.join(ROOT, 'github_ci', 'gen_report.py')],
+    { cwd: ROOT, encoding: 'utf8', timeout: 40000 });
+  assert.equal(r.status, 0, 'Python 校验失败: ' + (r.stdout || '') + (r.stderr || '').slice(-400));
+  assert.ok((r.stdout || '').indexOf('OK') >= 0, '未输出 OK');
+});
+
+test('case_as_today_issues 运行时：案例数字写成今日涨幅拦下，历史语境/真实值不误伤', function () {
+  var exe = process.platform === 'win32' ? 'python' : 'python3';
+  var code = [
+    'import importlib.util, sys',
+    'spec = importlib.util.spec_from_file_location("gr", sys.argv[1])',
+    'm = importlib.util.module_from_spec(spec)',
+    'spec.loader.exec_module(m)',
+    'f = {"quotes": {"sh000001": {"pct": 3.73}}}',
+    'bad = {"points": ["今日上证涨4.15%，成长股领涨。"]}',
+    'assert m.case_as_today_issues(bad, f), "案例数字冒充今日没拦住"',
+    'hist = {"points": ["历史复盘924上证涨4.15%，今日上证涨3.73%。"]}',
+    'assert not m.case_as_today_issues(hist, f), "历史语境被误伤"',
+    'real = {"points": ["今日上证涨3.73%，成交2万亿。"]}',
+    'assert not m.case_as_today_issues(real, f), "真实今日值被误伤"',
     'print("OK")'
   ].join('\n');
   var r = cp.spawnSync(exe, ['-c', code, path.join(ROOT, 'github_ci', 'gen_report.py')],
