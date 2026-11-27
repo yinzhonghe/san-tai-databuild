@@ -162,11 +162,33 @@ def build_user_prompt(facts):
             + json.dumps(pack, ensure_ascii=False)[:60000])
 
 
+def parse_content(txt):
+    """稳健解析模型文本：剥 markdown 代码块、截取 JSON 主体。返回 (obj, err)。"""
+    if not txt:
+        return None, '空内容（可能思考链吃满 max_tokens）'
+    s = txt.strip()
+    m = re.search(r'```(?:json|JSON)?\s*([\s\S]*?)\s*```', s)
+    if m:
+        s = m.group(1).strip()
+    candidates = [s]
+    a, b = s.find('{'), s.rfind('}')
+    if a >= 0 and b > a:
+        candidates.append(s[a:b + 1])
+    last = ''
+    for c in candidates:
+        try:
+            return json.loads(c), None
+        except Exception as e:
+            last = str(e)
+    return None, 'JSON解析失败(%s): %s' % (last, s[:160].replace('\n', ' '))
+
+
 def call_model(model, key, messages, max_tokens):
     body = {'model': model, 'messages': messages, 'temperature': 0.6,
             'max_tokens': max_tokens, 'response_format': {'type': 'json_object'}}
     raw = json.dumps(body).encode('utf-8')
     last_err = ''
+    usage = None
     for delay in (0, 6, 20):
         if delay:
             time.sleep(delay)
@@ -179,27 +201,37 @@ def call_model(model, key, messages, max_tokens):
             try:
                 data = json.loads(raw_resp)
             except Exception:
-                # 2026-11-27：响应非 JSON 时把前 400 字打到日志，定位是鉴权/额度/网关哪种错误。
-                # 绝不打印 key；只截响应体。
+                # 2026-11-27：响应非 JSON = 网关/鉴权/额度错误页，重试无意义，直接失败并留诊断。
+                # 绝不打印 key；只截响应体前 400 字。
                 print('[freelab] API 非JSON响应(前400字): ' + raw_resp[:400].replace('\n', ' '), flush=True)
-                raise
+                last_err = 'API 非JSON响应: ' + raw_resp[:120].replace('\n', ' ')
+                break
+            usage = data.get('usage')
             ch = data['choices'][0]
-            txt = (ch.get('message') or {}).get('content') or ''
-            if not txt and (ch.get('message') or {}).get('reasoning_content'):
-                txt = ch['message']['reasoning_content']
-            txt = re.sub(r'^```(?:json)?|```$', '', txt.strip(), flags=re.M).strip()
-            return json.loads(txt), data.get('usage'), None
+            msg = ch.get('message') or {}
+            txt = msg.get('content') or ''
+            if not txt and msg.get('reasoning_content'):
+                txt = msg['reasoning_content']
+            obj, perr = parse_content(txt)
+            if perr:
+                last_err = perr
+                # 纯空内容可能是思考链偶发吃满，值得重试一次；格式错误不重试。
+                if '空内容' in perr:
+                    continue
+                break
+            return obj, usage, None
         except urllib.error.HTTPError as e:
-            body = ''
-            try: body = e.read().decode('utf-8', 'ignore')[:300].replace('\n', ' ')
+            ebody = ''
+            try: ebody = e.read().decode('utf-8', 'ignore')[:300].replace('\n', ' ')
             except Exception: pass
-            last_err = 'HTTP %s %s' % (e.code, body)
+            last_err = 'HTTP %s %s' % (e.code, ebody)
             if e.code not in (429, 500, 502, 503, 504):
                 break
         except Exception as e:
             last_err = '%s: %s' % (type(e).__name__, e)
             break
-    return None, None, last_err
+    # 2026-11-27：即使解析失败也透传 usage —— 调用已真实发生，token 必须记账。
+    return None, usage, last_err
 
 
 def audit(reason, model, usage, err):

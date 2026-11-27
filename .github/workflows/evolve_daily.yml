@@ -45,7 +45,7 @@ jobs:
           git clone --depth 1 --branch data "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" /tmp/state_sync 2>/dev/null || echo "data 分支不存在或为空，用 main 初始状态"
           if [ -d /tmp/state_sync/learn/evolve ]; then
             mkdir -p learn/evolve
-            for f in registry.json population.json live_pool.json constitution.json constitution.seal.json trial_counter.json heartbeat.json judge_log.jsonl; do
+            for f in registry.json population.json live_pool.json constitution.json constitution.seal.json trial_counter.json heartbeat.json judge_log.jsonl data_sources.json panel_gaps.json llm_candidates_v3.json llm_trigger_v3.json llm_call_log.jsonl; do
               [ -f "/tmp/state_sync/learn/evolve/$f" ] && cp "/tmp/state_sync/learn/evolve/$f" "learn/evolve/$f" && echo "已同步 $f"
             done
           fi
@@ -65,6 +65,8 @@ jobs:
           if [ ! -f learn/evolve/panel.jsonl ]; then
             python tools/build_kline.py 2>/dev/null || echo "kline重建失败或无网络，继续"
             node tools/evolve/panel.js || echo "面板重建失败（缺kline数据），不阻塞演化"
+            # 2026-11-27 修复：采样必须等距覆盖全时间窗（旧 head 截断只到7月，8-11月行情缺席）
+            node tools/evolve/make_sample.js || echo "采样重建失败，settle 可能退回旧截断采样"
           else
             echo "面板已存在"
           fi
@@ -73,8 +75,26 @@ jobs:
         if: steps.hb.outputs.done != 'true'
         run: node tools/evolve/daily.js --force
 
+      # 2026-11-27 接线修复：v3 智谱草图生成器此前写好但无任何工作流调用（断线），
+      # 且草图产出后无环节注入 population —— 智谱推演结果从未进验证。
+      # 这里补上两段：① 有 key 且触发门槛满足时调智谱生成草图；② 展开成 sketch_variant 注入种群。
+      # 两步都失败不阻塞：无 key / 额度不足 / 样本不够时照常走确定性演化，诚实不编造。
+      - name: 智谱自由推演（v3 草图，额度闸+触发门槛保护）
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODELS: ${{ secrets.LLM_MODELS }}
+        run: |
+          SRC=evolve_v3_llm.py
+          [ -f "$SRC" ] || SRC=github_ci/evolve_v3_llm.py
+          python "$SRC" 2>&1 || echo "v3 推演跳过（无 key / 额度不足 / 门槛未达），不影响确定性演化"
+
+      - name: 草图展开注入种群（sketch_variant，待下代 kernel 验证）
+        run: |
+          node tools/evolve/inject_sketches.js 2>&1 || echo "草图注入跳过，不影响演化"
+
       - name: 云端补跑状态推回 data 分支
-        if: steps.hb.outputs.done != 'true'
+        # 2026-11-27：去掉 hb 条件——本地已跑完时 v3 草图/额度计数仍需回写，
+        # 否则 llm_trigger_v3.json 不落盘会导致下次重复调用烧额度。内部 git diff 判空，无变更不空提交。
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -82,7 +102,7 @@ jobs:
           git config user.name "evolve-bot"
           git config user.email "evolve-bot@users.noreply.github.com"
           mkdir -p learn/evolve
-          cp "$GITHUB_WORKSPACE"/learn/evolve/{registry.json,population.json,live_pool.json,heartbeat.json,trial_counter.json,daily_log.jsonl} learn/evolve/ 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE"/learn/evolve/{registry.json,population.json,live_pool.json,heartbeat.json,trial_counter.json,daily_log.jsonl,llm_candidates_v3.json,llm_trigger_v3.json,llm_call_log.jsonl} learn/evolve/ 2>/dev/null || true
           git add -A
           git diff --quiet && echo "无变更" || { git commit -m "evolve-v2 云端补跑 $(date -u +%Y-%m-%dT%H:%MZ)"; git push; }
 
