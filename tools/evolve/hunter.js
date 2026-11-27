@@ -50,13 +50,10 @@ var BUILTIN = {
     note: '17+ 源多源采集，项目已有'
   },
   fundflow_hist: {
-    label: '历史逐日资金流', status: 'searching',
-    searchSpec: {
-      cn: ['A股 个股 历史每日主力净流入 免费接口', '东方财富 资金流向 历史数据 API 每日'],
-      en: ['China A-share historical daily fund flow free API', 'eastmoney individual stock fund flow history endpoint'],
-      hints: ['push2his.eastmoney.com/api/qt/stock/fflow/daykline/get', '需验证是否免费无需token、是否含历史每日净流入'],
-      acceptCriteria: ['返回真实历史逐日数值', '可按代码查询', '无需付费key或key可免费获得', '有明确字段说明']
-    }
+    label: '历史逐日资金流',
+    script: 'tools/fetch_fundflow_hist.py', status: 'verified',
+    endpoint: 'push2his.eastmoney.com/api/qt/stock/fflow/daykline/get',
+    note: '2026-11-27 已接入：curl+UA/Referer+多ut轮换+退避+断点续传，落 fundflow_hist.jsonl，经 fundflow_portrait.js 进自由推演实验室。北交所标缺口不编造。'
   },
   oneword_intraday: {
     label: '一字板封单/开板时间', status: 'searching',
@@ -99,7 +96,47 @@ function specOf(field) {
   if (s.status === 'verified') return { field: field, status: 'verified', adapter: s };
   return { field: field, status: s.status, searchSpec: s.searchSpec || null, acceptCriteria: s.searchSpec && s.searchSpec.acceptCriteria };
 }
-/* 验证适配器：检查脚本/输出是否存在，或探活 endpoint */
+/* 探活真实接口：带浏览器头 + 解析返回内容，不能只看 HTTP 200。
+ * 2026-11-27 修复：旧实现用裸 curl 只看状态码，把带鉴权头的东财 fflow/daykline
+ * 误判成「限流不可用」。真实情况是加 UA+Referer 后可取到数据，连续快请求才限流。
+ * 红线：必须确认返回体里有真实数据行才算 ok，绝不把空 JSON 当成功。 */
+var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+/* 纯解析函数：把 curl 输出解析成 {ok, rows, code}。抽取出来便于单测，不依赖网络。 */
+function parseProbe(out) {
+  var m = out.match(/\n__HTTP__(\d+)\s*$/);
+  var code = m ? m[1] : '000';
+  var body = m ? out.slice(0, m.index) : out;
+  var parsed = null, rows = 0;
+  try { parsed = JSON.parse(body); } catch (e) {}
+  if (parsed && parsed.data) {
+    var d = parsed.data;
+    if (d.klines) rows = d.klines.length;
+    else if (Array.isArray(d)) rows = d.length;
+    else if (typeof d === 'object') rows = Object.keys(d).length;
+  }
+  return { ok: rows > 0 && code === '200', rows: rows, code: code };
+}
+function probeEndpoint(s) {
+  var url = s.probeUrl || (s.endpoint ? (/^https?:\/\//.test(s.endpoint) ? s.endpoint : 'https://' + s.endpoint) : null);
+  if (!url) return Promise.resolve({ ok: false, reason: '无 probeUrl/endpoint' });
+  var args = ['-s', '-A', UA, '-H', 'Referer: https://quote.eastmoney.com/', '-m', '15',
+              '-w', '\n__HTTP__%{http_code}', url];
+  return new Promise(function (resolve) {
+    function attempt(left) {
+      var child = cp.spawn('curl', args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      var out = '';
+      child.stdout.on('data', function (d) { out += d.toString(); });
+      child.on('close', function () {
+        var p = parseProbe(out);
+        if (!p.ok && left > 0) { setTimeout(function () { attempt(left - 1); }, 1500); return; }
+        resolve({ ok: p.ok, reason: 'HTTP ' + p.code + (p.ok ? ' · 返回 ' + p.rows + ' 行真实数据' : ' · 无有效数据(疑似限流或字段变更)'),
+                  endpoint: url, rows: p.rows });
+      });
+    }
+    attempt(1); // 失败后低频重试 1 次
+  });
+}
+/* 验证适配器：检查脚本/输出是否存在，或带浏览器头真实探活 endpoint */
 function verify(field) {
   var reg = loadReg(), s = reg[field];
   if (!s) return Promise.resolve({ field: field, ok: false, reason: '未登记' });
@@ -108,13 +145,10 @@ function verify(field) {
     if (!fs.existsSync(p)) return Promise.resolve({ field: field, ok: false, reason: '脚本不存在: ' + s.script });
     return Promise.resolve({ field: field, ok: true, reason: '适配器脚本存在: ' + s.script });
   }
-  if (s.endpoint) {
-    return new Promise(function (resolve) {
-      var url = 'https://' + s.endpoint;
-      var child = cp.spawn('curl', ['-s', '-o', '/dev/null', '-w', '%{http_code}', '-m', '12', url], { stdio: ['ignore', 'pipe', 'ignore'] });
-      var code = '';
-      child.stdout.on('data', function (d) { code += d.toString(); });
-      child.on('close', function () { resolve({ field: field, ok: code === '200', reason: 'HTTP ' + code, endpoint: url }); });
+  if (s.probeUrl || s.endpoint) {
+    return probeEndpoint(s).then(function (r) {
+      r.field = field;
+      return r;
     });
   }
   return Promise.resolve({ field: field, ok: false, reason: 'status=' + s.status + '，尚无可用适配器；请用 --spec 输出搜索规格让联网执行体去找' });
@@ -146,4 +180,4 @@ function main() {
   }
 }
 if (require.main === module) main();
-module.exports = { scan: scan, specOf: specOf, verify: verify, register: register, BUILTIN: BUILTIN };
+module.exports = { scan: scan, specOf: specOf, verify: verify, register: register, parseProbe: parseProbe, BUILTIN: BUILTIN };
