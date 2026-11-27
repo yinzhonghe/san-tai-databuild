@@ -2590,10 +2590,31 @@
     return a >= 10000 ? (fmt(a / 10000, 2) + ' 万亿') : (fmt(a, 0) + ' 亿');
   }
   function refreshMarketLive() {
+    /* 封板池独立取，不依赖腾讯指数接口或全市场报价：
+       用户扩展拦动态 script 时腾讯/涨跌家数链会断，但东财封板池仍要能出真实数。 */
+    refreshLimitPools();
     if (!DS.getMarketLive) return;
     /* 延后 1.2 秒：首屏还有 guard 的云端请求 + 全市场分块取价在跑，
        同一时刻去打东财指数接口容易被直接断流（表现为一直显示快照值）。 */
     setTimeout(function () { doRefreshMarketLive(); }, 1200);
+  }
+  /* 涨停/跌停：直连东财真实封板池（getTopicZT/DTPool 的 data.tc）。
+     2026-11-27 事故：曾用「涨幅>=9.8%」近似，20CM/30CM 暴涨日把 1465 只写成涨停
+     （真实 417）。真实池取不到就标「取数失败」，绝不用阈值数冒充封板。 */
+  function refreshLimitPools() {
+    if (!DS.getLimitPools) return;
+    var lg = document.querySelector('[data-mk-tag="ludn"]');
+    function set(k, v) { var el = document.querySelector('[data-mk="' + k + '"]'); if (el) el.textContent = v; }
+    DS.getLimitPools().then(function (p) {
+      if (p && isNum(p.lu) && isNum(p.ld) && (p.lu > 0 || p.ld > 0)) {
+        set('lu', p.lu); set('ld', p.ld);
+        if (lg) lg.textContent = '实时·真实封板';
+      } else if (lg) {
+        set('lu', '—'); set('ld', '—'); lg.textContent = '取数失败';
+      }
+    }).catch(function () {
+      set('lu', '—'); set('ld', '—'); if (lg) lg.textContent = '取数失败';
+    });
   }
   function doRefreshMarketLive() {
     DS.getMarketLive().then(function (d) {
@@ -2616,20 +2637,12 @@
      覆盖不足 1200 只就先不显示，绝不用部分样本冒充「两市家数」。 */
   var BREADTH_TRIES = 0;
   function refreshBreadth() {
-    var up = 0, down = 0, flat = 0, n = 0, lu = 0, ld = 0;
+    var up = 0, down = 0, flat = 0, n = 0;
     Object.keys(QUOTES).forEach(function (c) {
       var q = QUOTES[c];
       if (!q || q.chg == null || !isNum(q.chg)) return;
       n++;
       if (q.chg > 0.005) up++; else if (q.chg < -0.005) down++; else flat++;
-      /* 涨停/跌停：按板块阈值数（主板 9.8 / 创科 19.8 / 北交 29.8），
-         与 grab_breadth 后端口径一致；用现价/昨收自算更稳（q.chg 单位已是 %）。 */
-      var lim = limitPct(c);
-      if (isNum(q.price) && isNum(q.preClose) && q.preClose > 0) {
-        var pctChg = (q.price / q.preClose - 1) * 100;
-        if (pctChg >= lim) lu++; else if (pctChg <= -lim) ld++;
-      } else if (q.chg >= lim) lu++;
-      else if (q.chg <= -lim) ld++;
     });
     var t1 = document.querySelector('[data-mk-tag="updown"]');
     if (n < 1200) {
@@ -2640,7 +2653,8 @@
     BREADTH_TRIES = 0;
     function set(k, v) { var el = document.querySelector('[data-mk="' + k + '"]'); if (el) el.textContent = v; }
     set('up', up); set('down', down);
-    set('lu', lu); set('ld', ld);
+    /* 涨停/跌停由 refreshLimitPools() 独立直连东财封板池更新（见上），
+       不在这里用涨幅阈值近似——2026-11-27 曾因此把 417 报成 1465。 */
     /* 情绪温度：上涨占比，口径公开可复算。仅在无快照 temp 时写入，避免覆盖真实快照。 */
     var tempEl = document.querySelector('[data-mk="temp"]');
     var snapTemp = isNum((RAW().market || {}).temp);
@@ -2680,11 +2694,12 @@
    * 市场条数据口径（2026-11-27 修复）：
    *   旧版 data.js 的 market 快照自 11-18 起为 null，导致温度恒显默认 50、
    *   涨停/跌停 与 沪深300近20日 全是「—」。这些格子的真实数据来源改为：
-   *     · 温度 / 涨跌家数 / 涨停跌停：全市场实时报价 QUOTES 现算（见 refreshBreadth）
+   *     · 温度 / 涨跌家数：全市场实时报价 QUOTES 现算（见 refreshBreadth）
+   *     · 涨停跌停：东财真实封板池 getTopicZT/DTPool 的 data.tc（见 getLimitPools）
    *     · 两市成交额：指数接口实时（见 getMarketLive）
    *     · 沪深300 近20日：在线日 K 现算（见 refreshHs300）
    *     · 个股中位数 / 连板梯队：仍是构建快照（如实标注「截至快照」）
-   *   绝不把快照旧值冒充实时；取不到就留「—」并标「取数失败」，不用 0 顶替。
+   *   绝不把快照旧值冒充实时；取不到就留「—」并标「取数失败」，不用涨幅阈值近似封板。
    */
   function marketBar() {
     var m = RAW().market || {}, s = RAW().summary || {}, bm = m.benchmark || {};
@@ -2703,12 +2718,13 @@
         + '<b data-mk="temp">' + (temp != null ? fmt(temp, 1) + ' / 100' : '—') + '</b></div>'
       + '<div class="tempbar"><i data-mk="tempbar" style="width:' + (temp != null ? Math.max(2, Math.min(100, temp)) : 2) + '%"></i></div>'
       + '<div class="note">' + esc(m.phase || '实时情绪口径') + (m.phaseNote ? ' · ' + esc(m.phaseNote) : '')
-      + '<br>温度 = 上涨家数 ÷（上涨+下跌）×100，由全市场实时报价现算；成交额、涨跌家数、涨停跌停、沪深300 同为实时。</div></div>'
+      + '<br>温度 = 上涨家数 ÷（上涨+下跌）×100，由全市场实时报价现算；成交额、涨跌家数为实时；'
+      + '涨停跌停取东财真实封板池（非涨幅阈值估算），取不到标「取数失败」；沪深300 为在线日K现算。</div></div>'
       + '<div class="mkt-cells">'
       + cell('上涨 / 下跌 <span class="cat" data-mk-tag="updown">' + (L ? '实时' : '快照 ' + esc(snapDay)) + '</span>',
         '<span data-mk="up">' + (L && isNum(L.up) ? L.up : (isNum(m.up) ? m.up : '—')) + '</span> / '
         + '<span data-mk="down">' + (L && isNum(L.down) ? L.down : (isNum(m.down) ? m.down : '—')) + '</span>', 'up')
-      + cell('涨停 / 跌停 <span class="cat" data-mk-tag="ludn">实时</span>',
+      + cell('涨停 / 跌停 <span class="cat" data-mk-tag="ludn">快照 ' + esc(snapDay) + '</span>',
         '<span data-mk="lu">' + (isNum(m.lu) ? m.lu : '—') + '</span> / '
         + '<span data-mk="ld">' + (isNum(m.ld) ? m.ld : '—') + '</span>')
       + cell('个股中位数 <span class="cat">近5日</span>', med5 != null ? pct(med5) : '—', med5 != null ? signCls(med5) : '')
