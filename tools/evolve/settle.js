@@ -26,14 +26,27 @@ var ROOT = path.dirname(path.dirname(__dirname));
 var EVO = path.join(ROOT, 'learn', 'evolve');
 var PANEL = path.join(EVO, 'panel.jsonl');
 var PANEL_FAST = path.join(EVO, 'panel_sample100k.jsonl');
+/* 资金流增强样本（build_fundflow_samples.js 生成，f 注入 main5/superRatio5/accel/mainPctT）。
+   默认不启用，避免污染不认识资金流的老链路；用 EVOLVE_PANEL=ff / ff-full 显式切换。 */
+var PANEL_FF = path.join(EVO, 'panel_sample100k_ff.jsonl');
+var PANEL_FF_FULL = path.join(EVO, 'panel_ff.jsonl');
 var CONST = path.join(EVO, 'constitution.json');
 function loadJSON(p, d) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return d; } }
 function isNum(v) { return typeof v === 'number' && isFinite(v); }
 function cons() { return loadJSON(CONST, {}); }
-/* 双轨：日常演化用 10 万采样（秒级），写回/汇报用全样本（精确）。
-   环境变量 EVOLVE_PANEL=full 强制全样本；默认 fast（存在采样文件时）。 */
+/* 多轨：
+   - 默认 fast = 10万采样（秒级）；
+   - EVOLVE_PANEL=full 全样本（精确）；
+   - EVOLVE_PANEL=ff / ff-full 资金流增强样本（98% join，缺数据字段不写→skip）。
+   增强样本不存在时自动回退到对应普通样本，不编造。 */
 function panelPath() {
-  if (process.env.EVOLVE_PANEL === 'full') return PANEL;
+  var mode = process.env.EVOLVE_PANEL || '';
+  if (mode === 'ff' || mode === 'ff-full') {
+    var ff = mode === 'ff-full' ? PANEL_FF_FULL : PANEL_FF;
+    if (fs.existsSync(ff)) return ff;
+    return mode === 'ff-full' ? PANEL : (fs.existsSync(PANEL_FAST) ? PANEL_FAST : PANEL);
+  }
+  if (mode === 'full') return PANEL;
   return fs.existsSync(PANEL_FAST) ? PANEL_FAST : PANEL;
 }
 
