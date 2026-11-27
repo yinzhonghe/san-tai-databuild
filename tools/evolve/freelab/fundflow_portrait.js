@@ -26,8 +26,10 @@ var EVO = path.join(ROOT, 'learn', 'evolve');
 var LAB = path.join(EVO, 'freelab');
 var FUND = path.join(EVO, 'fundflow_hist.jsonl');
 var FUND_BATCH = path.join(EVO, 'fundflow_batch.jsonl.gz');
+var FUND_ETF = path.join(EVO, 'fundflow_etf.jsonl');
 var FUND_STATUS = path.join(EVO, 'fundflow_status.json');
 var FUND_BATCH_STATUS = path.join(EVO, 'fundflow_batch_status.json');
+var FUND_ETF_STATUS = path.join(EVO, 'fundflow_etf_status.json');
 var SAMPLE = path.join(EVO, 'panel_sample100k.jsonl');
 var CONST = path.join(EVO, 'constitution.json');
 var OUT = path.join(LAB, 'fundflow_portrait.json');
@@ -56,7 +58,12 @@ function loadFundflow() {
       txt.split('\n').forEach(function (line) { absorb(map, line); });
     } catch (e) { /* 批量文件损坏 → 退回逐票数据，标缺口 */ }
   }
-  // ② 逐票补抓（ETF）：批量报表不含 ETF，这部分由 push2his 云端补
+  // ② ETF 批量（FTShare 东财 ETF 资金流，按日期批量出数，2026-03-16 起）：
+  //    先读它（历史更长），后读逐票源，逐票源只补 FTShare 没有的日期（同日以逐票为准，两源已逐位验证一致）
+  if (fs.existsSync(FUND_ETF)) {
+    fs.readFileSync(FUND_ETF, 'utf8').split('\n').forEach(function (line) { absorb(map, line); });
+  }
+  // ③ 逐票补抓（ETF push2his）：批量报表与 FTShare 未覆盖的日期兜底
   if (fs.existsSync(FUND)) {
     fs.readFileSync(FUND, 'utf8').split('\n').forEach(function (line) { absorb(map, line); });
   }
@@ -112,6 +119,7 @@ function build() {
   var cost = (cons.costModel && cons.costModel.totalRoundTripPct) || 0.31;
   var fundStatus = loadJSON(FUND_STATUS, {});
   var batchStatus = loadJSON(FUND_BATCH_STATUS, {});
+  var etfStatus = loadJSON(FUND_ETF_STATUS, {});
   var codeMap = loadFundflow();
   var keys = ['main5', 'superRatio5', 'accel', 'mainPctT'];
   var labels = { main5: '近5日主力净流入(万元)', superRatio5: '超大单占主力比', accel: '主力资金加速度(万元)', mainPctT: '当日主力净占比(%)' };
@@ -156,7 +164,7 @@ function build() {
 
   var out = {
     generatedAt: new Date().toISOString(),
-    source: 'eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(全市场批量) + fflow/daykline(ETF逐票)',
+    source: 'eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(个股+北交所批量) + FTShare ETF资金流批量(2026-03-16起) + fflow/daykline(ETF逐票兜底)',
     fetchedCodes: Object.keys(codeMap).length,
     fundStatus: {
       fetchedCodes: fundStatus.fetchedCodes || 0,
@@ -174,12 +182,20 @@ function build() {
       etfGapRows: batchStatus.etfGapRows || 0,
       window: batchStatus.window || null
     },
+    etfStatus: {
+      source: etfStatus.source || null,
+      fetchedEtfCodes: etfStatus.fetchedEtfCodes || 0,
+      etfCoveragePct: etfStatus.etfCoveragePct || 0,
+      earlyGapRows: etfStatus.earlyGapRows || 0,
+      earlyGapNote: etfStatus.earlyGapNote || '',
+      window: etfStatus.window || null
+    },
     panelRows: rows, joinedRows: joined,
     joinRate: r(joined / Math.max(1, rows), 4),
     baseline: { measuredNet: realNet, measuredWinRate: netN ? r(wins / netN) : null, samples: netN, costPct: cost },
     features: features,
     gaps: {
-      note: '个股/北交所走 datacenter 批量报表（不同WAF，不受push2his限流）；ETF 走 push2his 云端逐票补抓。缺口保留为空，不填 0、不估算。'
+      note: '个股/北交所走 datacenter 批量报表（不同WAF，不受push2his限流）；ETF 走 FTShare 东财ETF资金流批量接口（2026-03-16起）+ push2his 逐票兜底，两源已逐位验证一致。2026-03-16 前 ETF 无公开资金流历史，标缺口。缺口保留为空，不填 0、不估算。'
     }
   };
   fs.mkdirSync(LAB, { recursive: true });
