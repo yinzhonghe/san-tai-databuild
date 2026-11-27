@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-11-27T09:23:48.248Z",
+  "generatedAt": "2026-11-27T08:17:36.835Z",
   "source": "eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(个股+北交所批量) + FTShare ETF资金流批量(2026-03-16起) + fflow/daykline(ETF逐票兜底)",
-  "fetchedCodes": 5838,
+  "fetchedCodes": 5854,
   "fundStatus": {
-    "fetchedCodes": 0,
-    "coveragePct": 0,
+    "fetchedCodes": 452,
+    "coveragePct": 84.58,
     "unsupportedCodes": 0,
-    "unsupportedReason": "",
-    "failedCodes": 0
+    "unsupportedReason": "北交所 secid 误判已修（0.920xxx 服务端实测可用）；个股/北交所已由 datacenter 批量报表覆盖，ETF 走本脚本逐票补抓",
+    "failedCodes": 6
   },
   "batchStatus": {
     "source": "eastmoney datacenter-web RPT_DMSK_TS_FUNDFLOW (batch)",
@@ -35,55 +35,239 @@
       "dataStart": "2026-03-16"
     }
   },
-  "panelRows": 0,
-  "joinedRows": 0,
-  "joinRate": 0,
+  "panelRows": 108338,
+  "joinedRows": 106151,
+  "joinRate": 0.9798,
   "baseline": {
-    "measuredNet": null,
-    "measuredWinRate": null,
-    "samples": 0,
+    "measuredNet": -0.7648,
+    "measuredWinRate": 0.4042,
+    "samples": 106151,
     "costPct": 0.31
   },
   "features": {
     "main5": {
       "label": "近5日主力净流入(万元)",
-      "buckets": [],
-      "coverage": 0,
-      "bestBucket": null,
-      "bestNet": null,
-      "worstBucket": null,
-      "worstNet": null,
-      "spread": null
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -1092509.29,
+          "hi": -4222.7,
+          "n": 21230,
+          "net": -0.9083,
+          "winRate": 0.4021,
+          "excess": -0.1435
+        },
+        {
+          "bucket": "2/5",
+          "lo": -4221.96,
+          "hi": -1112.61,
+          "n": 21230,
+          "net": -0.7547,
+          "winRate": 0.4064,
+          "excess": 0.0101
+        },
+        {
+          "bucket": "3/5",
+          "lo": -1112.59,
+          "hi": -93.05,
+          "n": 21230,
+          "net": -0.687,
+          "winRate": 0.4065,
+          "excess": 0.0778
+        },
+        {
+          "bucket": "4/5",
+          "lo": -93.05,
+          "hi": 971.87,
+          "n": 21230,
+          "net": -0.6595,
+          "winRate": 0.3991,
+          "excess": 0.1053
+        },
+        {
+          "bucket": "5/5",
+          "lo": 971.91,
+          "hi": 678143.77,
+          "n": 21231,
+          "net": -0.8144,
+          "winRate": 0.4069,
+          "excess": -0.0496
+        }
+      ],
+      "coverage": 0.9804,
+      "bestBucket": "4/5",
+      "bestNet": -0.6595,
+      "worstBucket": "1/5",
+      "worstNet": -0.9083,
+      "spread": 0.2488
     },
     "superRatio5": {
       "label": "超大单占主力比",
-      "buckets": [],
-      "coverage": 0,
-      "bestBucket": null,
-      "bestNet": null,
-      "worstBucket": null,
-      "worstNet": null,
-      "spread": null
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -9200.29,
+          "hi": -0.73,
+          "n": 21218,
+          "net": -0.7636,
+          "winRate": 0.4018,
+          "excess": 0.0012
+        },
+        {
+          "bucket": "2/5",
+          "lo": -0.73,
+          "hi": -0.35,
+          "n": 21218,
+          "net": -0.8356,
+          "winRate": 0.4014,
+          "excess": -0.0708
+        },
+        {
+          "bucket": "3/5",
+          "lo": -0.35,
+          "hi": 0,
+          "n": 21219,
+          "net": -0.757,
+          "winRate": 0.4128,
+          "excess": 0.0078
+        },
+        {
+          "bucket": "4/5",
+          "lo": 0,
+          "hi": 0.53,
+          "n": 21218,
+          "net": -0.8009,
+          "winRate": 0.4033,
+          "excess": -0.0361
+        },
+        {
+          "bucket": "5/5",
+          "lo": 0.53,
+          "hi": 8485.58,
+          "n": 21219,
+          "net": -0.6669,
+          "winRate": 0.4019,
+          "excess": 0.0979
+        }
+      ],
+      "coverage": 0.9799,
+      "bestBucket": "5/5",
+      "bestNet": -0.6669,
+      "worstBucket": "2/5",
+      "worstNet": -0.8356,
+      "spread": 0.1687
     },
     "accel": {
       "label": "主力资金加速度(万元)",
-      "buckets": [],
-      "coverage": 0,
-      "bestBucket": null,
-      "bestNet": null,
-      "worstBucket": null,
-      "worstNet": null,
-      "spread": null
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -1384244.55,
+          "hi": -3113.27,
+          "n": 21230,
+          "net": -0.9134,
+          "winRate": 0.4032,
+          "excess": -0.1486
+        },
+        {
+          "bucket": "2/5",
+          "lo": -3113.11,
+          "hi": -318.59,
+          "n": 21230,
+          "net": -0.6571,
+          "winRate": 0.4138,
+          "excess": 0.1077
+        },
+        {
+          "bucket": "3/5",
+          "lo": -318.57,
+          "hi": 584.92,
+          "n": 21230,
+          "net": -0.6752,
+          "winRate": 0.4045,
+          "excess": 0.0896
+        },
+        {
+          "bucket": "4/5",
+          "lo": 584.93,
+          "hi": 3648.91,
+          "n": 21230,
+          "net": -0.6617,
+          "winRate": 0.4009,
+          "excess": 0.1031
+        },
+        {
+          "bucket": "5/5",
+          "lo": 3649.57,
+          "hi": 1658103.09,
+          "n": 21231,
+          "net": -0.9165,
+          "winRate": 0.3987,
+          "excess": -0.1517
+        }
+      ],
+      "coverage": 0.9804,
+      "bestBucket": "2/5",
+      "bestNet": -0.6571,
+      "worstBucket": "5/5",
+      "worstNet": -0.9165,
+      "spread": 0.2594
     },
     "mainPctT": {
       "label": "当日主力净占比(%)",
-      "buckets": [],
-      "coverage": 0,
-      "bestBucket": null,
-      "bestNet": null,
-      "worstBucket": null,
-      "worstNet": null,
-      "spread": null
+      "buckets": [
+        {
+          "bucket": "1/5",
+          "lo": -99.99,
+          "hi": -7.78,
+          "n": 21230,
+          "net": -0.8077,
+          "winRate": 0.4009,
+          "excess": -0.0429
+        },
+        {
+          "bucket": "2/5",
+          "lo": -7.78,
+          "hi": -3.4,
+          "n": 21230,
+          "net": -0.7129,
+          "winRate": 0.4139,
+          "excess": 0.0519
+        },
+        {
+          "bucket": "3/5",
+          "lo": -3.4,
+          "hi": 0.04,
+          "n": 21230,
+          "net": -0.7849,
+          "winRate": 0.3988,
+          "excess": -0.0201
+        },
+        {
+          "bucket": "4/5",
+          "lo": 0.04,
+          "hi": 4.17,
+          "n": 21230,
+          "net": -0.8366,
+          "winRate": 0.4006,
+          "excess": -0.0718
+        },
+        {
+          "bucket": "5/5",
+          "lo": 4.17,
+          "hi": 100,
+          "n": 21231,
+          "net": -0.6817,
+          "winRate": 0.4067,
+          "excess": 0.0831
+        }
+      ],
+      "coverage": 0.9804,
+      "bestBucket": "5/5",
+      "bestNet": -0.6817,
+      "worstBucket": "4/5",
+      "worstNet": -0.8366,
+      "spread": 0.1549
     }
   },
   "gaps": {
