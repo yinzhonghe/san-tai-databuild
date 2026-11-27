@@ -1929,6 +1929,15 @@ td.st-cell{min-width:180px}
 /* 点评卡：收盘档未生成时（15:00–15:35）显示的过渡提示，单独一行避免标题行拥挤 */
 .daily-pending{font-size:11.5px;color:var(--hint);line-height:1.5;margin:-2px 0 8px}
 
+/* 重大事件强预警横幅：命中顶层会议/印花税/国家队/外部冲击时由代码确定性写入，
+    warn 红棕配色区别于普通利多/利空；未命中不渲染。 */
+.daily-event-alert{font-size:13px;font-weight:600;line-height:1.7;color:#8a3a12;
+  background:#fff5ea;border:1px solid #f0c9a0;border-left:4px solid #e2661a;
+  border-radius:8px;padding:8px 11px;margin:2px 0 10px}
+@media (prefers-color-scheme: dark){
+  .daily-event-alert{color:#ffc08a;background:#3a2617;border-color:#6b4426;border-left-color:#e2661a}
+}
+
 /* 盘中快报：橙色卡片 + 蓝色状态签，和原有白底三档点评明显区分 */
 .intraday-card { border:1px solid #f3d9b4; border-left:4px solid #e08a1e;
   background:linear-gradient(180deg,#fffaf2,#fffdf9); border-radius:12px;
