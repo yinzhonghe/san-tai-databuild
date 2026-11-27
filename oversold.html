@@ -436,21 +436,25 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
     <div class="sec-t" style="margin-top:14px">② 跑出了什么（真实结算逐条验钱）</div>
     <div id="flModels"></div>
 
-    <div class="sec-t" style="margin-top:14px">③ 市场画像 · 特征分档真实净收益</div>
+    <div class="sec-t" style="margin-top:14px">③ 四时间维度推演 · 按月 / 按周 / 按日 / T0ETF·日内</div>
+    <div id="flDimensions"></div>
+
+    <div class="sec-t" style="margin-top:14px">④ 市场画像 · 特征分档真实净收益</div>
     <div id="flFeatures"></div>
 
-    <div class="sec-t" style="margin-top:14px">④ 数据切片 · 月度 / 行业</div>
+    <div class="sec-t" style="margin-top:14px">⑤ 数据切片 · 月度 / 行业</div>
     <div id="flSlices"></div>
 
-    <div class="sec-t" style="margin-top:14px">⑤ 资金流维度 · 主力资金在做什么（真实抓取）</div>
+    <div class="sec-t" style="margin-top:14px">⑥ 资金流维度 · 主力资金在做什么（真实抓取）</div>
     <div id="flFundflow"></div>
 
-    <div class="sec-t" style="margin-top:14px">⑥ 往哪努力</div>
+    <div class="sec-t" style="margin-top:14px">⑦ 往哪努力</div>
     <div id="flNext"></div>
 
     <details style="margin-top:16px"><summary>口径与红线（展开）</summary>
       <p><b>自由度</b>：大模型读市场画像（每个特征分 5 档的真实净收益/胜率/超额 + 月度/行业切片），可不受六派理论与白名单草图约束，自由提单条件、多条件组合、市场状态机、新特征表达式或纯叙事假设，可声明所需新数据。</p>
-      <p><b>严格度</b>：任何模型能否算「跑出」由独立验证器用真实样本判定——规则合法性 → 新特征可复现(覆盖率≥95%) → 宪法封印 → 信号级逐条算钱(T买T+3卖、一字板剔除、扣0.31%成本) → 五关(净收益>0、t≥3、Wilson下界≥50%、覆盖率≥2%、跑赢持有基准)。</p>
+      <p><b>严格度</b>：任何模型能否算「跑出」由独立验证器用真实样本判定——规则合法性 → 新特征可复现(覆盖率≥95%) → 宪法封印 → 信号级逐条算钱(一字板剔除、扣0.31%成本) → 五关(净收益>0、t≥3、Wilson下界≥50%、覆盖率≥2%、跑赢持有基准)。</p>
+      <p><b>四时间维度</b>：按月(T收盘→T+20收盘)、按周(T+5)、按日(T+1)、T0ETF·日内(T开盘→T收盘，仅对名称命中跨境/黄金/债券/货币的T+0 ETF放行)。每维度用真实 kline 各自算基准，模型只在自己声明的维度上结算，不拿T+3的旧尺子量所有持有期。四个维度基线都是负的（追启动整体亏钱，持有越久亏越多）。</p>
       <p><b>诚实</b>：没跑出就写没跑出；叙事假设标「待工程化」不计入；缺数据标缺口、不拿0顶替。全部历史回测含幸存者偏差与过拟合，非前瞻收益。</p>
       <p><b>独立</b>：本模块状态全在 learn/evolve/freelab/，不改宪法封印、不改 population/heartbeat、不改三态主站，与板块④互不影响。</p>
     </details>
@@ -459,19 +463,19 @@ summary{cursor:pointer;font-weight:600;font-size:13px}
   <div class="foot">数据来源：公开行情 · 每日收盘后更新<br>仅供信息整理与研究参考，不构成投资建议</div>
 </div>
 
-<script src="echarts.min.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+<script src="echarts.min.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
 <!-- 实时行情与三态阶段判定：主站与超跌页共用同一套口径，保证「新发」数量一致 -->
-<script src="data-service.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
-<script src="fundflow.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
-<script src="state-phase.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
-<script src="evolve_report.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
-<script src="freelab_report.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+<script src="data-service.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+<script src="fundflow.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+<script src="state-phase.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+<script src="evolve_report.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
+<script src="freelab_report.js?v=202611271447&sharecode=EPDR6ET2KO"></script>
 <script>
 /* 三个数据文件优先从 GitHub Pages 读（云端每天 16:30 生成），失败回退本地快照。
    目的：超跌池不再依赖本机定时任务。 */
 var AB_CDN = 'https://yinzhonghe.github.io/san-tai-databuild/';
 /* 本地快照回退路径同样要带 sharecode，否则分享站点回「链接不完整」403 */
-var AB_LOCAL_V = '?v=202611271408&sharecode=EPDR6ET2KO';
+var AB_LOCAL_V = '?v=202611271447&sharecode=EPDR6ET2KO';
 var AB_FILES = ['learn_report.js', 'oversold_data.js', 'chan_pick_data.js', 'limitup_data.js'];
 /* 深链统一入口：分享站点对每个顶层导航都校验 ?sharecode=，
    少了就回 403「链接不完整」。从当前地址取（更通用），取不到再用固定兜底。
@@ -1752,6 +1756,41 @@ function abBoot() {
       var needs = (m.dataNeeds && m.dataNeeds.length) ? '<div style="font-size:11px;color:#a1621a;margin-top:3px">待补数据：' + esc(m.dataNeeds.join('、')) + '</div>' : '';
       return '<div class="card" style="margin-bottom:8px;' + bd + '">' + headline + thesis + metrics + reason + fals + needs + '</div>';
     }).join(''));
+  }
+
+  // ③ 四时间维度推演：月 / 周 / 日 / 日内T0，各自真实基准 + 各自验证结论
+  var dims = R.dimensions || [];
+  if (!dims.length) {
+    box('flDimensions', '<div class="card" style="color:#8b93a1">四维度数据未生成。请先运行 node tools/evolve/freelab/verify_horizons.js 再重建报告。</div>');
+  } else {
+    var dimOrder = { month: '📅', week: '📆', day: '📌', intradayT0: '⚡' };
+    var dimHtml2 = '<div style="font-size:11.5px;color:#6b7484;margin-bottom:8px">'
+      + '每维度用真实 kline 算自己的基准（月=T+20收盘 / 周=T+5 / 日=T+1 / 日内=开盘→收盘），'
+      + '模型只在自己声明的维度上结算，不拿T+3的旧尺子量所有持有期。</div>';
+    dims.forEach(function (d) {
+      var bb = d.baseline || {}, baseNet = bb.netRet;
+      var head = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'
+        + '<b style="font-size:13px">' + (dimOrder[d.key] || '•') + ' ' + esc(d.name)
+        + ' <span style="color:#8b93a1;font-weight:400;font-size:11px">' + esc(d.desc || '') + '</span></b>'
+        + '<span class="tag" style="background:' + (d.passedCount > 0 ? '#c628281a' : '#eef1f5') + ';color:' + (d.passedCount > 0 ? '#c62828' : '#6b7484') + '">'
+        + '跑出 ' + (d.passedCount || 0) + ' / ' + (d.modelCount || 0) + '</span></div>';
+      var base = '<div style="font-size:11.5px;color:#455a64;margin-top:5px">该维度全市场基准净收益 <b style="color:' + ((baseNet || 0) > 0 ? '#c62828' : '#0f7b4f') + '">'
+        + fmt(baseNet) + '%</b> · t <b>' + fmt(bb.tStat, 2) + '</b> · 胜率 <b>' + pct1(bb.winRate) + '</b>'
+        + ' · 样本 ' + esc((bb.samples || 0).toLocaleString()) + (bb.note ? ' · <span style="color:#a1621a">' + esc(bb.note) + '</span>' : '') + '</div>';
+      var mlist = (d.models || []).map(function (m) {
+        var mc = m.verdict === 'PASSED' ? '#c62828' : (m.verdict === 'NOT_PROVEN' ? '#8b93a1' : '#6a1b9a');
+        return '<div style="font-size:11px;padding:3px 0;border-top:1px dashed #e3e9ee;line-height:1.6">'
+          + '<span style="color:' + mc + ';font-weight:600">' + esc(m.verdict === 'PASSED' ? '✓跑出' : (m.verdict === 'NOT_PROVEN' ? '未证明' : m.verdict)) + '</span> '
+          + esc(m.name || m.thesis || '') + ' · 净收益 <b style="color:' + ((m.netRet || 0) > 0 ? '#c62828' : '#0f7b4f') + '">' + fmt(m.netRet) + '%</b>'
+          + ' · t ' + fmt(m.tStat, 2) + ' · 覆盖 ' + fmt(m.coverage, 2) + '%'
+          + (m.reason ? '<div style="color:#90a4ae">' + esc(m.reason) + '</div>' : '') + '</div>';
+      }).join('');
+      var empty = d.modelCount ? '' : '<div style="font-size:11px;color:#a08b00;margin-top:4px">该维度暂无模型：下次大模型推演会按四维度各提至少 1 条。</div>';
+      dimHtml2 += '<div class="card" style="margin-bottom:8px;border-left:3px solid ' + (d.key === 'month' ? '#3949ab' : d.key === 'week' ? '#00897b' : d.key === 'day' ? '#6a1b9a' : '#e08a1e') + '">'
+        + head + base + mlist + empty + '</div>';
+    });
+    if (R.horizonDisclaimer) dimHtml2 += '<div style="font-size:11px;color:#8b93a1;margin-top:6px">' + esc(R.horizonDisclaimer) + '</div>';
+    box('flDimensions', dimHtml2);
   }
 
   // 画像亮点：每个特征分档的极差（数据里真实存在的结构）
