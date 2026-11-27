@@ -1672,45 +1672,135 @@ def style_issues(c, slot='morning'):
     return issues
 
 
+# 历史案例的「上证/沪指当日涨幅」基准集（含提示词里可能被照抄的案例）。
+# 2026-11-27 二轮审计发现：案例数字只从当次 eventAlerts 取，若当天没命中事件、
+# 模型照抄提示词里的 924(+4.15%) 就会漏拦；且案例写整数「+4%」时 %.2f 匹配不到。
+# 这里维护结构化基准，数字只用于「今日是否真的超越」的门禁，不进正文允许集。
+_HIST_SH_CASE_PCT = (4.15, 9.29, 9.45, 6.5, 7.34, 1.70, 7.72, 3.0)
+
+
+def _claim_pcts(text):
+    """抽正文里所有百分号数字，统一成 float（兼容 4% / 4.0% / 4.15% / +4%）。"""
+    out = []
+    for m in re.finditer(r'([+\-]?\d+(?:\.\d+)?)\s*%', str(text)):
+        try:
+            out.append(float(m.group(1)))
+        except ValueError:
+            pass
+    return out
+
+
+def case_as_today_issues(content, facts_raw):
+    """抓「把历史案例数字写成今日指数涨幅」——数字在允许集里但张冠李戴。
+
+    2026-11-27 二轮审计：allowed_values 把 eventAlerts 案例文本里所有数字纳入允许集，
+    于是模型写「今日上证涨4.15%」（其实是 924 案例）也能过 unmatched_numbers。
+    这里只拦一种确定场景：句子明确说「今日/收盘 + 上证/沪指 + 涨X%」，
+    且 X 命中历史案例基准、又与事实包今日涨幅不符。带「历史/案例/复盘」的不误伤。
+    """
+    issues = []
+    text = json.dumps(content or {}, ensure_ascii=False)
+    q = (facts_raw or {}).get('quotes') or {}
+    sh_pct = (q.get('sh000001') or {}).get('pct')
+    if not isinstance(sh_pct, (int, float)):
+        return issues
+    for sent in re.split(r'[。！？；]', text):
+        if not re.search(r'(今日|当天|收盘|今天)', sent) or not re.search(r'上证|沪指', sent):
+            continue
+        if re.search(r'历史|案例|复盘|回测|924', sent):
+            continue
+        for m in re.finditer(r'(?:上证|沪指)[^，。；]{0,16}?([+\-]?\d+(?:\.\d+)?)\s*%', sent):
+            try:
+                v = float(m.group(1))
+            except ValueError:
+                continue
+            if abs(abs(v) - float(sh_pct)) <= 0.06:
+                continue                      # 与事实一致，正常
+            if any(abs(abs(v) - cp) < 0.02 for cp in _HIST_SH_CASE_PCT):
+                issues.append('疑似把历史案例涨幅写成今日：%s 写了 %.2f%%，'
+                              '事实包上证今日为 %.2f%%' % (sent[:40], v, sh_pct))
+                break
+    return issues
+
+
 def comparison_issues(content, facts_raw):
     """抓「数字都在事实包里，但跨指数/跨口径的历史对比不成立」。
 
     2026-11-27 事故：模型写「今日涨幅已超越该案例（924 上证 +4.15%）」，
     同一段却写今日上证 +3.73%。两个数字都在事实包里，unmatched_numbers 查不出来，
-    但结论是反的。这里只拦「超越/超过 + 案例数字」的硬伤，不评判一般修辞。
+    但结论是反的。本门禁覆盖三类句式：
+      A. 同指数「超越/超过/高于/强于」案例；
+      B. 绝对化「创纪录/历史新高/超过历史任何一天/是924的X倍」；
+      C. 没点名指数的跨指数张冠李戴。
+    只拦硬伤，不评判一般修辞；「尚未超越」等否定式不误伤。
     """
     issues = []
     text = json.dumps(content or {}, ensure_ascii=False)
-    if not re.search(r'(超越|超过|高于|强于)', text):
+    claim = r'(超越|超过|高于|强于|胜过|创.{0,6}(新高|纪录)|刷新.{0,6}(新高|纪录)|历史.{0,4}(新高|最大|最强)|超过.{0,8}(任何|历史)|是.{0,12}的\s*\d+(?:\.\d+)?\s*倍)'
+    if not re.search(claim, text):
         return issues
-    if not re.search(r'(今日|当天|本次|收盘).{0,60}(超越|超过|高于|强于)|'
-                     r'(超越|超过|高于|强于).{0,30}(该案例|历史案例|案例)', text):
+    compare_ctx = (r'(今日|当天|本次|收盘).{0,60}' + claim + '|'
+                   + claim + r'.{0,30}(该案例|历史案例|案例|历史|纪录|新高)')
+    if not re.search(compare_ctx, text):
         return issues
     # 「未超越/尚未超过」是诚实的否定式，不能误伤
-    if re.search(r'(未|没有|尚未|未能)[^。]{0,12}(超越|超过|高于|强于)', text):
+    if re.search(r'(未|没有|尚未|未能)[^。]{0,12}(超越|超过|高于|强于|创.{0,6}(新高|纪录))', text):
         return issues
     q = (facts_raw or {}).get('quotes') or {}
-    sh_pct = (q.get('sh000001') or {}).get('pct')
-    case_pcts = []
+    # 今日各指数涨幅（用于「哪个指数在比」+ 排除今日数字被误当案例）
+    idx_pct = {}
+    for key, name in (('sh000001', '上证'), ('sz399001', '深成指'),
+                      ('sz399006', '创业板'), ('sh000688', '科创50')):
+        v = (q.get(key) or {}).get('pct')
+        if isinstance(v, (int, float)):
+            idx_pct[name] = float(v)
+    if not idx_pct:
+        return issues
+    body_pcts = _claim_pcts(text)
+
+    # 基准集：结构化历史案例 + 当次 eventAlerts + 正文里带「历史/案例」语境的数字。
+    # 关键：剔除所有「等于今日任一指数涨幅」的数字——它们是被比的对象，不是案例基准。
+    def _is_today(v):
+        return any(abs(v - t) < 0.06 or abs(v + t) < 0.06 for t in idx_pct.values())
+
+    case_pcts = [cp for cp in _HIST_SH_CASE_PCT if not _is_today(cp)]
     for a in (facts_raw or {}).get('eventAlerts') or []:
         for c in (a.get('cases') or []):
-            for m in re.finditer(r'(?:上证|沪指)[^，。；]{0,24}?([+\-]?\d+(?:\.\d+)?)\s*%', str(c)):
+            for m in re.finditer(r'(?:上证|沪指|创业板|科创)[^，。；]{0,24}?([+\-]?\d+(?:\.\d+)?)\s*%', str(c)):
                 try:
-                    case_pcts.append(abs(float(m.group(1))))
+                    cp = abs(float(m.group(1)))
+                    if not _is_today(cp):
+                        case_pcts.append(cp)
                 except ValueError:
                     pass
-    if sh_pct is not None and case_pcts:
-        for cp in case_pcts:
-            pat = (r'(?:超越|超过|高于|强于)[^。]{0,40}%.2f|'
-                   r'%.2f[^。]{0,40}(?:超越|超过|高于|强于)' % (cp, cp))
-            if not re.search(pat, text):
-                continue
-            if abs(sh_pct) < cp:
-                issues.append('历史对比结论反了：上证今日 %.2f%% 低于案例 %.2f%%，'
-                              '不能写「今日涨幅超越该案例」' % (sh_pct, cp))
-            break
-    if not re.search(r'(上证|沪指)[^。]{0,80}(上证|沪指)', text):
-        issues.append('历史对比没有同指数同口径并列：写「超越案例」时必须在同一句里点名同一指数')
+    for pat in (r'(?:历史|案例|复盘|回测|924)[^。；]{0,30}?(?:上证|沪指|创业板|科创)?[^。；]{0,20}?([+\-]?\d+(?:\.\d+)?)\s*%',
+                r'(?:上证|沪指|创业板|科创)[^。；]{0,20}?([+\-]?\d+(?:\.\d+)?)\s*%[^。；]{0,20}?(?:案例|历史|复盘|回测)'):
+        for m in re.finditer(pat, text):
+            try:
+                cp = abs(float(m.group(1)))
+                if not _is_today(cp):
+                    case_pcts.append(cp)
+            except ValueError:
+                pass
+    # 正文里真实出现的案例基准（今日数字已剔除）
+    hit = [cp for cp in case_pcts
+           if any(abs(v - cp) < 0.06 or abs(v + cp) < 0.06 for v in body_pcts)]
+    if hit:
+        # 谁在比：正文点名的指数用它自己的今日涨幅；都没点名就用上证
+        named = [n for n in idx_pct if n in text]
+        today = idx_pct.get(named[0], idx_pct.get('上证')) if named else idx_pct.get('上证')
+        if today is not None and today > 0 and today < min(hit) - 0.05:
+            issues.append('历史对比结论反了：%s今日 %.2f%% 低于案例 %.2f%%，'
+                          '不能写「今日涨幅超越该案例」' % (named[0] if named else '上证', today, min(hit)))
+    # 绝对化表述必须同指数并列，否则就是拿创业板/科创的涨幅冒充上证
+    if re.search(r'(创.{0,6}(新高|纪录)|刷新.{0,6}(新高|纪录)|历史.{0,4}(新高|最大|最强)|超过.{0,8}(任何|历史))', text):
+        if not re.search(r'(上证|沪指)[^。]{0,80}(上证|沪指)', text):
+            issues.append('历史对比没有同指数同口径并列：写「创纪录/历史新高」时必须在同一句里点名同一指数')
+        elif idx_pct.get('上证', 0) < max(_HIST_SH_CASE_PCT) - 0.05:
+            issues.append('上证今日 %.2f%% 未达历史案例最大涨幅 %.2f%%，'
+                          '不能写「创纪录/历史新高」' % (idx_pct.get('上证', 0), max(_HIST_SH_CASE_PCT)))
+    elif not any(n in text for n in idx_pct):
+        issues.append('历史对比没有点名指数：写「超越案例」时必须说明是哪个指数的同口径对比')
     return issues
 
 
@@ -1789,7 +1879,8 @@ def main():
         # 篇幅门禁：points 四段合计不足 800 字基本就是模型偷懒（实测弱模型只写 230 字），
         # 这种稿子发出去还不如不发，先让它重写一次
         thin = sum(len(p) for p in (content.get('points') or [])) < 800
-        issues = style_issues(content, args.slot) + comparison_issues(content, facts_raw)
+        issues = (style_issues(content, args.slot) + comparison_issues(content, facts_raw)
+                  + case_as_today_issues(content, facts_raw))
         # 只有「明显有问题」才重写：1–3 个未命中数字多数是「整数关口/目标位」这类合理表述，
         # 为它们重写一次要多花 4 分钟（5.x）并可能降级，不值得
         if len(unverified) > 3 or thin or issues:
@@ -1811,7 +1902,8 @@ def main():
                 u2 = unmatched_numbers(content2, facts)
                 t2 = sum(len(p) for p in (content2.get('points') or []))
                 t1 = sum(len(p) for p in (content.get('points') or []))
-                i2 = style_issues(content2, args.slot) + comparison_issues(content2, facts_raw)
+                i2 = (style_issues(content2, args.slot) + comparison_issues(content2, facts_raw)
+                     + case_as_today_issues(content2, facts_raw))
                 # 重写轮用快速档，篇幅可能短一点（实测 4.7 比 5.3 少约 5%），
                 # 只要没短过 70%、数字更干净、风格问题不更多就采用，否则会白白退回模板稿
                 ok2 = (len(u2) <= len(unverified) and t2 >= t1 * 0.7 and len(i2) <= len(issues))
@@ -1830,7 +1922,8 @@ def main():
                 if content3:
                     u3 = unmatched_numbers(content3, facts)
                     t3 = sum(len(p) for p in (content3.get('points') or []))
-                    i3 = style_issues(content3, args.slot) + comparison_issues(content3, facts_raw)
+                    i3 = (style_issues(content3, args.slot) + comparison_issues(content3, facts_raw)
+                     + case_as_today_issues(content3, facts_raw))
                     if len(u3) <= len(unverified) + 3 and t3 >= t1 * 0.7 and len(i3) <= len(issues) + 1:
                         content, model, unverified, issues = content3, model3, u3, i3
                         print('[校验] flash 降级稿已由 glm-4.7 替换：剩 %d 个无出处数字，'
