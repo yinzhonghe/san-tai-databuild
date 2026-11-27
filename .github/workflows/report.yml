@@ -31,11 +31,6 @@ on:
         required: false
         default: ''
         type: string
-  schedule:
-    - cron: '30 23 * * 0-4'   # 北京 周一至周五 07:30 早报
-    - cron: '35 3 * * 1-5'    # 北京 11:35 午间速览
-    - cron: '5 7 * * 1-5'    # 北京 15:05 收盘复盘（15:00 定盘后 5 分钟）
-
 permissions:
   contents: write
   models: read
