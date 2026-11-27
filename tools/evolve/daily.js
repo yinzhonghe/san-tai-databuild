@@ -45,8 +45,19 @@ function run(opts) {
       needTestTime: gen.allWiped,   // 连续3代全灭 → 现场课程触发条件
       top: gen.top
     };
+    // note 必须随代次刷新：旧实现只在手工发布时写一次，导致 gen 变了 note 还停在旧基线（误导）。
+    // 实测基线从 baseline_measured.json 读（与规则评估同口径），缺失则标缺口，绝不写死数字。
+    var mb = (function () {
+      try { return JSON.parse(fs.readFileSync(path.join(EVO, 'baseline_measured.json'), 'utf8')); }
+      catch (e) { return null; }
+    })();
+    var baseTxt = (mb && typeof mb.netRet3 === 'number')
+      ? '基线净' + mb.netRet3.toFixed(2) + '% t=' + (mb.tStat == null ? '—' : mb.tStat)
+      : '基线实测值缺失（标缺口）';
     H.setStage('done', { gen: gen.generation, active: gen.active,
-      evaluated: gen.evaluated, needTestTime: gen.allWiped });
+      evaluated: gen.evaluated, needTestTime: gen.allWiped,
+      note: H.TODAY() + ' 历史数据重训 gen' + gen.generation + '：' + gen.evaluated +
+        '条规则/' + gen.active + '条达标（' + baseTxt + '，硬门槛net>0&t>=3），诚实' + gen.active + '写回；已生成证据包' });
     // 写每日审计日志
     var logPath = path.join(EVO, 'daily_log.jsonl');
     fs.mkdirSync(EVO, { recursive: true });

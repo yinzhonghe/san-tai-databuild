@@ -1,31 +1,31 @@
 /* 自动生成 by tools/evolve/freelab/report.js，勿手改 */
 window.AB_FREELAB_REPORT = {
   "summary": {
-    "state": "自由推演实验室已就位：市场画像来自 108,271 条真实信号（扣0.31%成本、一字板剔除）；大模型已提 9 个模型，验证跑出 0 个 / 未证明 8 个。",
-    "did": "把 108,338 条样本整理成「市场画像」——每个特征按真实取值分 5 档，逐档算信号级净收益/胜率/超额，再按月份、行业切片。让大模型读这份画像【自由推演】，不受六派种子/白名单草图约束，自己提出模型（可执行规则 / 新特征表达式 / 纯叙事假设皆可），然后用同一套真实结算器逐条验钱。",
+    "state": "自由推演实验室已就位：市场画像来自 100,877 条真实信号（扣0.31%成本、一字板剔除）；大模型已提 9 个模型，验证跑出 0 个 / 未证明 8 个。",
+    "did": "把 100,949 条样本整理成「市场画像」——每个特征按真实取值分 5 档，逐档算信号级净收益/胜率/超额，再按月份、行业切片。让大模型读这份画像【自由推演】，不受六派种子/白名单草图约束，自己提出模型（可执行规则 / 新特征表达式 / 纯叙事假设皆可），然后用同一套真实结算器逐条验钱。",
     "result": "大模型提了 9 个模型，但真实结算后【0 个跑出可交易模型】——8 个栽在净收益/t值/覆盖率/跑赢基准上，1 个还是无法回测的叙事假设。这是诚实结论，不是没跑。",
     "direction": "自由度放在「假设」——鼓励大模型跨特征组合、造新表达式、提市场状态机/分域模型；严格度放在「验证」——任何模型都要过净收益>0、t≥3、覆盖率≥2%、Wilson下界、跑赢持有基准五关。现已按【按月 / 按周 / 按日 / T0ETF·日内】四维度分类推演：每维度用真实 kline 算自己的基准（月T+20、周T+5、日T+1、日内开盘→收盘），模型只在自己声明的维度上结算，不拿T+3的旧尺子量所有持有期。资金流维度已接入：真实抓取 5854 只票的逐日五档资金流，join 106,151 条样本（覆盖率 98.0%），派生主力净流入/超大单结构/资金加速度，供大模型推演；未覆盖样本一律标缺口。下一步继续补覆盖率、等资金流样本够厚后让它进模型验证链。"
   },
   "at": "2026-11-27",
-  "generatedAt": "2026-11-27T09:30:12.857Z",
+  "generatedAt": "2026-11-27T10:33:33.094Z",
   "version": "freelab-v2-horizons",
   "model": "glm-5.3-flash",
-  "dataAsOf": "20261126",
+  "dataAsOf": "20261127",
   "hasFacts": true,
   "hasRun": true,
   "disclaimer": "自由推演是【研究性实验】：大模型假设 + 历史回测，含幸存者偏差与过拟合风险，非实盘前瞻收益，不构成投资建议。与 v2 证据包自进化相互独立、互不影响。",
   "baseline": {
     "constitutionNet": -0.5671,
-    "measuredNet": -0.7589,
-    "measuredWinRate": 0.4038,
-    "samples": 108338,
-    "tradable": 108271,
+    "measuredNet": -0.2368,
+    "measuredWinRate": 0.439,
+    "samples": 100949,
+    "tradable": 100877,
     "costPct": 0.31,
-    "skippedOneWord": 67,
+    "skippedOneWord": 72,
     "skippedNoData": 0
   },
   "window": {
-    "firstDate": "2026-01-13",
+    "firstDate": "2025-03-17",
     "lastDate": "2026-11-23"
   },
   "gaps": {
@@ -35,188 +35,248 @@ window.AB_FREELAB_REPORT = {
   },
   "portraitHighlights": [
     {
-      "key": "ret60",
-      "label": "60日涨幅",
-      "spread": 0.7107,
-      "bestBucket": "1/5",
-      "bestNet": -0.4306,
-      "worstBucket": "5/5",
-      "worstNet": -1.1413,
-      "coverage": 1
-    },
-    {
       "key": "volSqueeze60",
       "label": "60日波动收缩比",
-      "spread": 0.5521,
+      "spread": 0.39,
       "bestBucket": "1/5",
-      "bestNet": -0.4855,
+      "bestNet": -0.0371,
       "worstBucket": "5/5",
-      "worstNet": -1.0376,
+      "worstNet": -0.4271,
       "coverage": 0.9998
-    },
-    {
-      "key": "pvrDiv",
-      "label": "量价背离度",
-      "spread": 0.4986,
-      "bestBucket": "5/5",
-      "bestNet": -0.4428,
-      "worstBucket": "3/5",
-      "worstNet": -0.9414,
-      "coverage": 1
-    },
-    {
-      "key": "gapPct",
-      "label": "跳空幅度",
-      "spread": 0.4358,
-      "bestBucket": "5/5",
-      "bestNet": -0.4821,
-      "worstBucket": "4/5",
-      "worstNet": -0.9179,
-      "coverage": 1
-    },
-    {
-      "key": "maGap60",
-      "label": "60日均线偏离",
-      "spread": 0.4336,
-      "bestBucket": "1/5",
-      "bestNet": -0.4625,
-      "worstBucket": "5/5",
-      "worstNet": -0.8961,
-      "coverage": 1
     },
     {
       "key": "ret20",
       "label": "20日涨幅",
-      "spread": 0.4171,
-      "bestBucket": "1/5",
-      "bestNet": -0.5521,
-      "worstBucket": "2/5",
-      "worstNet": -0.9692,
+      "spread": 0.3884,
+      "bestBucket": "4/5",
+      "bestNet": 0.0063,
+      "worstBucket": "1/5",
+      "worstNet": -0.3821,
       "coverage": 1
+    },
+    {
+      "key": "pullback20",
+      "label": "20日高点回撤",
+      "spread": 0.3727,
+      "bestBucket": "5/5",
+      "bestNet": -0.0442,
+      "worstBucket": "1/5",
+      "worstNet": -0.4169,
+      "coverage": 1
+    },
+    {
+      "key": "maGap20",
+      "label": "20日均线偏离",
+      "spread": 0.3306,
+      "bestBucket": "4/5",
+      "bestNet": -0.0914,
+      "worstBucket": "1/5",
+      "worstNet": -0.422,
+      "coverage": 1
+    },
+    {
+      "key": "breakout20",
+      "label": "20日突破幅度",
+      "spread": 0.3199,
+      "bestBucket": "5/5",
+      "bestNet": -0.0924,
+      "worstBucket": "1/5",
+      "worstNet": -0.4123,
+      "coverage": 1
+    },
+    {
+      "key": "accel",
+      "label": "资金加速度(万元)",
+      "spread": 0.2949,
+      "bestBucket": "2/5",
+      "bestNet": -0.4991,
+      "worstBucket": "5/5",
+      "worstNet": -0.794,
+      "coverage": 0.548
     }
   ],
   "byMonth": [
     {
+      "key": "2025-04",
+      "n": 2163,
+      "net": 1.2072,
+      "winRate": 0.5617
+    },
+    {
+      "key": "2025-05",
+      "n": 4882,
+      "net": 0.0997,
+      "winRate": 0.4404
+    },
+    {
+      "key": "2025-06",
+      "n": 5126,
+      "net": 0.307,
+      "winRate": 0.4867
+    },
+    {
+      "key": "2025-07",
+      "n": 5923,
+      "net": 0.5494,
+      "winRate": 0.5019
+    },
+    {
+      "key": "2025-08",
+      "n": 5406,
+      "net": 0.6935,
+      "winRate": 0.5115
+    },
+    {
+      "key": "2025-09",
+      "n": 5683,
+      "net": -0.0373,
+      "winRate": 0.4288
+    },
+    {
+      "key": "2025-11",
+      "n": 5181,
+      "net": -0.4766,
+      "winRate": 0.4152
+    },
+    {
+      "key": "2025-12",
+      "n": 5955,
+      "net": 0.347,
+      "winRate": 0.4746
+    },
+    {
+      "key": "2026-01",
+      "n": 5187,
+      "net": 0.2272,
+      "winRate": 0.4675
+    },
+    {
       "key": "2026-02",
-      "n": 4103,
-      "net": -0.7396,
-      "winRate": 0.4311
+      "n": 3654,
+      "net": -0.0085,
+      "winRate": 0.4795
     },
     {
       "key": "2026-03",
-      "n": 12611,
-      "net": -1.0643,
-      "winRate": 0.3866
+      "n": 5731,
+      "net": -1.136,
+      "winRate": 0.3795
     },
     {
       "key": "2026-04",
-      "n": 12070,
-      "net": 1.0842,
-      "winRate": 0.5529
+      "n": 5483,
+      "net": 1.0787,
+      "winRate": 0.5555
     },
     {
       "key": "2026-05",
-      "n": 10387,
-      "net": -1.155,
-      "winRate": 0.3275
+      "n": 4714,
+      "net": -1.3665,
+      "winRate": 0.3169
     },
     {
       "key": "2026-06",
-      "n": 12107,
-      "net": -0.7281,
-      "winRate": 0.3862
+      "n": 5504,
+      "net": -0.6944,
+      "winRate": 0.3837
     },
     {
       "key": "2026-07",
-      "n": 13321,
-      "net": -1.0789,
-      "winRate": 0.4407
+      "n": 6057,
+      "net": -0.9825,
+      "winRate": 0.4468
     },
     {
       "key": "2026-08",
-      "n": 12186,
-      "net": 0.4587,
-      "winRate": 0.4911
+      "n": 5539,
+      "net": 0.4979,
+      "winRate": 0.4909
     },
     {
       "key": "2026-09",
-      "n": 12218,
-      "net": -0.76,
-      "winRate": 0.3861
-    },
-    {
-      "key": "2026-10",
-      "n": 9908,
-      "net": -1.9393,
-      "winRate": 0.2905
+      "n": 5552,
+      "net": -0.8065,
+      "winRate": 0.3878
     },
     {
       "key": "2026-11",
-      "n": 9337,
-      "net": -2.2167,
-      "winRate": 0.3065
+      "n": 4245,
+      "net": -2.1727,
+      "winRate": 0.3041
+    },
+    {
+      "key": "2025-10",
+      "n": 4384,
+      "net": -0.0466,
+      "winRate": 0.4621
+    },
+    {
+      "key": "2026-10",
+      "n": 4507,
+      "net": -1.8052,
+      "winRate": 0.3046
     }
   ],
   "byIndustry": [
     {
-      "key": "养殖",
-      "n": 356,
-      "net": 0.0307,
-      "winRate": 0.4579
+      "key": "影视",
+      "n": 332,
+      "net": 0.6444,
+      "winRate": 0.4849
     },
     {
-      "key": "光学元件",
-      "n": 753,
-      "net": -0.0189,
-      "winRate": 0.4635
+      "key": "营销服务",
+      "n": 406,
+      "net": 0.3949,
+      "winRate": 0.4557
     },
     {
-      "key": "机床设备",
-      "n": 393,
-      "net": -0.0543,
-      "winRate": 0.4631
+      "key": "地面装备",
+      "n": 316,
+      "net": 0.2827,
+      "winRate": 0.4589
     },
     {
-      "key": "煤炭开采洗选",
-      "n": 525,
-      "net": -0.0716,
-      "winRate": 0.4724
-    },
-    {
-      "key": "LED",
-      "n": 408,
-      "net": -0.1702,
-      "winRate": 0.473
-    },
-    {
-      "key": "股份制与城商行",
-      "n": 694,
-      "net": -0.1888,
-      "winRate": 0.4452
+      "key": "矿山冶金机械",
+      "n": 423,
+      "net": 0.1679,
+      "winRate": 0.4468
     },
     {
       "key": "化学新材料",
-      "n": 549,
-      "net": -0.2366,
-      "winRate": 0.439
+      "n": 496,
+      "net": 0.12,
+      "winRate": 0.5
     },
     {
-      "key": "其他非银行金融",
-      "n": 335,
-      "net": -0.321,
-      "winRate": 0.4567
+      "key": "通信传输设备",
+      "n": 901,
+      "net": 0.0654,
+      "winRate": 0.4606
     },
     {
-      "key": "新能源发电",
-      "n": 416,
-      "net": -0.3764,
-      "winRate": 0.4111
+      "key": "其他稀有小金属",
+      "n": 367,
+      "net": 0.035,
+      "winRate": 0.4687
     },
     {
-      "key": "火电",
-      "n": 597,
-      "net": -0.3841,
-      "winRate": 0.4489
+      "key": "燃气",
+      "n": 491,
+      "net": 0.0257,
+      "winRate": 0.4786
+    },
+    {
+      "key": "消费电子设备",
+      "n": 720,
+      "net": 0.018,
+      "winRate": 0.4611
+    },
+    {
+      "key": "仪器仪表",
+      "n": 1402,
+      "net": 0.0051,
+      "winRate": 0.4536
     }
   ],
   "fundflow": {
@@ -321,23 +381,23 @@ window.AB_FREELAB_REPORT = {
         "verdict": "NOT_PROVEN",
         "reason": "未过门槛: 净收益、t≥3、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 6948,
-          "tradable": 6948,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 4087,
+          "tradable": 4087,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 6.42,
-          "benchmarkRet": -0.214,
+          "coverage": 4.05,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": 0.0585,
-          "grossAvg": 0.1544589810017278,
+          "excessOverHold": 1.1804,
+          "grossAvg": 0.17838757034499647,
           "costPct": 0.31,
-          "netRet3": -0.1555,
-          "winRate": 0.4617,
-          "wilsonLower": 0.45,
-          "tStat": -2.385,
-          "worstSegmentNet": -3.9069,
-          "segments": 10,
+          "netRet3": -0.1316,
+          "winRate": 0.4659,
+          "wilsonLower": 0.4506,
+          "tStat": -1.587,
+          "worstSegmentNet": -3.4904,
+          "segments": 20,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -348,25 +408,25 @@ window.AB_FREELAB_REPORT = {
         "modelType": "rule",
         "at": "2026-11-27 13:30",
         "verdict": "NOT_PROVEN",
-        "reason": "未过门槛: 覆盖率（历史回测，非前瞻收益）",
+        "reason": "未过门槛: t≥3、覆盖率、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 2142,
-          "tradable": 2142,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 1045,
+          "tradable": 1045,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 1.98,
-          "benchmarkRet": -0.214,
+          "coverage": 1.04,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": 0.9251,
-          "grossAvg": 1.0210541549953323,
+          "excessOverHold": 1.6103,
+          "grossAvg": 0.6082631578947377,
           "costPct": 0.31,
-          "netRet3": 0.7111,
-          "winRate": 0.5677,
-          "wilsonLower": 0.5466,
-          "tStat": 4.931,
-          "worstSegmentNet": -3.0689,
-          "segments": 10,
+          "netRet3": 0.2983,
+          "winRate": 0.5139,
+          "wilsonLower": 0.4836,
+          "tStat": 1.471,
+          "worstSegmentNet": -3.3259,
+          "segments": 20,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -379,23 +439,23 @@ window.AB_FREELAB_REPORT = {
         "verdict": "NOT_PROVEN",
         "reason": "未过门槛: 净收益、t≥3、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 4321,
-          "tradable": 4321,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 2201,
+          "tradable": 2201,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 3.99,
-          "benchmarkRet": -0.214,
+          "coverage": 2.18,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": 0.0925,
-          "grossAvg": 0.18850034714186553,
+          "excessOverHold": 1.0395,
+          "grossAvg": 0.03752794184461662,
           "costPct": 0.31,
-          "netRet3": -0.1215,
-          "winRate": 0.4571,
-          "wilsonLower": 0.4423,
-          "tStat": -1.257,
-          "worstSegmentNet": -2.6208,
-          "segments": 10,
+          "netRet3": -0.2725,
+          "winRate": 0.453,
+          "wilsonLower": 0.4323,
+          "tStat": -2.083,
+          "worstSegmentNet": -2.4829,
+          "segments": 21,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -408,23 +468,23 @@ window.AB_FREELAB_REPORT = {
         "verdict": "NOT_PROVEN",
         "reason": "未过门槛: 净收益、t≥3、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 6948,
-          "tradable": 6948,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 4087,
+          "tradable": 4087,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 6.42,
-          "benchmarkRet": -0.214,
+          "coverage": 4.05,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": 0.0585,
-          "grossAvg": 0.1544589810017278,
+          "excessOverHold": 1.1804,
+          "grossAvg": 0.17838757034499647,
           "costPct": 0.31,
-          "netRet3": -0.1555,
-          "winRate": 0.4617,
-          "wilsonLower": 0.45,
-          "tStat": -2.385,
-          "worstSegmentNet": -3.9069,
-          "segments": 10,
+          "netRet3": -0.1316,
+          "winRate": 0.4659,
+          "wilsonLower": 0.4506,
+          "tStat": -1.587,
+          "worstSegmentNet": -3.4904,
+          "segments": 20,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -435,25 +495,25 @@ window.AB_FREELAB_REPORT = {
         "modelType": "rule",
         "at": "2026-11-27 13:30",
         "verdict": "NOT_PROVEN",
-        "reason": "未过门槛: 净收益、t≥3、Wilson下界、跑赢基准（历史回测，非前瞻收益）",
+        "reason": "未过门槛: 净收益、t≥3、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 15003,
-          "tradable": 15003,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 21810,
+          "tradable": 21810,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 13.86,
-          "benchmarkRet": -0.214,
+          "coverage": 21.62,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": -0.7247,
-          "grossAvg": -0.6287091248416993,
+          "excessOverHold": 1.1959,
+          "grossAvg": 0.19386712517194182,
           "costPct": 0.31,
-          "netRet3": -0.9387,
-          "winRate": 0.3989,
-          "wilsonLower": 0.391,
-          "tStat": -13.987,
-          "worstSegmentNet": -6.4549,
-          "segments": 11,
+          "netRet3": -0.1161,
+          "winRate": 0.4374,
+          "wilsonLower": 0.4308,
+          "tStat": -2.377,
+          "worstSegmentNet": -5.5997,
+          "segments": 20,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -474,25 +534,25 @@ window.AB_FREELAB_REPORT = {
         "modelType": "rule",
         "at": "2026-11-27 17:29",
         "verdict": "NOT_PROVEN",
-        "reason": "未过门槛: 净收益、t≥3、Wilson下界、跑赢基准（历史回测，非前瞻收益）",
+        "reason": "未过门槛: 净收益、t≥3、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 8221,
-          "tradable": 8221,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 3730,
+          "tradable": 3730,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 7.59,
-          "benchmarkRet": -0.214,
+          "coverage": 3.7,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": -0.2688,
-          "grossAvg": -0.17278323804889795,
+          "excessOverHold": 0.8387,
+          "grossAvg": -0.16328176943699596,
           "costPct": 0.31,
-          "netRet3": -0.4828,
-          "winRate": 0.4296,
-          "wilsonLower": 0.419,
-          "tStat": -8.614,
-          "worstSegmentNet": -3.1179,
-          "segments": 10,
+          "netRet3": -0.4733,
+          "winRate": 0.4271,
+          "wilsonLower": 0.4113,
+          "tStat": -5.552,
+          "worstSegmentNet": -2.7261,
+          "segments": 12,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -503,25 +563,25 @@ window.AB_FREELAB_REPORT = {
         "modelType": "rule",
         "at": "2026-11-27 17:29",
         "verdict": "NOT_PROVEN",
-        "reason": "未过门槛: 净收益、t≥3、Wilson下界、跑赢基准（历史回测，非前瞻收益）",
+        "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 3923,
-          "tradable": 3923,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 1950,
+          "tradable": 1950,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 3.62,
-          "benchmarkRet": -0.214,
+          "coverage": 1.93,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": -0.5043,
-          "grossAvg": -0.40828728014274523,
+          "excessOverHold": 0.8609,
+          "grossAvg": -0.14110923076922915,
           "costPct": 0.31,
-          "netRet3": -0.7183,
-          "winRate": 0.3849,
-          "wilsonLower": 0.3698,
-          "tStat": -9.873,
-          "worstSegmentNet": -2.1102,
-          "segments": 10,
+          "netRet3": -0.4511,
+          "winRate": 0.419,
+          "wilsonLower": 0.3973,
+          "tStat": -4.046,
+          "worstSegmentNet": -1.7155,
+          "segments": 12,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       },
@@ -532,25 +592,25 @@ window.AB_FREELAB_REPORT = {
         "modelType": "rule",
         "at": "2026-11-27 17:29",
         "verdict": "NOT_PROVEN",
-        "reason": "未过门槛: 净收益、t≥3、Wilson下界、跑赢基准（历史回测，非前瞻收益）",
+        "reason": "未过门槛: 净收益、t≥3、Wilson下界（历史回测，非前瞻收益）",
         "metrics": {
-          "n": 16127,
-          "tradable": 16127,
-          "eligible": 108271,
-          "skippedOneWord": 67,
+          "n": 7577,
+          "tradable": 7577,
+          "eligible": 100877,
+          "skippedOneWord": 72,
           "skippedNoData": 0,
-          "coverage": 14.9,
-          "benchmarkRet": -0.214,
+          "coverage": 7.51,
+          "benchmarkRet": -1.312,
           "benchmarkSource": "CSI300_ETF",
-          "excessOverHold": -0.3491,
-          "grossAvg": -0.25305996155515703,
+          "excessOverHold": 0.7364,
+          "grossAvg": -0.265556552725352,
           "costPct": 0.31,
-          "netRet3": -0.5631,
-          "winRate": 0.428,
-          "wilsonLower": 0.4204,
-          "tStat": -13.119,
-          "worstSegmentNet": -2.8985,
-          "segments": 10,
+          "netRet3": -0.5756,
+          "winRate": 0.4297,
+          "wilsonLower": 0.4186,
+          "tStat": -9.217,
+          "worstSegmentNet": -2.7803,
+          "segments": 12,
           "note": "信号级口径：每个T日信号都算钱；一字板剔除；扣往返成本0.31%；概率性结论非「正确」"
         }
       }
@@ -563,10 +623,10 @@ window.AB_FREELAB_REPORT = {
       "desc": "T收盘买→T+20收盘卖（约1个月）",
       "retKey": "d20",
       "baseline": {
-        "netRet": -2.6194,
-        "tStat": -53.76,
-        "winRate": 0.3635,
-        "samples": 98333,
+        "netRet": 0.5276,
+        "tStat": 10.935,
+        "winRate": 0.4724,
+        "samples": 96362,
         "coverage": 100,
         "note": ""
       },
@@ -581,10 +641,10 @@ window.AB_FREELAB_REPORT = {
       "desc": "T收盘买→T+5收盘卖（约1周）",
       "retKey": "d5",
       "baseline": {
-        "netRet": -0.8295,
-        "tStat": -34.227,
-        "winRate": 0.404,
-        "samples": 98333,
+        "netRet": -0.0486,
+        "tStat": -2.158,
+        "winRate": 0.4575,
+        "samples": 96362,
         "coverage": 100,
         "note": ""
       },
@@ -599,10 +659,10 @@ window.AB_FREELAB_REPORT = {
       "desc": "T收盘买→T+1收盘卖（次日）",
       "retKey": "d1",
       "baseline": {
-        "netRet": -0.4363,
-        "tStat": -41.256,
-        "winRate": 0.4089,
-        "samples": 98333,
+        "netRet": -0.2755,
+        "tStat": -28.571,
+        "winRate": 0.4159,
+        "samples": 96362,
         "coverage": 100,
         "note": ""
       },
@@ -611,13 +671,22 @@ window.AB_FREELAB_REPORT = {
       "notProvenCount": 9,
       "models": [
         {
-          "name": "市场状态机(待工程化)",
-          "thesis": "画像显示月度净收益差异巨大(8月+0.46%、11月-2.22%)，说明追启动策略的成败高度依赖大盘环境；应先判断市场状态(趋势/震荡/情绪周期)，只在情绪回升期启动，其余空仓",
+          "name": "避开追高(反向验证)",
+          "thesis": "追60日涨幅>9.3%且均线偏离>4.8%的强势票是最亏的，反向回避可提升整体",
           "verdict": "NOT_PROVEN",
           "reason": "未过门槛: 净收益、t≥3、Wilson下界",
-          "netRet": -0.4363,
-          "tStat": -41.256,
-          "coverage": 100
+          "netRet": -0.2626,
+          "tStat": -9.778,
+          "coverage": 22.39
+        },
+        {
+          "name": "资金加速度温和+超大单占优",
+          "thesis": "加速度[-318,584]万(画像第3档-0.675)且超大单占比>0.53(第5档最好-0.666),机构温和吸筹",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
+          "netRet": null,
+          "tStat": null,
+          "coverage": 0
         },
         {
           "name": "主力温和区+超跌",
@@ -629,22 +698,13 @@ window.AB_FREELAB_REPORT = {
           "coverage": 0
         },
         {
-          "name": "避开追高(反向验证)",
-          "thesis": "追60日涨幅>9.3%且均线偏离>4.8%的强势票是最亏的，反向回避可提升整体",
+          "name": "市场状态机(待工程化)",
+          "thesis": "画像显示月度净收益差异巨大(8月+0.46%、11月-2.22%)，说明追启动策略的成败高度依赖大盘环境；应先判断市场状态(趋势/震荡/情绪周期)，只在情绪回升期启动，其余空仓",
           "verdict": "NOT_PROVEN",
-          "reason": "未过门槛: 净收益、t≥3、Wilson下界、跑赢基准",
-          "netRet": -0.5203,
-          "tStat": -13.64,
-          "coverage": 14.71
-        },
-        {
-          "name": "资金加速度温和+超大单占优",
-          "thesis": "加速度[-318,584]万(画像第3档-0.675)且超大单占比>0.53(第5档最好-0.666),机构温和吸筹",
-          "verdict": "NOT_PROVEN",
-          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
-          "netRet": null,
-          "tStat": null,
-          "coverage": 0
+          "reason": "未过门槛: 净收益、t≥3、Wilson下界",
+          "netRet": -0.2755,
+          "tStat": -28.571,
+          "coverage": 100
         },
         {
           "name": "避开资金极端+主力净占比温和",
@@ -663,10 +723,10 @@ window.AB_FREELAB_REPORT = {
       "desc": "T开盘买→T收盘卖（仅T+0 ETF）",
       "retKey": "intra",
       "baseline": {
-        "netRet": -0.3744,
-        "tStat": -10.525,
-        "winRate": 0.1743,
-        "samples": 918,
+        "netRet": -0.2654,
+        "tStat": -8.979,
+        "winRate": 0.1845,
+        "samples": 905,
         "coverage": 100,
         "note": "仅放行名称命中跨境/黄金/债券/货币的T+0 ETF，其余标缺口不编造"
       },

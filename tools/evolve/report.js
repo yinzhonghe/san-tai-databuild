@@ -24,11 +24,15 @@ var GAPS = path.join(EVO, 'panel_gaps.json');
 var HUNTER = path.join(EVO, 'data_sources.json');
 var LLM = path.join(EVO, 'llm_candidates_v3.json');
 var DAILY_LOG = path.join(EVO, 'daily_log.jsonl');
+/* 当前窗口实测基线（settle --baseline --out 写盘）：宪法 baseline 冻结于 2026-11-26 旧窗口，
+   扩窗后 n 变了但冻结值不漂移；报告与 netDelta 必须用同窗口实测值，冻结值仅作 frozen 参照。 */
+var MEASURED_BASE = path.join(EVO, 'baseline_measured.json');
 
 function load(p, d) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return d; } }
 function isNum(v) { return typeof v === 'number' && isFinite(v); }
 function todayStr() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 function pct(v, d) { return isNum(v) ? +v.toFixed(d == null ? 2 : d) : null; }
+function fmtNum(v) { return isNum(v) ? String(+v.toFixed(3)) : '—'; }
 function loadLog(p, maxLines) {
   try {
     var lines = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean);
@@ -44,7 +48,17 @@ function build() {
   var hunter = load(HUNTER, {});
   var llm = load(LLM, {});
   var daily = loadLog(DAILY_LOG, 20);
-  var base = cons.baseline || {};
+  var frozenBase = cons.baseline || {};
+  // 优先当前窗口实测基线；缺文件时回退宪法冻结值（保持旧行为，不报错）。
+  var measured = load(MEASURED_BASE, null);
+  // 实测基线由 settle --baseline --out 写盘，口径与规则评估一致（默认采样）；
+  // 其 n 天然小于全样本 gaps.samples，不能用 n 比对判新鲜。只看字段合法即可，
+  // 冻结值始终单列 frozen 供参照。
+  var measuredFresh = measured && isNum(measured.netRet3) && isNum(measured.n) && measured.n > 0;
+  var base = measuredFresh
+    ? { signalRet3: measured.netRet3, winRate: measured.winRate, n: measured.n,
+        generatedAt: measured.generatedAt, frozenAt: '' }
+    : frozenBase;
   var rules = pop.rules || [];
   var seal = K.verifySeal();
 
@@ -90,7 +104,7 @@ function build() {
   // 下一步：证据驱动，不拍脑袋
   var nextSteps = [];
   var throttled = dataGaps.filter(function (g) { return g.status === 'found_throttled'; });
-  if (throttled.length) nextSteps.push('重试限流源（' + throttled.map(function (g) { return g.label; }).join('、') + '）：接口已找到，换网络/降频即可补');
+  if (throttled.length) nextSteps.push('补数据（' + throttled.map(function (g) { return g.label; }).join('、') + '）：接口已实测可用，须带浏览器头(UA+Referer+ut)并低频重抓；此前裸 curl 误判为限流');
   if (hb.needTestTime) nextSteps.push('连续3代全灭：触发现场课程（拆子问题/子空间找构件，最多3轮，构件须回全市场过 kernel）');
   if (!hasActive) {
     nextSteps.push('当前 active=0：所有候选未过「信号级净收益>0 + t≥3 + 覆盖率 + 机会成本」四关，属诚实积累阶段');
@@ -107,13 +121,60 @@ function build() {
 
   var trialTotal = load(path.join(EVO, 'trial_counter.json'), {}).total || pop.trialTotal || 0;
   var validation = cons.validation || {};
+
+  // 「一眼看懂」摘要：状态 / 干了什么 / 什么结果 / 往哪努力。全部由真实字段拼装，不写死数字。
+  var bestImp = improvements[0] || null;
+  var gate = (cons.target || {}).hardGate || {};
+  var minT = (cons.multipleTesting || {}).minTStat || 3;
+  var summary = {
+    state: '第 ' + (pop.generation || 0) + ' 代 · 跑了 ' + trialTotal + ' 次试验 · 评估 ' + rules.length +
+      ' 条候选 · 启用 ' + active.length + ' 条 / 影子 ' + (rules.length - active.length) + ' 条',
+    did: '把六派理论拆成人类种子，自动变异出候选规则；每条都在 ' + (base.n || gaps.samples || 0).toLocaleString() +
+      ' 条历史信号上「逐条算钱」——T 日收盘买、T+3 收盘卖，一字板剔除，扣 ' +
+      (cons.costModel ? ((cons.costModel.commissionPctPerSide || 0) * 2 + (cons.costModel.stampTaxPctSell || 0) + (cons.costModel.slippagePctPerSide || 0) * 2) : 0.31).toFixed(2) +
+      '% 成本，再用封印的宪法做硬验证 + 软裁判。',
+    result: '追启动整体亏钱：基线净收益 ' + fmtNum(base.signalRet3) + '%、胜率 ' + fmtNum(base.winRate) +
+      '%。' + (bestImp ? '净收益最高的候选 ' + bestImp.id + ' 达到 ' + fmtNum(bestImp.netRet3) +
+      '%，但覆盖率仅 ' + fmtNum(bestImp.coverage) + '%、t=' + fmtNum(bestImp.tStat) +
+      '——这是少数样本碰巧撞出的高收益，不是可交易策略，已被新增的覆盖率闸门挡下。' : '') +
+      '所以启用 ' + active.length + ' 条——不是没跑，是没一条够格。',
+    direction: (function () {
+      var gates = [];
+      gates.push('净收益 > ' + (gate.minNetRet3Pct || 0) + '%');
+      gates.push('t ≥ ' + minT);
+      gates.push('Wilson 胜率下界 ≥ ' + ((gate.minWilsonLowerWinRate || 0.5) * 100).toFixed(0) + '%');
+      gates.push('覆盖率 ≥ ' + (gate.minCoveragePct || 2) + '%');
+      gates.push('跑赢持有基准');
+      var fails = [];
+      if (bestImp) {
+        if (!isNum(bestImp.netRet3) || bestImp.netRet3 <= (gate.minNetRet3Pct || 0)) fails.push('净收益');
+        if (!isNum(bestImp.tStat) || bestImp.tStat < minT) fails.push('t 仅 ' + fmtNum(bestImp.tStat));
+        if (!isNum(bestImp.wilson) || bestImp.wilson < (gate.minWilsonLowerWinRate || 0.5) * 100) fails.push('Wilson 下界');
+        if (!isNum(bestImp.coverage) || bestImp.coverage < (gate.minCoveragePct || 2)) fails.push('覆盖率仅 ' + fmtNum(bestImp.coverage) + '%');
+        if (!isNum(bestImp.excessOverHold) || bestImp.excessOverHold <= 0) fails.push('机会成本');
+      }
+      return '五关全过才准启用：' + gates.join('、') + '。当前最高收益候选栽在【' +
+        (fails.length ? fails.join('、') : '综合稳健度') + '】上——净收益能靠少数样本碰出来，t 值和覆盖率碰不出来。' +
+        '方向是给规则喂新特征（历史资金流）+ 用「现场课程」拆子问题找新构件，而不是在旧形态上继续微调阈值。';
+    })()
+  };
+
   var report = {
+    summary: summary,
     at: todayStr(), generatedAt: new Date().toISOString(),
+    dataAsOf: gaps.asOf || '',
     version: 'v2', sealOk: seal.ok,
     disclaimer: '数据来自历史回测+kernel裁判，非实盘前瞻收益；净收益已扣0.31%成本，含幸存者偏差、回测偏乐观；不构成投资建议。',
     goal: cons.goal || '',
-    baseline: { n: base.n || 0, signalRet3: isNum(base.signalRet3) ? base.signalRet3 : null,
-                winRate: isNum(base.winRate) ? base.winRate : null, frozenAt: base.frozenAt || '' },
+    // 当前窗口实测基线（与 totalSamples 同口径）；宪法冻结值放 frozen 字段仅作参照，禁止相减当超额。
+    baseline: { n: base.n || gaps.samples || 0, nFrozen: !!base.n,
+                signalRet3: isNum(base.signalRet3) ? base.signalRet3 : null,
+                winRate: isNum(base.winRate) ? base.winRate : null,
+                frozenAt: base.frozenAt || '',
+                frozen: { signalRet3: isNum(frozenBase.signalRet3) ? frozenBase.signalRet3 : null,
+                          winRate: isNum(frozenBase.winRate) ? frozenBase.winRate : null,
+                          frozenAt: frozenBase.frozenAt || '',
+                          note: '宪法冻结于旧窗口(2026-01起)的固定标尺，仅供参考；不可与实测基线相减当超额' } },
     totalSamples: gaps.samples || 0,
     improvements: improvements,
     activeCount: active.length,

@@ -204,7 +204,9 @@ function build(useFull) {
     generatedOn: todayCN(),
     source: path.basename(src),
     dataAsOf: gaps.asOf || '',
-    usage: '自由推演实验室的市场画像原料：全部来自真实样本的信号级净收益（已扣' + r(cost, 2) + '%成本、一字板剔除）。缺数据标缺口，不估算。',
+    usage: '自由推演实验室的市场画像原料：全部来自真实样本的信号级净收益（已扣' + r(cost, 2) + '%成本、一字板剔除）。缺数据标缺口，不估算。'
+      + ' 基线口径：constitutionNet 是宪法冻结于 2026-11-26 的旧窗口(2026-01起)标尺，仅供参照不可比；'
+      + 'measuredNet 才是本画像当前窗口(' + (firstDate || '?') + '~' + (lastDate || '?') + ')的实测基线，判胜负一律用绝对门槛(net>0且t>=3且跑赢持有)，不要拿两个基线相减当超额。',
     baseline: {
       constitutionNet: baseNet,
       measuredNet: realNet, measuredWinRate: realWin,

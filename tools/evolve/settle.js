@@ -195,6 +195,18 @@ function main() {
     settleStream(null).then(function (s) {
       console.log('=== 信号级 baseline（全样本）===');
       console.log(JSON.stringify(s, null, 2));
+      // --out <path>：把实测基线写盘，供 report.js 展示「当前窗口实测值」。
+      // 宪法冻结基线是旧窗口标尺、不随样本漂移；这个文件是当前窗口的实测口径，二者不可混用。
+      var oi = args.indexOf('--out');
+      if (oi >= 0 && args[oi + 1]) {
+        var rec = Object.assign({}, s, {
+          generatedAt: new Date().toISOString(),
+          panel: path.basename(panelPath()),
+          note: '当前窗口实测基线（全样本口径）；宪法 baseline 冻结于旧窗口仅作参照，勿相减当超额'
+        });
+        fs.writeFileSync(args[oi + 1], JSON.stringify(rec, null, 2) + '\n');
+        console.log('[settle] 实测基线已写入 ' + args[oi + 1]);
+      }
     });
     return;
   }

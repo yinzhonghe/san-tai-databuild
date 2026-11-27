@@ -40,10 +40,24 @@ test('资金流特征进入验证闭环：画像有真实分档 + 样本可 join
   ff.forEach(function (k) { assert.ok(meta[k], 'features.META 未注册资金流特征 ' + k); });
   ff.forEach(function (k) {
     var f = facts.features[k] || {};
-    assert.ok(f.coverage > 0.9, k + ' 画像覆盖不足: ' + f.coverage);
+    assert.ok(f.coverage > 0.4, k + ' 画像覆盖不足: ' + f.coverage);
     assert.ok((f.buckets || []).length >= 5, k + ' 画像无5档真实净收益');
   });
   assert.ok(fs.existsSync(path.join(EVO, 'panel_sample100k_ff.jsonl')), '缺资金流增强样本');
+  // 覆盖率下限按「资金流源实际存在的窗口」算：扩窗后 2025-04~12 段源本身没有资金流，
+  // 全窗口覆盖必然被稀释；但资金流可用段（2026-01 起）内 join 必须仍 >0.85，防止真漏抓。
+  var ffLines = fs.readFileSync(path.join(EVO, 'panel_sample100k_ff.jsonl'), 'utf8').split('\n');
+  var inWindow = 0, joinedInWindow = 0;
+  ffLines.forEach(function (line) {
+    if (!line.trim()) return;
+    var o; try { o = JSON.parse(line); } catch (e) { return; }
+    if (!o.date || o.date < '2026-01-01') return;  // 资金流源起点（批量 2025-12-14，派生需10日预热）
+    inWindow++;
+    if (o.f && typeof o.f.main5 === 'number') joinedInWindow++;
+  });
+  assert.ok(inWindow > 10000, '资金流可用窗口样本过少: ' + inWindow);
+  assert.ok(joinedInWindow / inWindow > 0.85,
+    '资金流可用窗口内 join 率过低: ' + (joinedInWindow / inWindow).toFixed(3));
   var settle = readText(path.join(ROOT, 'tools', 'evolve', 'settle.js'));
   assert.ok(settle.indexOf("'ff'") >= 0 && settle.indexOf('PANEL_FF') >= 0, 'settle 未接 ff 样本轨道');
   var builder = readText(path.join(ROOT, 'tools', 'evolve', 'freelab', 'build_fundflow_samples.js'));
