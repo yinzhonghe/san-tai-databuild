@@ -28,10 +28,26 @@ var facts = readJson(path.join(LAB, 'facts.json'), null);
 var verified = readJson(path.join(LAB, 'verified.json'), null);
 
 // ① 市场画像地基
-test('facts.json 存在且来自真实样本（样本数>1万、特征20个）', function () {
+test('facts.json 存在且来自真实样本（样本数>1万、含24特征）', function () {
   assert.ok(facts, 'facts.json 缺失');
   assert.ok(facts.baseline.samples > 10000, '样本数异常: ' + facts.baseline.samples);
-  assert.equal(Object.keys(facts.features).length, 20, '特征数不是20');
+  // 20 个 OHLCV 派生 + 4 个资金流（2026-11-27 接入验证闭环）
+  assert.ok(Object.keys(facts.features).length >= 24, '特征数不足24: ' + Object.keys(facts.features).length);
+});
+test('资金流特征进入验证闭环：画像有真实分档 + 样本可 join + settle 能结算', function () {
+  var ff = ['main5', 'superRatio5', 'accel', 'mainPctT'];
+  var meta = require(path.join(ROOT, 'tools', 'evolve', 'features.js')).META;
+  ff.forEach(function (k) { assert.ok(meta[k], 'features.META 未注册资金流特征 ' + k); });
+  ff.forEach(function (k) {
+    var f = facts.features[k] || {};
+    assert.ok(f.coverage > 0.9, k + ' 画像覆盖不足: ' + f.coverage);
+    assert.ok((f.buckets || []).length >= 5, k + ' 画像无5档真实净收益');
+  });
+  assert.ok(fs.existsSync(path.join(EVO, 'panel_sample100k_ff.jsonl')), '缺资金流增强样本');
+  var settle = readText(path.join(ROOT, 'tools', 'evolve', 'settle.js'));
+  assert.ok(settle.indexOf("'ff'") >= 0 && settle.indexOf('PANEL_FF') >= 0, 'settle 未接 ff 样本轨道');
+  var builder = readText(path.join(ROOT, 'tools', 'evolve', 'freelab', 'build_fundflow_samples.js'));
+  assert.ok(builder.indexOf('fail-closed') >= 0, '资金流注入未声明 fail-closed');
 });
 test('画像净收益为实测值且字段含成本/一字板剔除（非编造）', function () {
   assert.ok(typeof facts.baseline.measuredNet === 'number', '缺实测净收益');
