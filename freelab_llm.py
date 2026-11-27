@@ -175,7 +175,14 @@ def call_model(model, key, messages, max_tokens):
             'Accept': 'application/json', 'User-Agent': 'san-tai-freelab/1.0'})
         try:
             with urllib.request.urlopen(req, timeout=240) as resp:
-                data = json.loads(resp.read().decode('utf-8', 'ignore'))
+                raw_resp = resp.read().decode('utf-8', 'ignore')
+            try:
+                data = json.loads(raw_resp)
+            except Exception:
+                # 2026-11-27：响应非 JSON 时把前 400 字打到日志，定位是鉴权/额度/网关哪种错误。
+                # 绝不打印 key；只截响应体。
+                print('[freelab] API 非JSON响应(前400字): ' + raw_resp[:400].replace('\n', ' '), flush=True)
+                raise
             ch = data['choices'][0]
             txt = (ch.get('message') or {}).get('content') or ''
             if not txt and (ch.get('message') or {}).get('reasoning_content'):
@@ -183,7 +190,10 @@ def call_model(model, key, messages, max_tokens):
             txt = re.sub(r'^```(?:json)?|```$', '', txt.strip(), flags=re.M).strip()
             return json.loads(txt), data.get('usage'), None
         except urllib.error.HTTPError as e:
-            last_err = 'HTTP %s' % e.code
+            body = ''
+            try: body = e.read().decode('utf-8', 'ignore')[:300].replace('\n', ' ')
+            except Exception: pass
+            last_err = 'HTTP %s %s' % (e.code, body)
             if e.code not in (429, 500, 502, 503, 504):
                 break
         except Exception as e:
