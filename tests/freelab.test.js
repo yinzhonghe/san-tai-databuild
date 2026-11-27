@@ -162,5 +162,78 @@ test('data_sources.json 资金流源标记 verified（状态与适配器一致�
   assert.ok(d.fundflow_hist.script.indexOf('fetch_fundflow_hist') >= 0, '资金流适配器脚本未记录');
 });
 
+// ⑥ 四时间维度推演（月/周/日/日内T0）
+var verifiedH = readJson(path.join(LAB, 'verified_horizons.json'), null);
+test('四维度样本生成器存在且从真实 kline 算 d20/d5/d1/intra', function () {
+  var src = readText(path.join(ROOT, 'tools', 'evolve', 'freelab', 'horizon_sample.js'));
+  ['d20', 'd5', 'd1', 'intra', 'decodeKline', 't0ok'].forEach(function (k) {
+    assert.ok(src.indexOf(k) >= 0, '生成器缺: ' + k);
+  });
+  assert.ok(src.indexOf('fail-closed') >= 0, '缺 fail-closed 红线');
+});
+test('四维度样本文件存在且四个收益字段都有真实值', function () {
+  var p = path.join(LAB, 'horizon_sample.jsonl');
+  assert.ok(fs.existsSync(p), 'horizon_sample.jsonl 缺失');
+  var lines = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean);
+  assert.ok(lines.length > 10000, '样本数不足: ' + lines.length);
+  var sample = JSON.parse(lines[Math.floor(lines.length / 2)]);
+  ['d20', 'd5', 'd1', 'intra'].forEach(function (k) {
+    assert.ok(typeof sample.y[k] === 'number' && isFinite(sample.y[k]), k + ' 非真实数值');
+  });
+});
+test('facts.json 含四维度真实基准（不是T+3旧尺子）', function () {
+  assert.ok(Array.isArray(facts.horizons), 'facts 缺 horizons 字段');
+  assert.equal(facts.horizons.length, 4, '维度数不是4');
+  ['month', 'week', 'day', 'intradayT0'].forEach(function (k) {
+    var h = facts.horizons.filter(function (x) { return x.key === k; })[0];
+    assert.ok(h, '缺维度 ' + k);
+    assert.ok(typeof h.netRet === 'number', k + ' 缺基准净收益');
+    assert.ok(h.samples > 100, k + ' 样本不足');
+  });
+});
+test('日内T0只对ETF放行（样本 t0ok 全为 isEtf）', function () {
+  var lines = fs.readFileSync(path.join(LAB, 'horizon_sample.jsonl'), 'utf8').split('\n').filter(Boolean);
+  for (var i = 0; i < lines.length; i += 97) {
+    var s = JSON.parse(lines[i]);
+    if (s.t0ok) assert.equal(s.isEtf, true, 'T0放行非ETF');
+  }
+});
+test('四维度验证器存在、封印有效、结论诚实（负净收益不判跑出）', function () {
+  var src = readText(path.join(ROOT, 'tools', 'evolve', 'freelab', 'verify_horizons.js'));
+  assert.ok(src.indexOf('verifySeal') >= 0, '验证器未校验封印');
+  assert.ok(verifiedH, 'verified_horizons.json 缺失');
+  assert.equal(verifiedH.sealOk, true, '封印失效');
+  assert.equal(verifiedH.dimensions.length, 4, '维度数不是4');
+  verifiedH.dimensions.forEach(function (d) {
+    (d.models || []).forEach(function (m) {
+      var x = m.metrics || {};
+      if (typeof x.netRet === 'number' && x.netRet <= 0) {
+        assert.notEqual(m.verdict, 'PASSED', d.key + ' 负净收益却判跑出');
+      }
+    });
+  });
+});
+test('freelab_llm.py 提示词强制四维度分类+horizon字段', function () {
+  var src = readText(path.join(ROOT, 'github_ci', 'freelab_llm.py'));
+  ['四时间维度分类', 'horizon="month"', 'horizon="week"', 'horizon="day"',
+    'horizon="intradayT0"', "'horizons': facts.get('horizons')"].forEach(function (k) {
+      assert.ok(src.indexOf(k) >= 0, '提示词缺: ' + k);
+    });
+});
+test('报告含四维度、版本升级、页面有渲染容器', function () {
+  var repText = readText(path.join(ROOT, 'freelab_report.js'));
+  assert.ok(repText.indexOf('freelab-v2-horizons') >= 0, '报告版本未升级');
+  var rep = JSON.parse(repText.slice(repText.indexOf('{'), repText.lastIndexOf('}') + 1));
+  assert.ok(rep.dimensions && rep.dimensions.length === 4, '报告缺四维度');
+  assert.ok(html.indexOf('id="flDimensions"') >= 0, '页面缺四维度渲染容器');
+  assert.ok(html.indexOf('R.dimensions') >= 0, '页面未渲染四维度');
+});
+test('云端工作流跑四维度脚本并推状态', function () {
+  var yml = readText(path.join(ROOT, 'github_ci', 'freelab.yml'));
+  ['horizon_sample.js', 'verify_horizons.js', 'verified_horizons.json'].forEach(function (k) {
+    assert.ok(yml.indexOf(k) >= 0, '工作流缺: ' + k);
+  });
+});
+
 console.log('\n[freelab] 通过 %d / 失败 %d', passed, failed);
 process.exit(failed ? 1 : 0);
