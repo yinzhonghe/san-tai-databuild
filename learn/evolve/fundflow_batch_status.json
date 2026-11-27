@@ -1,0 +1,33 @@
+{
+  "asOf": "2026-11-27 15:26:05",
+  "source": "eastmoney datacenter-web RPT_DMSK_TS_FUNDFLOW (batch)",
+  "endpoint": "https://datacenter-web.eastmoney.com/api/data/v1/get",
+  "reportName": "RPT_DMSK_TS_FUNDFLOW",
+  "window": {
+    "from": "2025-12-14",
+    "to": "2026-11-23",
+    "panelFrom": "2026-01-13",
+    "lookbackDays": 30
+  },
+  "shardsDone": 255,
+  "totalCodes": 5854,
+  "stockCodes": 5343,
+  "etfCodes": 511,
+  "mergedCodes": 5343,
+  "coveragePct": 91.18,
+  "stockCoveragePct": 100.0,
+  "coveredSampleRows": 98787,
+  "totalSampleRows": 108338,
+  "etfGapRows": 9551,
+  "etfGapNote": "ETF 不在批量报表中，由 fetch_fundflow_hist.py 走 push2his 云端补抓",
+  "bjCodes": 332,
+  "bjCovered": 332,
+  "bjNote": "北交所 920xxx 在批量报表内（0.920xxx secid 服务端实测可用）",
+  "stats": {
+    "pagesFetched": 255,
+    "pagesReused": 0,
+    "rowsFetched": 1203809,
+    "lastError": null
+  },
+  "note": "完全开放数据：一行=一只票的一个交易日，按 panel 样本加权统计覆盖。缺口保留为空，不填 0、不估算。"
+}
