@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!-- 破缓存自愈：静态托管不发 Cache-Control，浏览器可能长期缓存旧 HTML。
+     固定链接若没有 _f 参数，自动补上构建号强制回源；_f 用构建时间戳，每次发布都变。
+     注意：不能用 ?v=，那是 guard.js 的设备码参数。 -->
+<script>
+(function () {
+  try {
+    var u = new URL(window.location.href);
+    if (!u.searchParams.has('_f')) {
+      u.searchParams.set('_f', '__BUILD_VER__');
+      window.location.replace(u.toString());
+    }
+  } catch (e) {}
+})();
+</script>
 <!-- 入口文档每次向服务器校验，避免重新上架后仍停留在旧版 HTML（子资源用版本号兜底） -->
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
@@ -10,7 +24,13 @@
 <meta property="og:site_name" content="三态看盘" />
 <meta property="og:title" content="三态看盘" />
 <meta property="og:description" content="用三态看懂 A 股处在启动·盘整·走完 —— 每日信号 + 我的看板" />
-<link rel="stylesheet" href="styles.css?v=202611251045" />
+<link rel="stylesheet" href="styles.css?v=202611271408&sharecode=EPDR6ET2KO" />
+<!-- 纯 CSS 探针：完全不依赖 JS。若 8 秒后脚本仍没接管页面（说明 JS 被扩展/浏览器设置拦截），
+     这段红色警告会自动显示，给出明确解决步骤。JS 正常时 app.js 会替换 #view，此探针自动消失。 -->
+<style>
+#jsStallProbe{opacity:0;visibility:hidden;animation:jsStallReveal 0s linear 8s forwards}
+@keyframes jsStallReveal{to{opacity:1;visibility:visible}}
+</style>
 </head>
 <body>
   <!-- guard.js（网关注入）风险轻提示的预留挂载槽：保证在 sticky 顶栏之上 -->
@@ -44,12 +64,21 @@
       <span id="stateText">数据加载中…</span>
       <button class="refresh" id="stateRefresh">手动刷新</button>
     </div>
-    <div id="view"><div style="padding:48px 16px;text-align:center;color:#8a8f99;font-size:13px;line-height:1.9">正在加载全市场行情数据…<br><span style="font-size:11px;color:#b0b4bb">首次约 6MB，之后走浏览器缓存；加载完成后会自动实时刷新</span></div></div>
+    <div id="view"><div style="padding:48px 16px;text-align:center;color:#8a8f99;font-size:13px;line-height:1.9">正在加载全市场行情数据…<br><span style="font-size:11px;color:#b0b4bb">首次约 6MB，之后走浏览器缓存；加载完成后会自动实时刷新</span></div>
+      <div id="jsStallProbe" style="max-width:640px;margin:24px auto;padding:18px 20px;background:#fff5f5;border:1px solid #ffccc7;border-radius:10px;color:#cf1322;text-align:left;font-size:13px;line-height:1.9">
+        <b style="font-size:15px">⚠ 检测到脚本未能启动</b><br>
+        页面已打开超过 8 秒但仍停在加载提示，通常是<b>浏览器扩展或隐私设置拦截了本站脚本</b>（无痕窗口能正常打开即可确认）。<br>
+        请任选一种方式解决：<br>
+        ① 用<b>无痕窗口</b>打开本链接（已验证可用）；<br>
+        ② 在浏览器右上角扩展管理里，<b>暂时关闭广告拦截 / 隐私保护类扩展</b>，再刷新本页；<br>
+        ③ 把本网址加入扩展的<b>白名单 / 允许名单</b>。
+      </div>
+    </div>
     <footer class="foot">
       <div>三态看盘 · <b>免费体验 5 个交易日</b> · 到期后加微信开通，可继续免费使用。</div>
       <div>观察工具，<b>非投资建议，不预示未来收益</b>。三态为阶段判断，与涨跌无必然关系。</div>
       <div>实时行情：东财（主）/ 腾讯 / 新浪 三源降级；基础数据由腾讯 / 新浪免费行情全市场重算（截至页面标注时点）。</div>
-      <div class="cat">构建版本 20261125a · 若底部看不到这行，说明仍是浏览器缓存的旧版，可在网址后加 <b>?v=202611251045</b> 再打开</div>
+      <div class="cat">构建版本 20261127e · 若加载卡住，点页面中央的「重新加载数据」（会自动破缓存）；<b>不要</b>在网址后加 ?v=（那是设备码参数，会覆盖你的设备码）</div>
     </footer>
   </main>
 
@@ -93,7 +122,12 @@
        app.js 的 boot() 会等待 window.AB_DATA 就绪后再渲染，因此无需同步阻塞。 -->
   <script>
   (function () {
-    var V = '?v=202611251045';
+    /* 分享链接要求所有静态资源（含 fetch 的 gz）都带 sharecode，否则服务器回「链接不完整」403。
+       把 sharecode 并进 V，下面 data.js / data.json.gz 两处动态请求就自动带上。 */
+    var V = '?v=202611271408&sharecode=EPDR6ET2KO';
+    /* 破缓存尾缀：普通浏览器可能对 gz 存了半截/损坏响应，无痕是干净的所以能开。
+       每次打开加一个随机 _r，强制绕过 HTTP 缓存拿一份完整新数据。 */
+    var BUST = '&_r=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     /* 数据来源：默认用本地快照（秒开）；带 ?remote=1 时改从 GitHub Pages 拉最新构建的 data.js。
        为什么不用每次都拉远端——9MB，首屏会被拖到十几秒，而大多数时候本地就是最新的。
        所以策略是「本地秒开 + 后台检查版本 + 有更新时给一条可点的提示」。 */
@@ -111,7 +145,7 @@
         var e2 = document.getElementById('view');
         if (e2) e2.innerHTML = '<div style="padding:40px;text-align:center;color:#cf1322">'
           + '云端数据加载失败（网络或 Pages 未就绪）<br>'
-          + '<a href="?" style="color:#1d4ed8">回到本地数据</a></div>';
+          + '<a href="?sharecode=EPDR6ET2KO" style="color:#1d4ed8">回到本地数据</a></div>';
       }
       // 回退：直接加载未压缩的 data.js（9MB）
       function viaJs() {
@@ -133,22 +167,86 @@
       }
     }
     if (useRemote) { remote(); return; }
-    function fallback() {
-      if (done) return; done = true;
-      var s = document.createElement('script');
-      s.src = 'data.js' + V;
-      s.onerror = function () {
-        var el = document.getElementById('view');
-        if (el) el.innerHTML = '<div style="padding:40px;text-align:center;color:#cf1322">数据文件加载失败，请刷新重试</div>';
-      };
-      document.head.appendChild(s);
+
+    /* ---- 三通道加载：任一成功即渲染。关键教训：fetch 可能永远 pending（被扩展拦、
+           网络中间件挂起），此时 .catch 不会触发，兜底永远不执行 → 页面死在加载中。
+           所以每条路都必须有「超时」这条独立的兜底触发线，不能只靠 rejection。 ---- */
+    var LOG = [];
+    function trace(s) { LOG.push(s); try { window.__AB_LOAD_LOG = LOG; } catch (e) {} }
+    function setData(txt, ch) {
+      if (done || !txt) return;
+      try { window.AB_DATA = JSON.parse(txt); done = true; trace('OK via ' + ch + ' @' + Date.now()); }
+      catch (e) { trace('parse fail via ' + ch + ': ' + e.message); }
     }
-    if (typeof DecompressionStream !== 'function' || !window.fetch) { fallback(); return; }
-    fetch('data.json.gz' + V)
-      .then(function (r) { if (!r.ok) throw new Error('gz ' + r.status); return r.body.pipeThrough(new DecompressionStream('gzip')); })
-      .then(function (stream) { return new Response(stream).text(); })
-      .then(function (txt) { window.AB_DATA = JSON.parse(txt); })
-      .catch(fallback);
+    function failAll() {
+      var el = document.getElementById('view');
+      if (!el || el.getAttribute('data-failed') === '1') return;
+      el.setAttribute('data-failed', '1');
+      trace('ALL CHANNELS FAILED @' + Date.now());
+      var sc = 'EPDR6ET2KO';
+      try { sc = new URLSearchParams(location.search).get('sharecode') || sc; } catch (e) {}
+      /* 破缓存链接用 _f（不是 v！v 是设备码参数，用时间戳会被 guard.js 当成设备码写入） */
+      var hard = location.pathname + '?_f=' + Date.now().toString(36) + '&sharecode=' + encodeURIComponent(sc) + (location.hash || '');
+      el.innerHTML = '<div style="padding:36px 20px;text-align:center;color:#cf1322;line-height:2">'
+        + '<b style="font-size:16px">数据加载失败</b><br>'
+        + '<span style="color:#6b7484;font-size:12px">数据请求被浏览器拦截或超时。请依次尝试：<br>'
+        + '① 点下方按钮重新加载（已自动破缓存）<br>'
+        + '② 若仍失败，用无痕窗口打开，或在浏览器设置里关闭广告拦截/隐私保护类扩展后重试。</span><br><br>'
+        + '<a href="' + hard + '" style="display:inline-block;padding:9px 18px;background:#1d4ed8;color:#fff;border-radius:8px;text-decoration:none">重新加载数据</a>'
+        + '<div style="margin-top:18px;text-align:left;max-width:520px;margin-left:auto;margin-right:auto;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;color:#8a8f99;font:11px/1.7 ui-monospace,monospace">'
+        + LOG.map(function (x) { return '&gt; ' + x; }).join('<br>') + '</div></div>';
+    }
+    /* 通道 B：script 标签加载 9MB 未压缩 data.js。script 标签不受 fetch/CORS 拦截影响，
+       是最稳的兜底——扩展极少拦 <script src>。 */
+    function viaScript(tag) {
+      if (done) return;
+      trace('B script start ' + (tag || ''));
+      var s = document.createElement('script');
+      s.src = 'data.js' + V + BUST;
+      s.onload = function () { trace('B script onload AB_DATA=' + !!window.AB_DATA); if (!window.AB_DATA) failAll(); };
+      s.onerror = function () { trace('B script error'); failAll(); };
+      document.head.appendChild(s);
+      /* script 也可能挂起：20 秒还没数据就报失败，不再无限转圈 */
+      setTimeout(function () { if (!done) failAll(); }, 20000);
+    }
+    /* 通道 A：fetch 解压 gz（最快）。注意超时用 AbortController 独立触发，不等 rejection。 */
+    if (typeof DecompressionStream !== 'function' || !window.fetch) { viaScript('no-gz-support'); }
+    else {
+      trace('A fetch start @' + Date.now());
+      var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+      var to = setTimeout(function () {
+        if (done) return;
+        trace('A fetch TIMEOUT 6s -> abort');
+        if (ctl) ctl.abort();
+        if (!window.AB_DATA) viaScript('after-A-timeout');
+      }, 6000);
+      fetch('data.json.gz' + V + BUST, ctl ? { signal: ctl.signal, cache: 'no-store' } : { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('gz ' + r.status); return r.body.pipeThrough(new DecompressionStream('gzip')); })
+        .then(function (stream) { return new Response(stream).text(); })
+        .then(function (txt) { clearTimeout(to); setData(txt, 'A-fetch-gz'); })
+        .catch(function (e) { clearTimeout(to); if (!done) { trace('A fetch fail: ' + e.message); viaScript('after-A-fail'); } });
+    }
+    /* 通道 C：XHR 拉 gz（部分环境只拦 fetch 不拦 XHR），3 秒后与 A 竞速。 */
+    setTimeout(function () {
+      if (done || !window.XMLHttpRequest || typeof DecompressionStream !== 'function') return;
+      trace('C xhr start @' + Date.now());
+      try {
+        var x = new XMLHttpRequest();
+        x.open('GET', 'data.json.gz' + V + BUST, true);
+        x.responseType = 'arraybuffer'; x.timeout = 12000;
+        x.onload = function () {
+          if (x.status !== 200 || !x.response) { trace('C xhr status=' + x.status); return; }
+          new Response(new Blob([x.response]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+            .then(function (t) { setData(t, 'C-xhr-gz'); })
+            .catch(function (e) { trace('C decompress fail: ' + e.message); });
+        };
+        x.onerror = function () { trace('C xhr error'); };
+        x.ontimeout = function () { trace('C xhr timeout'); };
+        x.send();
+      } catch (e) { trace('C xhr exception: ' + e.message); }
+    }, 3000);
+    /* 总看门狗：9 秒仍未就绪，强制走 script 通道（幂等，done 后无效）。 */
+    setTimeout(function () { if (!done) { trace('WATCHDOG 9s -> force script'); viaScript('watchdog'); } }, 9000);
     /* 加载完成后查一次云端版本（100 字节），本地落后就出一条可点提示 */
     setTimeout(function () {
       if (!window.fetch) return;
@@ -167,7 +265,9 @@
           bar.textContent = '云端数据已更新到 ' + v.asOf + '（' + v.count + ' 只）· 点此加载最新';
           bar.onclick = function () {
             bar.textContent = '正在加载…';
-            location.href = location.pathname + '?remote=1' + (location.hash || '#/');
+            /* 分享站点这条提示会整页跳转，必须把 sharecode 带过去，否则新文档 403「链接不完整」 */
+            var _sc = (function () { try { return new URLSearchParams(location.search).get('sharecode') || ''; } catch (e) { return ''; } })() || 'EPDR6ET2KO';
+            location.href = location.pathname + '?remote=1&sharecode=' + encodeURIComponent(_sc) + (location.hash || '#/');
           };
           var host = document.getElementById('stateBanner');
           if (host && host.parentNode) host.parentNode.insertBefore(bar, host);
@@ -179,28 +279,28 @@
   </script>
   <!-- 离线日K / 行业成分股：由 tools/regen_offline.py 生成；未生成时为空骨架，
        页面自动跳过并走实时多源，不影响使用。 -->
-  <script src="kline.js?v=202611251045"></script>
-  <script src="industry.js?v=202611251045"></script>
+  <script src="kline.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script src="industry.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
   <!-- 便携版：ECharts 已本地化，断网也能画 RRG / 走势图 -->
-  <script defer src="echarts.min.js?v=202611251045"></script>
+  <script defer src="echarts.min.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
   <!-- 试用 / 邀请 / 风险提示门（guard.js）。必须在 app.js 之前执行：
        它可能直接锁屏，避免先渲染出内容再被盖住。
        依赖云端记账（invite_events / consent_events），断网时自动降级为「仅本地计时」。 -->
-  <script defer src="daily.js?v=202611251045"></script>
+  <script defer src="daily.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
   <!-- 多源舆情快照：云端每日采集公开源（快讯/检索/公告/RSS/个股专属，真实行业口径），带真实来源与时间。
        必须在 six-engine.js / app.js 之前加载，引擎据此计算舆情票。读不到时自动退回静态历史缓存。 -->
-  <script defer src="news_data.js?v=202611251045"></script>
-  <script defer src="poster_daily.js?v=202611251045"></script>
-  <script defer src="guard.js?v=202611251045"></script>
-  <script defer src="fundflow.js?v=202611251045"></script>
-  <script defer src="data-service.js?v=202611251045"></script>
+  <script defer src="news_data.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="poster_daily.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="guard.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="fundflow.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="data-service.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
   <!-- 三态阶段判定唯一口径：主站与超跌页「新发涨停观察」共用，避免同一票两页显示的阶段不一致 -->
-  <script defer src="state-phase.js?v=202611251045"></script>
-  <script defer src="six-engine.js?v=202611251045"></script>
-  <script defer src="app.js?v=202611251045"></script>
-  <script defer src="live-refresh.js?v=202611251045"></script>
-  <script defer src="state-path.js?v=202611251045"></script>
-  <script defer src="selfcheck.js?v=202611251045"></script>
+  <script defer src="state-phase.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="six-engine.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="app.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="live-refresh.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="state-path.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
+  <script defer src="selfcheck.js?v=202611271408&sharecode=EPDR6ET2KO"></script>
   <!-- 三报远端刷新：本地 daily.js 是发布那一刻的快照；GitHub Actions 每个交易日
        07:30 / 11:35 / 15:35 把新一版 daily.js 推到 Pages。这里在首屏渲染完成后取一次远端，
        比本地新就替换 window.AB_DAILY 并重绘一次（保持滚动位置）。
