@@ -4,11 +4,11 @@ window.AB_FREELAB_REPORT = {
     "state": "自由推演实验室已就位：市场画像来自 108,271 条真实信号（扣0.31%成本、一字板剔除）；大模型已提 6 个模型，验证跑出 0 个 / 未证明 5 个。",
     "did": "把 108,338 条样本整理成「市场画像」——每个特征按真实取值分 5 档，逐档算信号级净收益/胜率/超额，再按月份、行业切片。让大模型读这份画像【自由推演】，不受六派种子/白名单草图约束，自己提出模型（可执行规则 / 新特征表达式 / 纯叙事假设皆可），然后用同一套真实结算器逐条验钱。",
     "result": "大模型提了 6 个模型，但真实结算后【0 个跑出可交易模型】——5 个栽在净收益/t值/覆盖率/跑赢基准上，1 个还是无法回测的叙事假设。这是诚实结论，不是没跑。",
-    "direction": "自由度放在「假设」——鼓励大模型跨特征组合、造新表达式、提市场状态机/分域模型；严格度放在「验证」——任何模型都要过净收益>0、t≥3、覆盖率≥2%、Wilson下界、跑赢持有基准五关。资金流维度已接入：真实抓取 15 只票的逐日五档资金流，join 165 条样本（覆盖率 0.1%），派生主力净流入/超大单结构/资金加速度，供大模型推演；未覆盖样本一律标缺口。下一步继续补覆盖率、等资金流样本够厚后让它进模型验证链。"
+    "direction": "自由度放在「假设」——鼓励大模型跨特征组合、造新表达式、提市场状态机/分域模型；严格度放在「验证」——任何模型都要过净收益>0、t≥3、覆盖率≥2%、Wilson下界、跑赢持有基准五关。现已按【按月 / 按周 / 按日 / T0ETF·日内】四维度分类推演：每维度用真实 kline 算自己的基准（月T+20、周T+5、日T+1、日内开盘→收盘），模型只在自己声明的维度上结算，不拿T+3的旧尺子量所有持有期。资金流维度已接入：真实抓取 15 只票的逐日五档资金流，join 165 条样本（覆盖率 0.1%），派生主力净流入/超大单结构/资金加速度，供大模型推演；未覆盖样本一律标缺口。下一步继续补覆盖率、等资金流样本够厚后让它进模型验证链。"
   },
   "at": "2026-11-27",
-  "generatedAt": "2026-11-27T06:06:42.315Z",
-  "version": "freelab-v1",
+  "generatedAt": "2026-11-27T06:44:15.597Z",
+  "version": "freelab-v2-horizons",
   "model": "glm-5.3-flash",
   "dataAsOf": "20261126",
   "hasFacts": true,
@@ -443,6 +443,127 @@ window.AB_FREELAB_REPORT = {
       }
     ]
   },
+  "dimensions": [
+    {
+      "key": "month",
+      "name": "按月",
+      "desc": "T收盘买→T+20收盘卖（约1个月）",
+      "retKey": "d20",
+      "baseline": {
+        "netRet": -2.6194,
+        "tStat": -53.76,
+        "winRate": 0.3635,
+        "samples": 98333,
+        "coverage": 100,
+        "note": ""
+      },
+      "modelCount": 0,
+      "passedCount": 0,
+      "notProvenCount": 0,
+      "models": []
+    },
+    {
+      "key": "week",
+      "name": "按周",
+      "desc": "T收盘买→T+5收盘卖（约1周）",
+      "retKey": "d5",
+      "baseline": {
+        "netRet": -0.8295,
+        "tStat": -34.227,
+        "winRate": 0.404,
+        "samples": 98333,
+        "coverage": 100,
+        "note": ""
+      },
+      "modelCount": 0,
+      "passedCount": 0,
+      "notProvenCount": 0,
+      "models": []
+    },
+    {
+      "key": "day",
+      "name": "按日",
+      "desc": "T收盘买→T+1收盘卖（次日）",
+      "retKey": "d1",
+      "baseline": {
+        "netRet": -0.4363,
+        "tStat": -41.256,
+        "winRate": 0.4089,
+        "samples": 98333,
+        "coverage": 100,
+        "note": ""
+      },
+      "modelCount": 6,
+      "passedCount": 0,
+      "notProvenCount": 6,
+      "models": [
+        {
+          "name": "深跌破均线+量价背离",
+          "thesis": "均线下方深跌(maGap60<-12.6%)且放量下跌背离(pvrDiv>4.5)的票，恐慌盘出尽后反弹",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: t≥3、覆盖率、Wilson下界",
+          "netRet": 0.0304,
+          "tStat": 0.39,
+          "coverage": 1.97
+        },
+        {
+          "name": "超跌+向上跳空",
+          "thesis": "深跌后跳空高开(gapPct>0.53%)是资金回流的确认信号",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: t≥3、Wilson下界",
+          "netRet": 0.024,
+          "tStat": 0.427,
+          "coverage": 3.85
+        },
+        {
+          "name": "超跌强度综合打分(新特征)",
+          "thesis": "造新特征 = 超跌幅度 × 缩量程度，综合打分选前20%",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、Wilson下界",
+          "netRet": -0.1466,
+          "tStat": -3.927,
+          "coverage": 6.61
+        },
+        {
+          "name": "市场状态机(待工程化)",
+          "thesis": "画像显示月度净收益差异巨大(8月+0.46%、11月-2.22%)，说明追启动策略的成败高度依赖大盘环境；应先判断市场状态(趋势/震荡/情绪周期)，只在情绪回升期启动，其余空仓",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、Wilson下界",
+          "netRet": -0.4363,
+          "tStat": -41.256,
+          "coverage": 100
+        },
+        {
+          "name": "避开追高(反向验证)",
+          "thesis": "追60日涨幅>9.3%且均线偏离>4.8%的强势票是最亏的，反向回避可提升整体",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、Wilson下界、跑赢基准",
+          "netRet": -0.5203,
+          "tStat": -13.64,
+          "coverage": 14.71
+        }
+      ]
+    },
+    {
+      "key": "intradayT0",
+      "name": "T0ETF·日内",
+      "desc": "T开盘买→T收盘卖（仅T+0 ETF）",
+      "retKey": "intra",
+      "baseline": {
+        "netRet": -0.3744,
+        "tStat": -10.525,
+        "winRate": 0.1743,
+        "samples": 918,
+        "coverage": 100,
+        "note": "仅放行名称命中跨境/黄金/债券/货币的T+0 ETF，其余标缺口不编造"
+      },
+      "modelCount": 0,
+      "passedCount": 0,
+      "notProvenCount": 0,
+      "models": []
+    }
+  ],
+  "horizonDisclaimer": "四维度收益来自真实 kline（月=T+20 / 周=T+5 / 日=T+1 / 日内=T开盘→收盘），已扣往返成本、剔除一字板；日内T0只对名称命中跨境/黄金/债券/货币的ETF放行。全部为历史回测，含幸存者偏差，非前瞻收益、不构成投资建议。",
   "oneLine": "",
   "lastModelAt": "2026-11-27 13:30"
 };
