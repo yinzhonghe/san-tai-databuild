@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T06:06:42.057Z",
+  "generatedAt": "2026-11-27T06:44:14.787Z",
   "generatedOn": "2026-11-27",
   "source": "panel_sample100k.jsonl",
   "dataAsOf": "20261126",
@@ -1842,6 +1842,48 @@
       "n": 306,
       "net": -1.3145,
       "winRate": 0.4118
+    }
+  ],
+  "horizons": [
+    {
+      "key": "month",
+      "name": "按月",
+      "desc": "T收盘→T+20收盘",
+      "samples": 98333,
+      "netRet": -2.6194,
+      "winRate": 0.3635,
+      "tStat": -53.76,
+      "note": ""
+    },
+    {
+      "key": "week",
+      "name": "按周",
+      "desc": "T收盘→T+5收盘",
+      "samples": 98333,
+      "netRet": -0.8295,
+      "winRate": 0.404,
+      "tStat": -34.227,
+      "note": ""
+    },
+    {
+      "key": "day",
+      "name": "按日",
+      "desc": "T收盘→T+1收盘",
+      "samples": 98333,
+      "netRet": -0.4363,
+      "winRate": 0.4089,
+      "tStat": -41.256,
+      "note": ""
+    },
+    {
+      "key": "intradayT0",
+      "name": "T0ETF·日内",
+      "desc": "T开盘→T收盘（仅T0 ETF）",
+      "samples": 918,
+      "netRet": -0.3744,
+      "winRate": 0.1743,
+      "tStat": -10.525,
+      "note": "仅放行名称命中跨境/黄金/债券/货币的T+0 ETF，其余标缺口不编造"
     }
   ],
   "fundflow": {
