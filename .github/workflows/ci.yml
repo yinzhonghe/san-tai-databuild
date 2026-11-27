@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
+          # 项目零依赖（无 package-lock.json），不能开 cache:npm，否则 setup-node 直接报缺 lock 文件失败
       - name: 设置 Python
         uses: actions/setup-python@v5
         with:
