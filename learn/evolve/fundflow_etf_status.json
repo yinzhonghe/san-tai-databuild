@@ -1,0 +1,25 @@
+{
+  "asOf": "2026-11-27 15:54:24",
+  "source": "FTShare eastmoney-etf-flow (ETF 日资金流批量, 与 push2his 逐位一致)",
+  "endpoint": "https://market.ft.tech/gateway/api/v1/market/data/eastmoney-etf-flow",
+  "window": {
+    "from": "2026-03-16",
+    "to": "2026-11-23",
+    "dataStart": "2026-03-16"
+  },
+  "etfCodes": 511,
+  "fetchedEtfCodes": 495,
+  "coveredSampleRows": 6844,
+  "etfSampleRows": 9551,
+  "etfCoveragePct": 71.66,
+  "earlyGapRows": 873,
+  "earlyGapNote": "2026-03-16 前 FTShare/push2his 均无 ETF 资金流数据，标缺口不填0",
+  "stats": {
+    "pagesFetched": 215,
+    "pagesReused": 0,
+    "rowsTotal": 211762,
+    "rowsInPanel": 68456,
+    "lastError": "2026-11-01 HTTP_429"
+  },
+  "note": "一行=一只ETF一个交易日；单位万元；缺口保留为空，不估算。"
+}
