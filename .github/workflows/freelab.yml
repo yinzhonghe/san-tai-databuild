@@ -55,7 +55,19 @@ jobs:
           # 资金流历史数据也在 data 分支续传（文件较大，单独同步）
           if [ -f /tmp/fl_state/learn/evolve/fundflow_hist.jsonl ]; then
             cp /tmp/fl_state/learn/evolve/fundflow_hist.jsonl learn/evolve/ 2>/dev/null || true
-            echo "已同步资金流历史（续传基础）"
+            echo "已同步ETF逐票资金流（续传基础）"
+          fi
+          # 批量报表产物 gz + 状态（已全量回补时直接复用，避免每天重复20分钟全量）
+          if [ -f /tmp/fl_state/learn/evolve/fundflow_batch.jsonl.gz ]; then
+            cp /tmp/fl_state/learn/evolve/fundflow_batch.jsonl.gz learn/evolve/ 2>/dev/null || true
+            cp /tmp/fl_state/learn/evolve/fundflow_batch_status.json learn/evolve/ 2>/dev/null || true
+            echo "已同步批量资金流 gz（复用基础）"
+          fi
+          # 批量报表分片（全市场个股+北交所，断点续传基础；不含ETF）
+          if [ -d /tmp/fl_state/learn/evolve/fundflow_batch_shards ]; then
+            mkdir -p learn/evolve/fundflow_batch_shards
+            cp /tmp/fl_state/learn/evolve/fundflow_batch_shards/*.json learn/evolve/fundflow_batch_shards/ 2>/dev/null || true
+            echo "已同步批量资金流分片"
           fi
 
       - name: 重建面板（缺则建，失败不阻塞画像用采样）
@@ -68,10 +80,16 @@ jobs:
             echo "面板采样已存在"
           fi
 
-      - name: ⓪ 增量抓取历史资金流（慢任务，每天续抓一批；失败不阻塞）
+      - name: ⓪ 批量资金流回补（datacenter-web 全市场，含北交所；失败不阻塞）
         run: |
-          # 东财按IP滑动窗限流：15s间隔慢慢抓，每天增量40只，断点续传逐步补全
-          python tools/fetch_fundflow_hist.py --limit 40 --interval 15 2>&1 | tail -8 || echo "资金流抓取本轮失败，保留已有数据"
+          # 2026-11-27 提速：push2his 逐票接口 IP 限流严重（40票/天太慢）。
+          # datacenter RPT_DMSK_TS_FUNDFLOW 按交易日全市场出数，5000行/页约255页，
+          # 单页间隔1s，一次全量回补；分片断点续传，重跑只补未完成页。
+          # --skip-if-complete：gz 已覆盖当前 panel 全窗时直接复用（个股覆盖100%），
+          #   避免每天重复20分钟全量抓取；panel 换新日期窗后自动重抓。
+          python tools/fetch_fundflow_batch.py --interval 1.0 --skip-if-complete 2>&1 | tail -12 || echo "批量资金流本轮失败，保留已有数据"
+          # ETF 不在批量报表内，继续用 push2his 云端逐票补抓（GitHub runner 独立IP）
+          python tools/fetch_fundflow_hist.py --only-etf --limit 20 --interval 6 2>&1 | tail -8 || echo "ETF资金流补抓跳过"
           node tools/evolve/freelab/fundflow_portrait.js 2>&1 || echo "资金流画像跳过"
 
       - name: ① 生成四时间维度真实收益样本（月/周/日/日内T0）
@@ -119,6 +137,9 @@ jobs:
           cp "$GITHUB_WORKSPACE"/learn/evolve/freelab/{models.jsonl,verified.json,verified_horizons.json,facts.json,horizon_sample_status.json,llm_call_log.jsonl,llm_trigger.json,fundflow_portrait.json} learn/evolve/freelab/ 2>/dev/null || true
           # 资金流历史 + 状态推 data（续传基础，不进 main 避免体积膨胀）
           cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_hist.jsonl "$GITHUB_WORKSPACE"/learn/evolve/fundflow_status.json learn/evolve/ 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_batch.jsonl.gz "$GITHUB_WORKSPACE"/learn/evolve/fundflow_batch_status.json learn/evolve/ 2>/dev/null || true
+          mkdir -p learn/evolve/fundflow_batch_shards
+          cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_batch_shards/*.json learn/evolve/fundflow_batch_shards/ 2>/dev/null || true
           git add -A
           git diff --cached --quiet || { git commit -m "freelab state $(date -u +%F)"; git push; }
 
