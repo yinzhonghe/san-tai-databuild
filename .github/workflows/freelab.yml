@@ -47,6 +47,12 @@ jobs:
         run: |
           mkdir -p /tmp/fl_state
           git clone --depth 1 --branch data "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" /tmp/fl_state 2>/dev/null || echo "data 分支暂无，用 main 初始状态"
+          # 2026-11-27 修复：宪法权威在 data 分支（main 无 learn/evolve/constitution.json）。
+          # 不同步则 kernel.verifySeal 读到空文件 → 封印失效 → 所有模型 REJECT（云端训练空转）。
+          mkdir -p learn/evolve
+          for f in constitution.json constitution.seal.json; do
+            if [ -f "/tmp/fl_state/learn/evolve/$f" ]; then cp "/tmp/fl_state/learn/evolve/$f" learn/evolve/ && echo "已从 data 同步 $f"; fi
+          done
           if [ -d /tmp/fl_state/learn/evolve/freelab ]; then
             mkdir -p learn/evolve/freelab
             cp /tmp/fl_state/learn/evolve/freelab/*.json /tmp/fl_state/learn/evolve/freelab/*.jsonl learn/evolve/freelab/ 2>/dev/null || true
@@ -104,6 +110,9 @@ jobs:
           # push2his 逐票仅补 FTShare 未覆盖的少量尾部（GitHub runner 独立IP）
           python tools/fetch_fundflow_hist.py --only-etf --limit 20 --interval 6 2>&1 | tail -8 || echo "ETF资金流补抓跳过"
           node tools/evolve/freelab/fundflow_portrait.js 2>&1 || echo "资金流画像跳过"
+          # 2026-11-27 接入验证闭环：把真实资金流 join 进样本 f（main5/superRatio5/accel/mainPctT），
+          # 让大模型提出的资金流假设能被 settle 真实结算。缺数据 fail-closed 不填0。
+          node tools/evolve/freelab/build_fundflow_samples.js 2>&1 || echo "资金流增强样本跳过"
 
       - name: ① 生成四时间维度真实收益样本（月/周/日/日内T0）
         # 从真实 kline 按 (code,date) 对齐，算 d20/d5/d1/intra；缺历史标缺口不编造
@@ -119,8 +128,12 @@ jobs:
         run: |
           FORCE=""
           if [ "${{ github.event.inputs.force }}" = "true" ]; then FORCE="--force"; fi
-          python github_ci/freelab_llm.py $FORCE 2>&1 || echo "自由推演跳过（无 key 或额度不足），不影响画像/验证/报告"
-          python github_ci/freelab_llm.py --dry-run 2>&1 || true
+          # 2026-11-27 修复：main 分支脚本在仓库根（不是 github_ci/），旧路径导致
+          # python: can't open file ... 从未真正调过 LLM。两个路径都试，兼容布局。
+          LLM_SCRIPT="github_ci/freelab_llm.py"
+          if [ ! -f "$LLM_SCRIPT" ]; then LLM_SCRIPT="freelab_llm.py"; fi
+          python "$LLM_SCRIPT" $FORCE 2>&1 || echo "自由推演跳过（无 key 或额度不足），不影响画像/验证/报告"
+          python "$LLM_SCRIPT" --dry-run 2>&1 || true
 
       - name: ③ 真实结算逐条验钱（T+3 全样本）
         run: node tools/evolve/freelab/verify.js
