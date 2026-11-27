@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T09:19:42.997Z",
+  "generatedAt": "2026-11-27T09:23:48.248Z",
   "source": "eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(个股+北交所批量) + FTShare ETF资金流批量(2026-03-16起) + fflow/daykline(ETF逐票兜底)",
   "fetchedCodes": 5838,
   "fundStatus": {

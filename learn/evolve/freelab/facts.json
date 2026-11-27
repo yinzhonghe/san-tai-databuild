@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-11-27T09:19:44.584Z",
+  "generatedAt": "2026-11-27T09:23:53.238Z",
   "generatedOn": "2026-11-27",
-  "source": "panel_sample100k.jsonl",
+  "source": "panel_sample100k_ff.jsonl",
   "dataAsOf": "20261113",
   "usage": "自由推演实验室的市场画像原料：全部来自真实样本的信号级净收益（已扣0.31%成本、一字板剔除）。缺数据标缺口，不估算。",
   "baseline": {
-    "constitutionNet": null,
+    "constitutionNet": -0.5671,
     "measuredNet": null,
     "measuredWinRate": null,
     "samples": 0,
@@ -118,6 +118,26 @@
       "label": "额能趋势",
       "buckets": [],
       "note": "无有效样本"
+    },
+    "main5": {
+      "label": "近5日主力净流入(万元)",
+      "buckets": [],
+      "note": "无有效样本"
+    },
+    "superRatio5": {
+      "label": "超大单占主力比",
+      "buckets": [],
+      "note": "无有效样本"
+    },
+    "accel": {
+      "label": "资金加速度(万元)",
+      "buckets": [],
+      "note": "无有效样本"
+    },
+    "mainPctT": {
+      "label": "当日主力净占比(%)",
+      "buckets": [],
+      "note": "无有效样本"
     }
   },
   "byMonth": [],
@@ -165,7 +185,7 @@
     }
   ],
   "fundflow": {
-    "generatedAt": "2026-11-27T09:19:42.997Z",
+    "generatedAt": "2026-11-27T09:23:48.248Z",
     "source": "eastmoney datacenter RPT_DMSK_TS_FUNDFLOW(个股+北交所批量) + FTShare ETF资金流批量(2026-03-16起) + fflow/daykline(ETF逐票兜底)",
     "fetchedCodes": 5838,
     "fundStatus": {

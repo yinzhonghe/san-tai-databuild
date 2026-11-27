@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-27T09:19:44.684Z",
-  "sealOk": false,
+  "generatedAt": "2026-11-27T09:27:06.673Z",
+  "sealOk": true,
   "modelCount": 6,
   "dimensions": [
     {
@@ -76,36 +76,6 @@
       },
       "models": [
         {
-          "id": "free_20261127_01",
-          "name": "超跌+缩量企稳",
-          "thesis": "60日跌超19%且60日波动收缩比<0.738的深跌缩量票，杀跌动能衰竭后T+3修复概率更高",
-          "horizon": "day",
-          "verdict": "REJECT",
-          "reason": "宪法封印失效",
-          "metrics": null,
-          "at": "2026-11-27 13:30"
-        },
-        {
-          "id": "free_20261127_02",
-          "name": "深跌破均线+量价背离",
-          "thesis": "均线下方深跌(maGap60<-12.6%)且放量下跌背离(pvrDiv>4.5)的票，恐慌盘出尽后反弹",
-          "horizon": "day",
-          "verdict": "REJECT",
-          "reason": "宪法封印失效",
-          "metrics": null,
-          "at": "2026-11-27 13:30"
-        },
-        {
-          "id": "free_20261127_03",
-          "name": "超跌+向上跳空",
-          "thesis": "深跌后跳空高开(gapPct>0.53%)是资金回流的确认信号",
-          "horizon": "day",
-          "verdict": "REJECT",
-          "reason": "宪法封印失效",
-          "metrics": null,
-          "at": "2026-11-27 13:30"
-        },
-        {
           "id": "free_20261127_04",
           "name": "超跌强度综合打分(新特征)",
           "thesis": "造新特征 = 超跌幅度 × 缩量程度，综合打分选前20%",
@@ -116,13 +86,103 @@
           "at": "2026-11-27 13:30"
         },
         {
+          "id": "free_20261127_01",
+          "name": "超跌+缩量企稳",
+          "thesis": "60日跌超19%且60日波动收缩比<0.738的深跌缩量票，杀跌动能衰竭后T+3修复概率更高",
+          "horizon": "day",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
+          "metrics": {
+            "n": 0,
+            "eligible": 0,
+            "coverage": 0,
+            "netRet": null,
+            "winRate": null,
+            "wilsonLower": null,
+            "tStat": null,
+            "benchmarkRet": null,
+            "excessOverHold": null,
+            "worstSegmentNet": null,
+            "segments": 0,
+            "costPct": 0.31,
+            "retKey": "d1",
+            "dim": "day"
+          },
+          "at": "2026-11-27 13:30"
+        },
+        {
+          "id": "free_20261127_02",
+          "name": "深跌破均线+量价背离",
+          "thesis": "均线下方深跌(maGap60<-12.6%)且放量下跌背离(pvrDiv>4.5)的票，恐慌盘出尽后反弹",
+          "horizon": "day",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
+          "metrics": {
+            "n": 0,
+            "eligible": 0,
+            "coverage": 0,
+            "netRet": null,
+            "winRate": null,
+            "wilsonLower": null,
+            "tStat": null,
+            "benchmarkRet": null,
+            "excessOverHold": null,
+            "worstSegmentNet": null,
+            "segments": 0,
+            "costPct": 0.31,
+            "retKey": "d1",
+            "dim": "day"
+          },
+          "at": "2026-11-27 13:30"
+        },
+        {
+          "id": "free_20261127_03",
+          "name": "超跌+向上跳空",
+          "thesis": "深跌后跳空高开(gapPct>0.53%)是资金回流的确认信号",
+          "horizon": "day",
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
+          "metrics": {
+            "n": 0,
+            "eligible": 0,
+            "coverage": 0,
+            "netRet": null,
+            "winRate": null,
+            "wilsonLower": null,
+            "tStat": null,
+            "benchmarkRet": null,
+            "excessOverHold": null,
+            "worstSegmentNet": null,
+            "segments": 0,
+            "costPct": 0.31,
+            "retKey": "d1",
+            "dim": "day"
+          },
+          "at": "2026-11-27 13:30"
+        },
+        {
           "id": "free_20261127_05",
           "name": "避开追高(反向验证)",
           "thesis": "追60日涨幅>9.3%且均线偏离>4.8%的强势票是最亏的，反向回避可提升整体",
           "horizon": "day",
-          "verdict": "REJECT",
-          "reason": "宪法封印失效",
-          "metrics": null,
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
+          "metrics": {
+            "n": 0,
+            "eligible": 0,
+            "coverage": 0,
+            "netRet": null,
+            "winRate": null,
+            "wilsonLower": null,
+            "tStat": null,
+            "benchmarkRet": null,
+            "excessOverHold": null,
+            "worstSegmentNet": null,
+            "segments": 0,
+            "costPct": 0.31,
+            "retKey": "d1",
+            "dim": "day"
+          },
           "at": "2026-11-27 13:30"
         },
         {
@@ -130,14 +190,29 @@
           "name": "市场状态机(待工程化)",
           "thesis": "画像显示月度净收益差异巨大(8月+0.46%、11月-2.22%)，说明追启动策略的成败高度依赖大盘环境；应先判断市场状态(趋势/震荡/情绪周期)，只在情绪回升期启动，其余空仓",
           "horizon": "day",
-          "verdict": "REJECT",
-          "reason": "宪法封印失效",
-          "metrics": null,
+          "verdict": "NOT_PROVEN",
+          "reason": "未过门槛: 净收益、t≥3、覆盖率、Wilson下界、跑赢基准",
+          "metrics": {
+            "n": 0,
+            "eligible": 0,
+            "coverage": 0,
+            "netRet": null,
+            "winRate": null,
+            "wilsonLower": null,
+            "tStat": null,
+            "benchmarkRet": null,
+            "excessOverHold": null,
+            "worstSegmentNet": null,
+            "segments": 0,
+            "costPct": 0.31,
+            "retKey": "d1",
+            "dim": "day"
+          },
           "at": "2026-11-27 13:30"
         }
       ],
       "passedCount": 0,
-      "notProvenCount": 0
+      "notProvenCount": 5
     },
     {
       "key": "intradayT0",
