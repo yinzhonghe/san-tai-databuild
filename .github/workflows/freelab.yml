@@ -1,0 +1,125 @@
+name: 自由推演实验室 · 每日一代（独立，与证据包自进化平行）
+
+# 与 evolve_daily.yml【平行独立】：不动宪法封印/population/heartbeat。
+# 流程：重建面板 → 生成真实市场画像 → 有 LLM_API_KEY 则大模型自由推演 →
+#       真实结算逐条验钱 → 报告产物推 main 分支（build/Pages 自动发布）。
+# 触发：SCF 每日 20:00 dispatch；额度闸保证重复触发不重复烧钱。
+# 无 key 时也能跑：画像/验证/报告照常生成，只是不新增模型（诚实标「待首次推演」）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '调试强制推演（忽略额度闸，仍需 LLM_API_KEY）'
+        required: false
+        default: 'false'
+      reason:
+        description: '触发原因'
+        required: false
+        default: 'scheduled'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: freelab-daily
+  cancel-in-progress: false
+
+jobs:
+  freelab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 同步状态快照（data 分支的小文件）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/fl_state
+          git clone --depth 1 --branch data "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" /tmp/fl_state 2>/dev/null || echo "data 分支暂无，用 main 初始状态"
+          if [ -d /tmp/fl_state/learn/evolve/freelab ]; then
+            mkdir -p learn/evolve/freelab
+            cp /tmp/fl_state/learn/evolve/freelab/*.json /tmp/fl_state/learn/evolve/freelab/*.jsonl learn/evolve/freelab/ 2>/dev/null || true
+            echo "已同步 freelab 历史状态"
+          fi
+          # 资金流历史数据也在 data 分支续传（文件较大，单独同步）
+          if [ -f /tmp/fl_state/learn/evolve/fundflow_hist.jsonl ]; then
+            cp /tmp/fl_state/learn/evolve/fundflow_hist.jsonl learn/evolve/ 2>/dev/null || true
+            echo "已同步资金流历史（续传基础）"
+          fi
+
+      - name: 重建面板（缺则建，失败不阻塞画像用采样）
+        run: |
+          if [ ! -f learn/evolve/panel_sample100k.jsonl ]; then
+            python tools/build_kline.py 2>/dev/null || echo "kline重建跳过"
+            node tools/evolve/panel.js 2>/dev/null || echo "面板重建跳过"
+            node tools/evolve/make_sample.js 2>/dev/null || echo "采样重建跳过"
+          else
+            echo "面板采样已存在"
+          fi
+
+      - name: ⓪ 增量抓取历史资金流（慢任务，每天续抓一批；失败不阻塞）
+        run: |
+          # 东财按IP滑动窗限流：15s间隔慢慢抓，每天增量40只，断点续传逐步补全
+          python tools/fetch_fundflow_hist.py --limit 40 --interval 15 2>&1 | tail -8 || echo "资金流抓取本轮失败，保留已有数据"
+          node tools/evolve/freelab/fundflow_portrait.js 2>&1 || echo "资金流画像跳过"
+
+      - name: ① 生成真实市场画像
+        run: node tools/evolve/freelab/facts.js
+
+      - name: ② 大模型自由推演（有 key 才跑，额度闸保护）
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODELS: ${{ secrets.LLM_MODELS }}
+        run: |
+          FORCE=""
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then FORCE="--force"; fi
+          python github_ci/freelab_llm.py $FORCE 2>&1 || echo "自由推演跳过（无 key 或额度不足），不影响画像/验证/报告"
+          python github_ci/freelab_llm.py --dry-run 2>&1 || true
+
+      - name: ③ 真实结算逐条验钱
+        run: node tools/evolve/freelab/verify.js
+
+      - name: ④ 生成报告
+        run: node tools/evolve/freelab/report.js
+
+      - name: 产物推 main 分支（供 build/Pages 发布）+ 状态推 data 分支
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "freelab-bot"
+          git config user.email "freelab-bot@users.noreply.github.com"
+          # 报告推 main：build_site 会把 freelab_report.js 发布到站点
+          git add freelab_report.js 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "freelab: 自由推演日报 $(date -u +%F)"
+          git pull --rebase --autostash origin main || true
+          git push origin HEAD:main || true
+          # 历史状态推 data（不影响 main 体积）
+          cd /tmp/fl_state 2>/dev/null || exit 0
+          git config user.name  "freelab-bot"
+          git config user.email "freelab-bot@users.noreply.github.com"
+          mkdir -p learn/evolve/freelab
+          cp "$GITHUB_WORKSPACE"/learn/evolve/freelab/{models.jsonl,verified.json,facts.json,llm_call_log.jsonl,llm_trigger.json,fundflow_portrait.json} learn/evolve/freelab/ 2>/dev/null || true
+          # 资金流历史 + 状态推 data（续传基础，不进 main 避免体积膨胀）
+          cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_hist.jsonl "$GITHUB_WORKSPACE"/learn/evolve/fundflow_status.json learn/evolve/ 2>/dev/null || true
+          git add -A
+          git diff --cached --quiet || { git commit -m "freelab state $(date -u +%F)"; git push; }
+
+      - name: 运行留痕
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freelab-log
+          path: learn/evolve/freelab/verified.json
+          if-no-files-found: ignore
+          retention-days: 7
