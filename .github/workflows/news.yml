@@ -6,11 +6,6 @@ name: 多源舆情采集
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 2 * * 1-5'    # 北京 10:00 盘前/早盘
-    - cron: '0 5 * * 1-5'    # 北京 13:00 午后
-    - cron: '30 8 * * 1-5'   # 北京 16:30 收盘后
-
 permissions:
   contents: write
 
