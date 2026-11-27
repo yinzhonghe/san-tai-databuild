@@ -12,9 +12,6 @@ on:
         default: 'false'
         type: choice
         options: ['false', 'true']
-  schedule:
-    - cron: '30 8 * * 1-5'   # 北京 周一至周五 16:30
-
 permissions:
   contents: write
 
