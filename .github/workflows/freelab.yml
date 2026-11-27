@@ -74,7 +74,11 @@ jobs:
           python tools/fetch_fundflow_hist.py --limit 40 --interval 15 2>&1 | tail -8 || echo "资金流抓取本轮失败，保留已有数据"
           node tools/evolve/freelab/fundflow_portrait.js 2>&1 || echo "资金流画像跳过"
 
-      - name: ① 生成真实市场画像
+      - name: ① 生成四时间维度真实收益样本（月/周/日/日内T0）
+        # 从真实 kline 按 (code,date) 对齐，算 d20/d5/d1/intra；缺历史标缺口不编造
+        run: node tools/evolve/freelab/horizon_sample.js
+
+      - name: ①b 生成真实市场画像（含四维基准）
         run: node tools/evolve/freelab/facts.js
 
       - name: ② 大模型自由推演（有 key 才跑，额度闸保护）
@@ -87,10 +91,13 @@ jobs:
           python github_ci/freelab_llm.py $FORCE 2>&1 || echo "自由推演跳过（无 key 或额度不足），不影响画像/验证/报告"
           python github_ci/freelab_llm.py --dry-run 2>&1 || true
 
-      - name: ③ 真实结算逐条验钱
+      - name: ③ 真实结算逐条验钱（T+3 全样本）
         run: node tools/evolve/freelab/verify.js
 
-      - name: ④ 生成报告
+      - name: ③b 四时间维度分类验证（月/周/日/日内T0 各自基准与五关）
+        run: node tools/evolve/freelab/verify_horizons.js
+
+      - name: ④ 生成报告（含四维度）
         run: node tools/evolve/freelab/report.js
 
       - name: 产物推 main 分支（供 build/Pages 发布）+ 状态推 data 分支
@@ -109,7 +116,7 @@ jobs:
           git config user.name  "freelab-bot"
           git config user.email "freelab-bot@users.noreply.github.com"
           mkdir -p learn/evolve/freelab
-          cp "$GITHUB_WORKSPACE"/learn/evolve/freelab/{models.jsonl,verified.json,facts.json,llm_call_log.jsonl,llm_trigger.json,fundflow_portrait.json} learn/evolve/freelab/ 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE"/learn/evolve/freelab/{models.jsonl,verified.json,verified_horizons.json,facts.json,horizon_sample_status.json,llm_call_log.jsonl,llm_trigger.json,fundflow_portrait.json} learn/evolve/freelab/ 2>/dev/null || true
           # 资金流历史 + 状态推 data（续传基础，不进 main 避免体积膨胀）
           cp "$GITHUB_WORKSPACE"/learn/evolve/fundflow_hist.jsonl "$GITHUB_WORKSPACE"/learn/evolve/fundflow_status.json learn/evolve/ 2>/dev/null || true
           git add -A
